@@ -1,0 +1,8 @@
+[{
+      "relation": ["delegate_permission/common.handle_all_urls"],
+      "target": {
+        "namespace": "android_app",
+        "package_name": "io.github.ademdurmus1987_dotcom.twa",
+        "sha256_cert_fingerprints": ["EF:AF:6D:C3:5D:BB:0A:33:AD:70:BC:17:70:AE:1A:9B:77:64:D2:B6:0D:48:A7:51:06:B5:80:EF:8F:44:82:69"]
+      }
+    }]
