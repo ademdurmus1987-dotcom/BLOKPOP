@@ -2023,6 +2023,8 @@ const BELT_T=17;
 function ringPath(ctx,dx,dy,BR){rr(ctx,BX0+dx,BY0+dy,BW,BH,BR);}
 const STEEL={top0:'#fffaf4',top1:'#eadcd0',top2:'#b49d8d',rim0:'#ffffff',rim1:'#eadfd5',face0:'#fbf4ec',face1:'#d9c6b6',face2:'#8d7466',face3:'#3a2840',lane0:'#7d6577',lane1:'#8c7385',wall0:'#9c8094',wall1:'#2f2140'};
 function bandW(){return bwO(2*LW);}
+function mixHex(a,b,t){const A=parseInt(a.slice(1),16),B=parseInt(b.slice(1),16),m=(s)=>Math.round(((A>>s)&255)*(1-t)+((B>>s)&255)*t);return'rgb('+m(16)+','+m(8)+','+m(0)+')';}
+function steelRamp(f){const S=[[0,STEEL.face0],[0.3,STEEL.face1],[0.72,STEEL.face2],[1,STEEL.face3]];for(let i=1;i<S.length;i++)if(f<=S[i][0]){const t=(f-S[i-1][0])/(S[i][0]-S[i-1][0]);return mixHex(S[i-1][1],S[i][1],t*t*(3-2*t));}return STEEL.face3;}
 function drawBeltStatic(ctx){
 const BR=R+3,W=bandW(),H2=W/2,T=RUN_POFI?28:BELT_T,TF=RUN_POFI?46:BELT_T,LNW=W-14;
 const ix=BX0+H2,iy=BY0+H2,iw=BW-W,ih=BH-W,ir=Math.max(4,BR-H2);
@@ -2035,11 +2037,15 @@ ctx.fillStyle=lg(ctx,0,iy,0,iy+T+4,[[0,STEEL.wall0],[1,STEEL.wall1]],STEEL.wall1
 ctx.fillStyle='rgba(255,255,255,0.10)';ctx.fillRect(ix,iy+1.5,iw,1.2);
 ctx.fillStyle=lg(ctx,ix,0,ix+SW,0,[[0,'rgba(120,150,200,0.25)'],[1,'rgba(0,0,0,0)']],'rgba(0,0,0,0)');ctx.fillRect(ix,iy,SW,ih);
 ctx.fillStyle=lg(ctx,ix+iw-SW,0,ix+iw,0,[[0,'rgba(0,0,0,0.0)'],[1,'rgba(0,0,20,0.35)']],'rgba(0,0,0,0)');ctx.fillRect(ix+iw-SW,iy,SW,ih);
+ctx.save();rr(ctx,ix,iy,iw,ih,ir);ctx.clip();
+ctx.shadowColor='rgba(6,2,16,0.85)';ctx.shadowBlur=26;ctx.shadowOffsetY=10;ctx.lineWidth=40;ctx.strokeStyle='#000';
+rr(ctx,ix-20,iy-20,iw+40,ih+40,ir+20);ctx.stroke();
+ctx.restore();
 ctx.restore();
 ringPath(ctx,2,TF+7,BR);ctx.lineWidth=W+6;ctx.strokeStyle='rgba(2,4,18,0.45)';ctx.stroke();
 for(let k=TF;k>=1;k--){
 const f=k/TF;ringPath(ctx,0,k,BR);ctx.lineWidth=W;
-ctx.strokeStyle=f>0.85?STEEL.face3:f>0.55?STEEL.face2:f>0.2?STEEL.face1:STEEL.face0;ctx.stroke();
+ctx.strokeStyle=steelRamp(f);ctx.stroke();
 }
 ringPath(ctx,0,0,BR);ctx.lineWidth=W;ctx.strokeStyle=lg(ctx,0,BY0-30,0,BY1+30,[[0,STEEL.rim0],[1,STEEL.rim1]],STEEL.rim1);ctx.stroke();
 const topG=lg(ctx,0,BY0-26,0,BY1+26,[[0,STEEL.top0],[0.45,STEEL.top1],[1,STEEL.top2]],STEEL.top1);
@@ -2973,7 +2979,27 @@ if(a>0.01&&!noSh){ctx.globalAlpha=a;ctx.fillStyle='#ffffff';ctx.fillRect(x,y-hop
 function introOverlay(ctx,g,IN){
 const e=IN.e,W=N*CS,cx=GX+W/2;
 }
+let TILT=0.13,tiltCv=null;
+try{if(typeof location!=='undefined'&&/[?&]tilt=0/.test(location.search))TILT=0;}catch(e){}
 function render(ctx){
+if(!TILT||!G||typeof document==='undefined'||!ctx.getTransform)return render0(ctx);
+const cv=ctx.canvas,W=cv.width,H=cv.height;
+if(!tiltCv)tiltCv=document.createElement('canvas');
+if(tiltCv.width!==W||tiltCv.height!==H){tiltCv.width=W;tiltCv.height=H;}
+const o=tiltCv.getContext('2d'),m=ctx.getTransform();
+o.setTransform(1,0,0,1,0,0);o.clearRect(0,0,W,H);o.setTransform(m);render0(o);
+const yB=Math.min(H,Math.round(m.f+m.d*(BY1+34))),y0=Math.max(0,Math.round(m.f+m.d*(BY0-70))),cx=m.e+m.a*CW/2;
+ctx.save();ctx.setTransform(1,0,0,1,0,0);ctx.clearRect(0,0,W,H);
+if(yB<H)ctx.drawImage(tiltCv,0,yB,W,H-yB,0,yB,W,H-yB);
+if(y0>0)ctx.drawImage(tiltCv,0,0,W,y0,0,0,W,y0);
+const span=Math.max(1,yB-y0),step=2;
+for(let y=y0;y<yB;y+=step){
+const t=(y-y0)/span,s=1-TILT*(1-t)*(1-t*0.35),h=Math.min(step,yB-y);
+ctx.drawImage(tiltCv,0,y,W,h,cx-(cx*s),y,W*s,h);
+}
+ctx.restore();
+}
+function render0(ctx){
 const g=G;
 ctx.clearRect(0,0,CW,CH);
 if(!g)return;
@@ -3411,7 +3437,7 @@ root.Elephant={STAGES:STAGES,ITEMS:ITEMS,SETS:SETS,stageFor:stageFor,svg:svg};
 var BP=window.BP,EL=window.Elephant;
 if(!BP||!EL){if(window.__bpErr)window.__bpErr('Motor/Pofi yuklenemedi: BP='+typeof BP+' EL='+typeof EL);return;}
 var CONFIG={
-version:'2.47.0',
+version:'2.48.1',
 saveKey:'blokpop_save_v1',
 gameKey:'blokpop_game_v1',
 superCost:500,
