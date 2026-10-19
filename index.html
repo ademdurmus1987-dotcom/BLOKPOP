@@ -3737,7 +3737,7 @@ root.Elephant={STAGES:STAGES,ITEMS:ITEMS,SETS:SETS,stageFor:stageFor,svg:svg};
 var BP=window.BP,EL=window.Elephant;
 if(!BP||!EL){if(window.__bpErr)window.__bpErr('Motor/Pofi yuklenemedi: BP='+typeof BP+' EL='+typeof EL);return;}
 var CONFIG={
-version:'2.62',
+version:'2.62.1',
 saveKey:'blokpop_save_v1',
 gameKey:'blokpop_game_v1',
 superCost:500,
@@ -3754,6 +3754,10 @@ rewardFirst:20,rewardPerStar:5,rewardReplay:5,
 dailyBase:40,dailyStep:10,dailyMaxSteps:6,
 packs:[1000,5000,10000,25000,50000,100000]
 };
+try{if(typeof location!=='undefined'&&location.pathname.indexOf('/beta/')>=0){
+var mk=CONFIG.saveKey,mg=CONFIG.gameKey;CONFIG.saveKey+='_beta';CONFIG.gameKey+='_beta';CONFIG.beta=true;CONFIG.version+=' beta';
+if(!localStorage.getItem(CONFIG.saveKey)&&localStorage.getItem(mk))localStorage.setItem(CONFIG.saveKey,localStorage.getItem(mk));
+}}catch(e){}
 window.BlokpopAds=window.BlokpopAds||{showRewarded:function(cb){cb(false);},showInterstitial:function(){}};
 var WORLDS=[
 ['#4aa8ff','#2a6fe0'],['#3fb6f5','#2465d6'],['#5a9bff','#3456d8'],['#4ab2ff','#2b5fd0'],['#55a0ff','#3150cc'],
