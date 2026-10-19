@@ -17,7 +17,7 @@
 <script>
 window.__bpErr=function(m){try{var d=document.getElementById('errbox');if(!d){d=document.createElement('div');d.id='errbox';d.style.cssText='position:fixed;left:0;right:0;top:0;z-index:99999;background:#b00020;color:#fff;font:12px monospace;padding:8px;white-space:pre-wrap;word-break:break-all;max-height:50%;overflow:auto';(document.body||document.documentElement).appendChild(d);}d.textContent+=m+'\n';}catch(e){}};
 window.onerror=function(m,s,l,c){window.__bpErr('HATA: '+m+' @'+String(s||'').split('/').pop()+':'+l+':'+c);return false;};
-setTimeout(function(){if(!window.__booted){window.__bpErr('BASLAMADI. BP='+typeof window.BP+' Elephant='+typeof window.Elephant+' UI='+typeof window.BlokpopUI+' ua='+navigator.userAgent);}},3500);
+window.addEventListener('load',function(){setTimeout(function(){if(!window.__booted){window.__bpErr('BASLAMADI. BP='+typeof window.BP+' Elephant='+typeof window.Elephant+' UI='+typeof window.BlokpopUI+' ua='+navigator.userAgent);}},6000);});
 </script>
 <svg width="0" height="0" style="position:absolute" aria-hidden="true">
 <defs>
@@ -3737,7 +3737,7 @@ root.Elephant={STAGES:STAGES,ITEMS:ITEMS,SETS:SETS,stageFor:stageFor,svg:svg};
 var BP=window.BP,EL=window.Elephant;
 if(!BP||!EL){if(window.__bpErr)window.__bpErr('Motor/Pofi yuklenemedi: BP='+typeof BP+' EL='+typeof EL);return;}
 var CONFIG={
-version:'2.62.1',
+version:'2.62.2',
 saveKey:'blokpop_save_v1',
 gameKey:'blokpop_game_v1',
 superCost:500,
@@ -5109,6 +5109,7 @@ function findAct(n) { while (n && n !== document) { if (n.getAttribute && n.getA
 // =============================================================== BOOT
 function boot() {
   window.__booted = true;
+  try { var eb = document.getElementById('errbox'); if (eb && eb.textContent.indexOf('HATA') < 0) eb.remove(); } catch (e) {}
   try { boot2(); } catch (e) { if (window.__bpErr) window.__bpErr('boot: ' + (e && e.message) + ' | ' + (e && e.stack ? String(e.stack).split('\n').slice(0, 3).join(' / ') : '')); throw e; }
 }
 // splash: the original grey 3D Pofi (no costume), fades in when sprites are ready; SVG only as ?pofi=2d fallback
