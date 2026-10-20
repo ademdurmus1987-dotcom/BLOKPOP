@@ -2980,7 +2980,16 @@ return(PORT_CACHE[key]=c.toDataURL('image/png'));
 }catch(err){return null;}finally{skin=old;FX_ON=false;}
 }
 function onP3Ready(cb){if(!USE_3D_POFI)return;if(P3.ready){try{cb();}catch(x){}}else P3.waiters.push(cb);}
-function drawShooter(ctx,g,s,alpha,myst){ACCK=s.st==='queue'?0.62:1;try{return drawShooter0(ctx,g,s,alpha,myst);}finally{ACCK=1;}}
+let CHARS=true;
+function charSkin(g,s){
+const SETS=(typeof window!=='undefined'&&window.Elephant&&window.Elephant.SETS)||null;if(!SETS||!SETS.length||!s.id)return null;
+const p=SETS[(s.id*7+(g?g.L:0)*3)%SETS.length].parts;
+return{head:p.head||null,face:p.face||null,neck:p.neck||null,ear:p.ear||null,back:p.back||null,fx:null,stage:skin.stage};
+}
+function drawShooter(ctx,g,s,alpha,myst){
+ACCK=s.st==='queue'?0.9:1;const old=skin,cs=CHARS&&!myst?charSkin(g,s):null;if(cs)skin=cs;
+try{return drawShooter0(ctx,g,s,alpha,myst);}finally{ACCK=1;skin=old;}
+}
 function drawShooter0(ctx,g,s,alpha,myst){
 const col=myst?'#7468d6':(g.pal[s.c]||'#fff'),st=s.st,plain=myst;
 const onBelt=st==='belt'||st==='vanish';
@@ -3830,7 +3839,7 @@ root.Elephant={STAGES:STAGES,ITEMS:ITEMS,SETS:SETS,stageFor:stageFor,svg:svg};
 var BP=window.BP,EL=window.Elephant;
 if(!BP||!EL){if(window.__bpErr)window.__bpErr('Motor/Pofi yuklenemedi: BP='+typeof BP+' EL='+typeof EL);return;}
 var CONFIG={
-version:'2.63.19',
+version:'2.63.20',
 saveKey:'blokpop_save_v1',
 gameKey:'blokpop_game_v1',
 superCost:500,
@@ -4593,6 +4602,7 @@ $('pfHint').textContent=cur&&!avOpen(cur)?avHint(cur):'';
 }
 function avOpenList(){return AVS.filter(function(a){return avOpen(a)&&avSrc(a.id);});}
 BP.hooks.combo=function(ti){
+return;
 try{
 var g=$('game'),list=avOpenList();if(!g||!list.length)return;
 var me=S.profile&&S.profile.av,a=ti===0&&me?me:list[Math.floor(Math.random()*list.length)].id;
