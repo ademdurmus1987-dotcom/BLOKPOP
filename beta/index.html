@@ -3112,13 +3112,18 @@ const R3_FS='precision highp float;varying vec3 vN;varying vec3 vCol;varying vec
 'float hAt(vec2 g){return texture2D(uHT,g/uGrid.w).r*2.55;}'+
 'float floorAO(){vec2 g=vec2((vW.x-uGrid.x)/uGrid.z,(vW.z/uZS-uGrid.y)/uGrid.z);if(g.x<-0.6||g.y<-0.6||g.x>uGrid.w+0.6||g.y>uGrid.w+0.6)return 1.0;'+
 'float o=hAt(g+vec2(0.55,0.0))+hAt(g-vec2(0.55,0.0))+hAt(g+vec2(0.0,0.55))+hAt(g-vec2(0.0,0.55));return 1.0-0.45*clamp(o/4.6,0.0,1.0);}'+
+'float topLight(){vec2 g=vec2((vW.x-uGrid.x)/uGrid.z,(vW.z/uZS-uGrid.y)/uGrid.z);float me=(vW.y-uFloor)/uGrid.z;vec3 l=normalize(uL);vec2 dg=vec2(l.x,l.z/uZS);float k=1.0/max(length(dg),0.001);float o=0.0;'+
+'for(int i=1;i<=5;i++){float s=float(i)*0.3;vec2 p=g+dg*k*s;float rise=l.y*k*s;o=max(o,smoothstep(0.0,0.3,hAt(p)-me-rise)*(1.0-s/2.2));}'+
+'float c=0.0;c+=smoothstep(0.0,0.6,hAt(g+vec2(0.6,0.0))-me);c+=smoothstep(0.0,0.6,hAt(g-vec2(0.6,0.0))-me);c+=smoothstep(0.0,0.6,hAt(g+vec2(0.0,0.6))-me);c+=smoothstep(0.0,0.6,hAt(g-vec2(0.0,0.6))-me);'+
+'return (1.0-o*0.95)*(1.0-c*0.1);}'+
 'float shTap(vec2 uv,float z){vec2 t=uv*2048.0-0.5,f=fract(t),b=(floor(t)+0.5)/2048.0;float e=1.0/2048.0;'+
 'return mix(mix(step(z,texture2D(uSh,b).r),step(z,texture2D(uSh,b+vec2(e,0.0)).r),f.x),mix(step(z,texture2D(uSh,b+vec2(0.0,e)).r),step(z,texture2D(uSh,b+vec2(e,e)).r),f.x),f.y);}'+
 'float shadow(float nl){vec3 c=vLP.xyz/vLP.w*0.5+0.5;float bs=0.002+0.006*(1.0-nl);if(c.x<0.0||c.x>1.0||c.y<0.0||c.y>1.0)return 1.0;float s=0.0;for(int y=-1;y<=1;y++)for(int x=-1;x<=1;x++)s+=shTap(c.xy+vec2(float(x),float(y))*1.6/2048.0,c.z-bs);return s/9.0;}'+
 'vec3 tone(vec3 x){x*=1.05;return clamp((x*(2.51*x+0.03))/(x*(2.43*x+0.59)+0.14),0.0,1.0);}'+
 'void main(){'+
 'if(uGround>0.5){float d=sdRB(vec2(vW.x,vW.z/uZS)-uTray.xy-vec2(12.0,12.0),uTray.zw,uTrayR);if(d>80.0){gl_FragColor=vec4(0.0);return;}float sg=uShOn>0.5?shadow(1.0):1.0;float ao=mix(0.45,1.0,smoothstep(-24.0,70.0,d));float a=(1.0-sg*ao)*0.62;gl_FragColor=vec4(vec3(0.07,0.02,0.2)*a,a);return;}'+
-'float sh=1.0,fao=(uCube<0.5&&uHOn>0.5)?floorAO():1.0;'+
+'float sh=uShOn>0.5?shadow(max(dot(normalize(vN),normalize(uL)),0.0)):1.0,fao=(uCube<0.5&&uHOn>0.5)?floorAO():1.0;'+
+'if(uCube>0.5&&uHOn>0.5&&vN.y>0.7*length(vN))sh=topLight();if(uCube<0.5)sh=mix(0.4,1.0,sh);'+
 'vec3 n=normalize(vN),l=normalize(uL),v=normalize(uEye-vW),h=normalize(l+v);float nl=max(dot(n,l),0.0);float wrap=max((dot(n,l)+0.35)/1.35,0.0);'+
 'vec3 amb=mix(vec3(0.2,0.12,0.42),vec3(0.62,0.58,1.0),n.y*0.5+0.5)*(uCube>0.5?0.36:0.5);float ao=1.0;if(uCube>0.5)ao=mix(0.55,1.0,smoothstep(-1.0,0.2,vLy))*(abs(n.y)>0.6?1.0:0.92);'+
 'float li=uCube>0.5?1.18:0.82;vec3 col=vCol*(amb*ao+vec3(1.0,0.96,0.92)*(0.25*wrap+0.75*nl)*li*sh);float sp=pow(max(dot(n,h),0.0),uCube>0.5?28.0:14.0)*(uCube>0.5?0.16:0.035)*sh;'+
@@ -3156,7 +3161,9 @@ const pos=[],nrm=[],col=[],idx=[],K=10,rings=P.map(([e])=>r3Ring(BX0-e,BY0-e,BW+
 for(let j=0;j<P.length;j++){const a=P[Math.max(0,j-1)],b=P[Math.min(P.length-1,j+1)],de=b[0]-a[0],dy=b[1]-a[1];
 for(let i=0;i<Mn;i++){const[x,y,nx,ny]=rings[j][i];pos.push(x,P[j][1],y*ZS);const nn=r3V([nx*dy,-de,ny*dy/ZS]);nrm.push(nn[0],nn[1],nn[2]);col.push(...P[j][2]);}}
 for(let j=0;j<P.length-1;j++)for(let i=0;i<Mn;i++){const a=j*Mn+i,b=j*Mn+(i+1)%Mn,c=a+Mn,d=b+Mn;idx.push(a,c,b,b,c,d);}
-const ci=pos.length/3,last=P[P.length-1];pos.push(BX0+BW/2,last[1],(BY0+BH/2)*ZS);nrm.push(0,1,0);col.push(...last[2]);const o=(P.length-1)*Mn;for(let i=0;i<Mn;i++)idx.push(ci,o+(i+1)%Mn,o+i);
+const ci=pos.length/3,last=P[P.length-1],o=(P.length-1)*Mn;pos.push(BX0+BW/2,last[1],(BY0+BH/2)*ZS);nrm.push(0,1,0);col.push(...last[2]);
+const fr=pos.length/3;for(let i=0;i<Mn;i++){pos.push(pos[(o+i)*3],pos[(o+i)*3+1],pos[(o+i)*3+2]);nrm.push(0,1,0);col.push(...last[2]);}
+for(let i=0;i<Mn;i++)idx.push(ci,fr+(i+1)%Mn,fr+i);
 R3.floor=FL;R3.trayRect=[BX0+BW/2,BY0+BH/2,BW/2+hw+4,BH/2+hw+4,R+hw+4];
 return r3Mesh(gl,pos,nrm,col,idx);
 }
@@ -3188,7 +3195,7 @@ function r3Bg(g){
 const key=g.L+':'+N+':'+g.pal.join(',');if(R3.bgKey===key)return;R3.bgKey=key;
 const cnt={};for(let i=0;i<N;i++)for(const[r,c]of[[0,i],[N-1,i],[i,0],[i,N-1]]){const v=g.grid[r][c];if(v>=0)cnt[v]=(cnt[v]||0)+1;}
 let b=-1,m=0;for(const k in cnt)if(cnt[k]>m){m=cnt[k];b=+k;}R3.bgIdx=m>=N*4*0.45?b:-1;
-R3.hFG=1.15;R3.hBG=1.15;
+R3.hFG=R3.bgIdx>=0?2.1:1.6;R3.hBG=1.0;
 }
 function r3Cubes(g,IN,K,dt){
 const gl=R3.gl,pal=g.pal,key=g.L+':'+N+':'+pal.join(',');
@@ -3244,7 +3251,7 @@ if(cv.width!==gw||cv.height!==gh){cv.width=gw;cv.height=gh;}
 const st=cv.style,l=src.offsetLeft+'px',t=src.offsetTop+'px';if(st.left!==l)st.left=l;if(st.top!==t)st.top=t;if(st.width!==src.style.width)st.width=src.style.width;if(st.height!==src.style.height)st.height=src.style.height;
 r3Bg(g);const tk=[CW,CH,BX0,BY0,BW,BH,R,GX,GY,CS,N,bandW(),K.ZS,R3.hFG].map((v)=>Math.round(v*100)).join(',');
 if(tk!==R3.trayKey){R3.trayKey=tk;R3.tray=r3BuildTray(gl,K.ZS);R3.shDirty=true;
-const L=R3.L=r3V([-0.5,0.85,-0.12]),cx=CW/2,cz=K.ZS*(BY0+BY1)/2,hz=Math.max(CW/2,K.ZS*(BY1-BY0)/2)+70;
+const L=R3.L=r3V([-0.6,0.72,-0.14]),cx=CW/2,cz=K.ZS*(BY0+BY1)/2,hz=Math.max(CW/2,K.ZS*(BY1-BY0)/2)+70;
 R3.LVP=r3Mul(r3Ortho(hz,1,4000),r3Look([cx+L[0]*1500,L[1]*1500,cz+L[2]*1500],[cx,0,cz],[0,0,-1]));}
 const now=(typeof performance!=='undefined'?performance.now():Date.now())/1000,dt=R3.last?Math.min(0.1,now-R3.last):0;R3.last=now;
 r3Cubes(g,IN,K,dt);
@@ -3753,7 +3760,7 @@ root.Elephant={STAGES:STAGES,ITEMS:ITEMS,SETS:SETS,stageFor:stageFor,svg:svg};
 var BP=window.BP,EL=window.Elephant;
 if(!BP||!EL){if(window.__bpErr)window.__bpErr('Motor/Pofi yuklenemedi: BP='+typeof BP+' EL='+typeof EL);return;}
 var CONFIG={
-version:'2.63.3',
+version:'2.63.4',
 saveKey:'blokpop_save_v1',
 gameKey:'blokpop_game_v1',
 superCost:500,
