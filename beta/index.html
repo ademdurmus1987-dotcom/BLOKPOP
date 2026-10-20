@@ -2983,7 +2983,9 @@ function onP3Ready(cb){if(!USE_3D_POFI)return;if(P3.ready){try{cb();}catch(x){}}
 let CHARS=true;
 function charSkin(g,s){
 const SETS=(typeof window!=='undefined'&&window.Elephant&&window.Elephant.SETS)||null;if(!SETS||!SETS.length||!s.id)return null;
-const p=SETS[(s.id*7+(g?g.L:0)*3)%SETS.length].parts;
+const FORMS=[11,8,9,7,10,12,6],n=SETS.length+FORMS.length,k=(s.id*7+(g?g.L:0)*3)%n;
+if(k>=SETS.length)return{head:null,face:null,neck:null,ear:null,back:null,fx:null,stage:FORMS[k-SETS.length]};
+const p=SETS[k].parts;
 return{head:p.head||null,face:p.face||null,neck:p.neck||null,ear:p.ear||null,back:p.back||null,fx:null,stage:skin.stage};
 }
 function drawShooter(ctx,g,s,alpha,myst){
@@ -3839,7 +3841,7 @@ root.Elephant={STAGES:STAGES,ITEMS:ITEMS,SETS:SETS,stageFor:stageFor,svg:svg};
 var BP=window.BP,EL=window.Elephant;
 if(!BP||!EL){if(window.__bpErr)window.__bpErr('Motor/Pofi yuklenemedi: BP='+typeof BP+' EL='+typeof EL);return;}
 var CONFIG={
-version:'2.63.20',
+version:'2.63.21',
 saveKey:'blokpop_save_v1',
 gameKey:'blokpop_game_v1',
 superCost:500,
