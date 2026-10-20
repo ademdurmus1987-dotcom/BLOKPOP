@@ -3083,7 +3083,7 @@ if(a>0.01&&!noSh){ctx.globalAlpha=a;ctx.fillStyle='#ffffff';ctx.fillRect(x,y-hop
 function introOverlay(ctx,g,IN){
 const e=IN.e,W=N*CS,cx=GX+W/2;
 }
-const R3={on:false,ok:null,gl:null,cv:null,late:[],th:52*Math.PI/180,r:0.22,trayKey:'',cubeSig:'',shDirty:true,prev:null,dying:[],last:0,lvKey:'',bgIdx:-1};
+const R3={on:false,ok:null,gl:null,cv:null,late:[],th:52*Math.PI/180,r:0.22,trayKey:'',cubeSig:'',shDirty:true,prev:null,dying:[],last:0,lvKey:'',low:null};
 try{if(typeof location!=='undefined'&&/[?&]3d=0/.test(location.search))R3.ok=false;}catch(e){}
 const R3_TOP=56,R3_LANE=51;
 function r3hex(h){const n=parseInt(h.slice(1),16);return[Math.pow(((n>>16)&255)/255,2.2),Math.pow(((n>>8)&255)/255,2.2),Math.pow((n&255)/255,2.2)];}
@@ -3191,11 +3191,31 @@ cv.addEventListener('webglcontextlost',(e)=>{e.preventDefault();R3.ok=false;R3.o
 R3.ok=true;return true;
 }catch(e){R3.ok=false;return false;}
 }
+function r3BgMask(grid){
+const n=grid.length,w=Math.max(2,Math.round(n*0.12)),w2=Math.round(n*0.3),bc={},cc={},ac={},low=new Uint8Array(n*n);
+let band=0,cen=0,an=0;
+const inBand=(r,c)=>r<w||c<w||r>=n-w||c>=n-w;
+for(let r=0;r<n;r++)for(let c=0;c<n;c++){
+const v=grid[r][c],b=inBand(r,c),m=r>=w2&&c>=w2&&r<n-w2&&c<n-w2;
+if(b)band++;if(m)cen++;if(v<0)continue;an++;ac[v]=(ac[v]||0)+1;if(b)bc[v]=(bc[v]||0)+1;if(m)cc[v]=(cc[v]||0)+1;
+}
+const set=new Set();let top=-1,tm=0;
+for(const k in ac){
+const a=ac[k]/an,cs=(cc[k]||0)/Math.max(1,cen),bs=(bc[k]||0)/Math.max(1,band);
+if((a>=0.05&&cs<=0.04&&bc[k])||(a>=0.12&&cs<=0.12&&bs>=0.2))set.add(+k);
+if((bc[k]||0)>tm){tm=bc[k];top=+k;}
+}
+if(top>=0&&tm/Math.max(1,band)>=0.35)set.add(top);
+const st=[];
+for(let r=0;r<n;r++)for(let c=0;c<n;c++)if(inBand(r,c)&&set.has(grid[r][c])){low[r*n+c]=1;st.push(r*n+c);}
+while(st.length){const k=st.pop(),r=(k/n)|0,c=k%n;
+for(const[dr,dc]of[[1,0],[-1,0],[0,1],[0,-1]]){const rr=r+dr,c2=c+dc;if(rr<0||c2<0||rr>=n||c2>=n)continue;const q=rr*n+c2;if(!low[q]&&set.has(grid[rr][c2])){low[q]=1;st.push(q);}}}
+return{low,any:set.size>0};
+}
 function r3Bg(g){
 const key=g.L+':'+N+':'+g.pal.join(',');if(R3.bgKey===key)return;R3.bgKey=key;
-const cnt={};for(let i=0;i<N;i++)for(const[r,c]of[[0,i],[N-1,i],[i,0],[i,N-1]]){const v=g.grid[r][c];if(v>=0)cnt[v]=(cnt[v]||0)+1;}
-let b=-1,m=0;for(const k in cnt)if(cnt[k]>m){m=cnt[k];b=+k;}R3.bgIdx=m>=N*4*0.45?b:-1;
-R3.hFG=R3.bgIdx>=0?2.1:1.6;R3.hBG=1.0;
+const m=r3BgMask(g.grid);R3.low=m.low;
+R3.hFG=m.any?2.1:1.6;R3.hBG=1.0;
 }
 function r3Cubes(g,IN,K,dt){
 const gl=R3.gl,pal=g.pal,key=g.L+':'+N+':'+pal.join(',');
@@ -3205,18 +3225,18 @@ const prev=R3.prev;const now=[];let changed=!prev;
 for(let r=0;r<N;r++)for(let c=0;c<N;c++){
 const v=g.grid[r][c];now.push(v);if(prev&&prev[r*N+c]>=0&&v<0){R3.dying.push({r,c,v:prev[r*N+c],t:0});changed=true;}
 if(v<0)continue;
-const h=v===R3.bgIdx?H_BG:H_FG;let hop=0,sc=1;
+const h=R3.low&&R3.low[r*N+c]?H_BG:H_FG;let hop=0,sc=1;
 if(IN){const d=(r+c)/Math.max(1,2*N-2),p=(IN.e-d*0.45)/0.22;hop=p>0&&p<1?Math.sin(p*Math.PI):0;sc=1+0.12*hop;}
 const pr=g.res&&g.res[r]&&g.res[r][c]?0.78:1,cc=R3.cols[v]||[1,1,1];
 off.push(GX+(c+0.5)*CS,R3.floor+CS*h*0.5*sc+hop*CS*1.6,(GY+(r+0.5)*CS)*K.ZS);col.push(cc[0]*pr,cc[1]*pr,cc[2]*pr);hs.push(h,sc);
 if(pr<1)sig+=r*N+c+',';
 }
-for(let i=R3.dying.length-1;i>=0;i--){const d=R3.dying[i];d.t+=dt;if(d.t>=0.16){R3.dying.splice(i,1);continue;}const s=1-d.t/0.16,h=d.v===R3.bgIdx?H_BG:H_FG,cc=R3.cols[d.v]||[1,1,1];
+for(let i=R3.dying.length-1;i>=0;i--){const d=R3.dying[i];d.t+=dt;if(d.t>=0.16){R3.dying.splice(i,1);continue;}const s=1-d.t/0.16,h=R3.low&&R3.low[d.r*N+d.c]?H_BG:H_FG,cc=R3.cols[d.v]||[1,1,1];
 off.push(GX+(d.c+0.5)*CS,R3.floor+CS*h*0.5*s+(1-s)*CS*0.8,(GY+(d.r+0.5)*CS)*K.ZS);col.push(Math.min(1,cc[0]*1.4),Math.min(1,cc[1]*1.4),Math.min(1,cc[2]*1.4));hs.push(h,s);changed=true;}
 R3.prev=now;if(changed||IN)R3.shDirty=true;
-const hSig=key+':'+R3.bgIdx+':'+H_FG+':'+off.length;
+const hSig=key+':'+H_FG+':'+off.length;
 if(changed||R3.hSig!==hSig){R3.hSig=hSig;const hd=new Uint8Array(N*N);
-for(let i=0;i<N*N;i++){const v=now[i];hd[i]=v<0?0:Math.round((v===R3.bgIdx?H_BG:H_FG)*100);}
+for(let i=0;i<N*N;i++){const v=now[i];hd[i]=v<0?0:Math.round((R3.low&&R3.low[i]?H_BG:H_FG)*100);}
 gl.bindTexture(gl.TEXTURE_2D,R3.hTex);gl.pixelStorei(gl.UNPACK_ALIGNMENT,1);gl.texImage2D(gl.TEXTURE_2D,0,gl.LUMINANCE,N,N,0,gl.LUMINANCE,gl.UNSIGNED_BYTE,hd);gl.pixelStorei(gl.UNPACK_ALIGNMENT,4);}
 sig+=':'+off.length+':'+R3.dying.length;
 if(sig!==R3.cubeSig||changed||IN){R3.cubeSig=sig;
@@ -3760,7 +3780,7 @@ root.Elephant={STAGES:STAGES,ITEMS:ITEMS,SETS:SETS,stageFor:stageFor,svg:svg};
 var BP=window.BP,EL=window.Elephant;
 if(!BP||!EL){if(window.__bpErr)window.__bpErr('Motor/Pofi yuklenemedi: BP='+typeof BP+' EL='+typeof EL);return;}
 var CONFIG={
-version:'2.63.4',
+version:'2.63.5',
 saveKey:'blokpop_save_v1',
 gameKey:'blokpop_game_v1',
 superCost:500,
