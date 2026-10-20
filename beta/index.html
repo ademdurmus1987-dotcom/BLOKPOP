@@ -3083,7 +3083,7 @@ if(a>0.01&&!noSh){ctx.globalAlpha=a;ctx.fillStyle='#ffffff';ctx.fillRect(x,y-hop
 function introOverlay(ctx,g,IN){
 const e=IN.e,W=N*CS,cx=GX+W/2;
 }
-const R3={on:false,ok:null,gl:null,cv:null,late:[],th:52*Math.PI/180,r:0.45,trayKey:'',cubeSig:'',shDirty:true,prev:null,dying:[],last:0,lvKey:'',bgIdx:-1};
+const R3={on:false,ok:null,gl:null,cv:null,late:[],th:52*Math.PI/180,r:0.22,trayKey:'',cubeSig:'',shDirty:true,prev:null,dying:[],last:0,lvKey:'',bgIdx:-1};
 try{if(typeof location!=='undefined'&&/[?&]3d=0/.test(location.search))R3.ok=false;}catch(e){}
 const R3_TOP=56,R3_LANE=51;
 function r3hex(h){const n=parseInt(h.slice(1),16);return[Math.pow(((n>>16)&255)/255,2.2),Math.pow(((n>>8)&255)/255,2.2),Math.pow((n&255)/255,2.2)];}
@@ -3110,21 +3110,19 @@ const R3_FS='precision highp float;varying vec3 vN;varying vec3 vCol;varying vec
 'uniform sampler2D uHT;uniform vec4 uGrid;uniform float uFloor;uniform float uHOn;'+
 'float sdRB(vec2 p,vec2 b,float r){vec2 q=abs(p)-b+r;return length(max(q,0.0))+min(max(q.x,q.y),0.0)-r;}'+
 'float hAt(vec2 g){return texture2D(uHT,g/uGrid.w).r*2.55;}'+
-'float topLight(){vec2 g=vec2((vW.x-uGrid.x)/uGrid.z,(vW.z/uZS-uGrid.y)/uGrid.z);float me=(vW.y-uFloor)/uGrid.z;vec3 l=normalize(uL);vec2 dg=vec2(l.x,l.z/uZS);float k=1.0/max(length(dg),0.001);float o=0.0;'+
-'for(int i=1;i<=5;i++){float s=float(i)*0.32;vec2 p=g+dg*k*s;float rise=l.y*k*s;o=max(o,smoothstep(0.0,0.3,hAt(p)-me-rise)*(1.0-s/2.4));}'+
-'float c=0.0;c+=smoothstep(0.0,0.6,hAt(g+vec2(0.6,0.0))-me);c+=smoothstep(0.0,0.6,hAt(g-vec2(0.6,0.0))-me);c+=smoothstep(0.0,0.6,hAt(g+vec2(0.0,0.6))-me);c+=smoothstep(0.0,0.6,hAt(g-vec2(0.0,0.6))-me);'+
-'return (1.0-o*0.92)*(1.0-c*0.07);}'+
+'float floorAO(){vec2 g=vec2((vW.x-uGrid.x)/uGrid.z,(vW.z/uZS-uGrid.y)/uGrid.z);if(g.x<-0.6||g.y<-0.6||g.x>uGrid.w+0.6||g.y>uGrid.w+0.6)return 1.0;'+
+'float o=hAt(g+vec2(0.55,0.0))+hAt(g-vec2(0.55,0.0))+hAt(g+vec2(0.0,0.55))+hAt(g-vec2(0.0,0.55));return 1.0-0.45*clamp(o/4.6,0.0,1.0);}'+
 'float shTap(vec2 uv,float z){vec2 t=uv*2048.0-0.5,f=fract(t),b=(floor(t)+0.5)/2048.0;float e=1.0/2048.0;'+
 'return mix(mix(step(z,texture2D(uSh,b).r),step(z,texture2D(uSh,b+vec2(e,0.0)).r),f.x),mix(step(z,texture2D(uSh,b+vec2(0.0,e)).r),step(z,texture2D(uSh,b+vec2(e,e)).r),f.x),f.y);}'+
 'float shadow(float nl){vec3 c=vLP.xyz/vLP.w*0.5+0.5;float bs=0.002+0.006*(1.0-nl);if(c.x<0.0||c.x>1.0||c.y<0.0||c.y>1.0)return 1.0;float s=0.0;for(int y=-1;y<=1;y++)for(int x=-1;x<=1;x++)s+=shTap(c.xy+vec2(float(x),float(y))*1.6/2048.0,c.z-bs);return s/9.0;}'+
 'vec3 tone(vec3 x){x*=1.05;return clamp((x*(2.51*x+0.03))/(x*(2.43*x+0.59)+0.14),0.0,1.0);}'+
 'void main(){'+
 'if(uGround>0.5){float d=sdRB(vec2(vW.x,vW.z/uZS)-uTray.xy-vec2(12.0,12.0),uTray.zw,uTrayR);if(d>80.0){gl_FragColor=vec4(0.0);return;}float sg=uShOn>0.5?shadow(1.0):1.0;float ao=mix(0.45,1.0,smoothstep(-24.0,70.0,d));float a=(1.0-sg*ao)*0.62;gl_FragColor=vec4(vec3(0.07,0.02,0.2)*a,a);return;}'+
-'float sh=uShOn>0.5?shadow(max(dot(normalize(vN),normalize(uL)),0.0)):1.0;if(uCube>0.5&&uHOn>0.5&&vN.y>0.7*length(vN))sh=topLight();if(uCube<0.5)sh=mix(0.5,1.0,sh);'+
+'float sh=1.0,fao=(uCube<0.5&&uHOn>0.5)?floorAO():1.0;'+
 'vec3 n=normalize(vN),l=normalize(uL),v=normalize(uEye-vW),h=normalize(l+v);float nl=max(dot(n,l),0.0);float wrap=max((dot(n,l)+0.35)/1.35,0.0);'+
 'vec3 amb=mix(vec3(0.2,0.12,0.42),vec3(0.62,0.58,1.0),n.y*0.5+0.5)*(uCube>0.5?0.36:0.5);float ao=1.0;if(uCube>0.5)ao=mix(0.55,1.0,smoothstep(-1.0,0.2,vLy))*(abs(n.y)>0.6?1.0:0.92);'+
 'float li=uCube>0.5?1.18:0.82;vec3 col=vCol*(amb*ao+vec3(1.0,0.96,0.92)*(0.25*wrap+0.75*nl)*li*sh);float sp=pow(max(dot(n,h),0.0),uCube>0.5?28.0:14.0)*(uCube>0.5?0.16:0.035)*sh;'+
-'col+=vec3(sp)+vCol*pow(1.0-max(dot(n,v),0.0),3.0)*0.08;gl_FragColor=vec4(pow(tone(col),vec3(1.0/2.2)),1.0);}';
+'col*=fao;col+=vec3(sp)+vCol*pow(1.0-max(dot(n,v),0.0),3.0)*0.08;gl_FragColor=vec4(pow(tone(col),vec3(1.0/2.2)),1.0);}';
 function r3Prog(gl,vs,fs){const p=gl.createProgram();[[gl.VERTEX_SHADER,vs],[gl.FRAGMENT_SHADER,fs]].forEach(([t,s])=>{const sh=gl.createShader(t);gl.shaderSource(sh,s);gl.compileShader(sh);if(!gl.getShaderParameter(sh,gl.COMPILE_STATUS))throw new Error(gl.getShaderInfoLog(sh));gl.attachShader(p,sh);});
 gl.linkProgram(p);if(!gl.getProgramParameter(p,gl.LINK_STATUS))throw new Error(gl.getProgramInfoLog(p));const u={},a={};
 for(let i=0,nu=gl.getProgramParameter(p,gl.ACTIVE_UNIFORMS);i<nu;i++){const nm=gl.getActiveUniform(p,i).name;u[nm]=gl.getUniformLocation(p,nm);}
@@ -3190,7 +3188,7 @@ function r3Bg(g){
 const key=g.L+':'+N+':'+g.pal.join(',');if(R3.bgKey===key)return;R3.bgKey=key;
 const cnt={};for(let i=0;i<N;i++)for(const[r,c]of[[0,i],[N-1,i],[i,0],[i,N-1]]){const v=g.grid[r][c];if(v>=0)cnt[v]=(cnt[v]||0)+1;}
 let b=-1,m=0;for(const k in cnt)if(cnt[k]>m){m=cnt[k];b=+k;}R3.bgIdx=m>=N*4*0.45?b:-1;
-R3.hFG=R3.bgIdx>=0?2.3:1.7;R3.hBG=1.0;
+R3.hFG=1.15;R3.hBG=1.15;
 }
 function r3Cubes(g,IN,K,dt){
 const gl=R3.gl,pal=g.pal,key=g.L+':'+N+':'+pal.join(',');
@@ -3755,7 +3753,7 @@ root.Elephant={STAGES:STAGES,ITEMS:ITEMS,SETS:SETS,stageFor:stageFor,svg:svg};
 var BP=window.BP,EL=window.Elephant;
 if(!BP||!EL){if(window.__bpErr)window.__bpErr('Motor/Pofi yuklenemedi: BP='+typeof BP+' EL='+typeof EL);return;}
 var CONFIG={
-version:'2.63.2',
+version:'2.63.3',
 saveKey:'blokpop_save_v1',
 gameKey:'blokpop_game_v1',
 superCost:500,
