@@ -1803,7 +1803,7 @@ const t=findTarget(g,pt.side,pt.x,pt.y);
 if(t&&g.grid[t.r][t.c]===s.c){
 g.res[t.r][t.c]=true;s.a--;s.cd=FIRE_CD;s.sc=1.06;s.wig=0.4;s.ls=g.t;
 const tp=trunkTip(s),k=(s.sc||1)*BELT_S,bx0=s.x+tp[0]*k,by0=s.y+FEET0+(tp[1]-26.4)*k;
-const vt=s._tip&&charOf(g,s)?s._tip:null,bx=vt?s.x+vt[0]*k:bx0,by=vt?s.y+FEET0+(vt[1]-26.4)*k:by0;
+const vt=s._tip3||(s._tip&&charOf(g,s)?s._tip:null),bx=vt?s.x+vt[0]*k:bx0,by=vt?s.y+FEET0+(vt[1]-26.4)*k:by0;
 for(let q=0;q<3;q++)g.parts.push({k:'dot',x:bx,y:by,vx:(g.rng()-0.5)*90,vy:(g.rng()-0.5)*90,l:0.22,max:0.22,c:'#ffffff',s:2.4});
 g.parts.push({k:'glow',x:bx,y:by,l:0.18,max:0.18,c:g.pal[s.c],s:15});g.parts.push({k:'ring',x:bx,y:by,l:0.22,max:0.22,c:g.pal[s.c],s:3});
 if(RUN_POFI)for(let q=0;q<2;q++)g.parts.push({k:'sq',x:bx,y:by,vx:(g.rng()-0.5)*110,vy:-40-g.rng()*70,l:0.32,max:0.32,c:g.pal[s.c],s:4.2});
@@ -2774,7 +2774,7 @@ if(pass===0){wing3d(ctx,-15.5,1,-1,0.3,col,true,14,15.5);wing3d(ctx,15.5,1,1,0.3
 }
 }
 function runDraw(ctx,s,col,plain,num){
-const key=runKey(s);if(!RUN.v[key])return false;
+const key=runKey(s);if(!RUN.v[key])return false;if(runView(s)&&l3Name(s))plain=true;
 const away=key==='rb'||key==='back';
 const BIG=(f)=>{ctx.save();ctx.translate(0,2);ctx.scale(0.6,0.6);ctx.translate(0,-2);f();ctx.restore();};
 if(!plain){
@@ -2915,8 +2915,24 @@ return(S.cache[key]=cv);
 function runOk(view){if(!RUN.init)runInit();return!!(RUN_POFI&&RUN.v[view]);}
 function runView(s){if(!s||!(s.st==='belt'||s.st==='vanish'||(s.st==='enter'&&(s.wt>0||s.rn))||s._still))return null;const k=runKey(s),v=s.side==='t'||s.side==='b'?'side':s.side==='l'?'front':'back';return runOk(k)?v:null;}
 function runKey(s){const k={b:'rb',t:'rt',l:'front',r:'back'}[s.side];return RUN.v[k]||!RUN.v.side||(s.side!=='b'&&s.side!=='t')?k:'side';}
+let L3OK=true;
+function l3Name(s){
+const L=typeof window!=='undefined'&&window.BP_L3;if(!L||!L3OK||!G||!RUN_POFI)return null;
+const n=charOf(G,s)||'pofi';return L.has(n)?n:null;
+}
+function l3Job(ctx,s,name,col){
+const m=ctx.getTransform(),a=(((-(s.ang||0))*180/Math.PI)%360+360)%360,D=Math.PI/180;
+let y=(90+a)*D;y+=(-40*Math.sin(y)+40*Math.max(0,-Math.cos(y)))*D;
+const tg=s.ls!==undefined&&G.t-s.ls<0.4?1:0,dv=Math.max(0,Math.min(0.1,G.t-(s._f3t===undefined?G.t:s._f3t)));s._f3t=G.t;
+s._fw3=(s._fw3||0)+(tg-(s._fw3||0))*Math.min(1,dv*(tg?14:6));
+const by={b:180,r:270,t:360,l:90}[s.side]*D;let dd=((by-y)%(2*Math.PI)+3*Math.PI)%(2*Math.PI)-Math.PI;y+=dd*0.35*s._fw3;
+s._l3m={a:m.a,d:m.d,e:m.e,f:m.f};
+window.BP_L3.add({s,name,col,x:m.c*26.2+m.e,y:m.d*26.2+m.f,kx:m.a*RUN_H,ky:m.d*RUN_H,yaw:y,fw:s._fw3,ph:((s.d||0)+(s.st==='belt'||s.st==='vanish'?s.dph||0:0))/RUN_STRIDE});
+s._ra=[0,-2];
+}
 function runBody(ctx,s,view,d,col){
 if(runView(s)!==view)return false;
+{const n=l3Name(s);if(n){l3Job(ctx,s,n,col);return true;}s._tip3=null;}
 const key=runKey(s);if(!RUN.v[key])return false;
 const KEYS=['rb','back','rt','front'];
 let a=((-(s.ang||0))*180/Math.PI)%360;if(a<0)a+=360;
@@ -3019,7 +3035,7 @@ const p=SETS[k].parts;
 return{head:p.head||null,face:p.face||null,neck:p.neck||null,ear:p.ear||null,back:p.back||null,fx:null,stage:skin.stage};
 }
 function drawShooter(ctx,g,s,alpha,myst){
-ACCK=s.st==='queue'?0.9:1;const old=skin,cn=!myst&&charOf(g,s),cr=cn&&charRun(cn);
+L3OK=!myst;ACCK=s.st==='queue'?0.9:1;const old=skin,cn=!myst&&charOf(g,s),cr=cn&&charRun(cn);
 if(cr&&Object.keys(cr.v).length>=cr.n){
 RUN=cr;skin={head:null,face:null,neck:null,ear:null,back:null,fx:null,stage:1};
 const live=s.st==='belt'||s.st==='vanish'||(s.st==='enter'&&(s.wt>0||s.rn)),sd=s.side,dd=s.d,aa=s.ang;
@@ -3377,6 +3393,10 @@ function r3Off(){R3.on=false;if(R3.cv)R3.cv.style.display='none';}
 let TILT=0.25,tiltCv=null;
 try{if(typeof location!=='undefined'&&/[?&]tilt=0/.test(location.search))TILT=0;}catch(e){}
 function render(ctx){
+render1(ctx);
+if(typeof window!=='undefined'&&window.BP_L3&&ctx.canvas&&ctx.canvas.id==='cv')try{window.BP_L3.flush(ctx.canvas);}catch(e){}
+}
+function render1(ctx){
 if(!TILT||!G||typeof document==='undefined'||!ctx.getTransform)return render0(ctx);
 const cv=ctx.canvas,W=cv.width,H=cv.height;
 if(!tiltCv)tiltCv=document.createElement('canvas');
@@ -3887,7 +3907,7 @@ root.Elephant={STAGES:STAGES,ITEMS:ITEMS,SETS:SETS,stageFor:stageFor,svg:svg};
 var BP=window.BP,EL=window.Elephant;
 if(!BP||!EL){if(window.__bpErr)window.__bpErr('Motor/Pofi yuklenemedi: BP='+typeof BP+' EL='+typeof EL);return;}
 var CONFIG={
-version:'2.64.1',
+version:'2.65.0',
 saveKey:'blokpop_save_v1',
 gameKey:'blokpop_game_v1',
 superCost:500,
@@ -5462,7 +5482,7 @@ function splashPofi() {
   if (ok && !BP.p3ready()) { pofiWhenReady(put); setTimeout(function () { if (!el.firstChild) put(); }, 2500); } else put();
 }
 function boot2() {
-  setTimeout(function () { ['super', 'astronot', 'ejderha'].forEach(function (n) { try { var sc = document.createElement('script'); sc.src = 'char_' + n + '.js'; document.head.appendChild(sc); } catch (e) {} }); }, 1500);   // v2.64: costume characters (big, loaded after start)
+  setTimeout(function () { ['super', 'astronot', 'ejderha'].forEach(function (n) { try { var sc = document.createElement('script'); sc.src = 'char_' + n + '.js'; document.head.appendChild(sc); } catch (e) {} }); if (!/[?&]l3=0/.test(location.search)) try { var l3 = document.createElement('script'); l3.type = 'module'; l3.src = 'live3d.js'; document.head.appendChild(l3); } catch (e) {} }, 1500);   // v2.64: costume characters (big, loaded after start)
   window.pofiDance = pofiDance; window.startBonus = startBonus; window.bonusState = function () { return BR; }; try { BP.setComboWords(t('combo').split('|')); } catch (e) {}   // v2.64: dance frames load in the background
   load();
   S.stage = Math.max(S.stage, 1);
