@@ -7,7 +7,7 @@ import { GLTFLoader } from './GLTFLoader.js';
 import { clone as skClone } from './SkeletonUtils.js';
 
 const Q = new URLSearchParams(location.search), num = (k, d) => (Q.has(k) ? +Q.get(k) : d);
-const LEAN = num('lean', 0.32), ELEV = num('l3elev', 0.21), FACE = num('face', 0.6), TRUNK = num('trunk', -55) * Math.PI / 180;
+const BOUNCE = num('bounce', 0.07), LEAN = num('lean', 0.32), ELEV = num('l3elev', 0.21), FACE = num('face', 0.6), TRUNK = num('trunk', -55) * Math.PI / 180;
 // per model: file + how its texture tells body (takes the shooter colour) from details (eyes, costume trims) - same rules as tools/runpofi
 const DEF = {
   pofi: { f: 'live_pofi.glb', hue1: 0.585, sat0: 0.22, val0: 0.42, bake: 0.35, hue2: [2, 2] },
@@ -72,7 +72,8 @@ function inst(name, col) {
     const root = skClone(m.scene), holder = new THREE.Group(), tilt = new THREE.Group(); tilt.add(root); holder.add(tilt); tilt.rotation.set(ELEV, 0, 0);
     let mesh = null; root.traverse((x) => { if (x.isSkinnedMesh) { mesh = x; x.frustumCulled = false; } });
     const mixer = new THREE.AnimationMixer(root), act = mixer.clipAction(m.clip); act.play();
-    return { name, holder, tilt, root, mesh, mixer, act, b: bonesOf(root) };
+    const b = bonesOf(root), rest = m.mean || (m.mean = cycleMean(b, mixer, act));
+    return { name, holder, tilt, root, mesh, mixer, act, b, rest };
   })();
   if (o.col !== col) { if (!m.mats[col]) m.mats[col] = tintMat(m.mesh.material, m.d, col); o.mesh.material = m.mats[col]; o.col = col; }
   return o;
@@ -89,7 +90,29 @@ function setup() {
   scene.add(new THREE.HemisphereLight(0xffffff, 0x6a6aa0, 0.9));
   cam = new THREE.OrthographicCamera(0, 1, 0, -1, -5000, 5000);
 }
-const V = new THREE.Vector3(), V2 = new THREE.Vector3();
+const V = new THREE.Vector3(), V2 = new THREE.Vector3(), UP = new THREE.Vector3(), QA = new THREE.Quaternion(), QB = new THREE.Quaternion(), QR = new THREE.Quaternion();
+// head turn towards the board: shares of the twist (spine top, neck, head), applied as world-space turns about the body's up axis
+// the Tripo run is a small shuffle on these short legs: each limb's swing away from the rest pose is multiplied (bigger strides, knees up, arms pumping)
+const AMP = { UpLeg: num('ampl', 2.0), Leg: num('ampk', 1.8), Foot: 1.4, Arm: num('ampa', 1.9), ForeArm: 1.6, Spine: 1 }, AX = new THREE.Vector3();
+// swing is measured from the cycle's average pose (the bind pose of these rigs is far from the run)
+function cycleMean(b, mixer, act) {
+  const acc = {}, N = 16, d = act.getClip().duration;
+  for (let i = 0; i < N; i++) { act.time = (i / N) * d; mixer.update(0); for (const n in b) { const q = b[n].quaternion; if (!acc[n]) acc[n] = new THREE.Vector4(); const a = acc[n], sg = a.x * q.x + a.y * q.y + a.z * q.z + a.w * q.w < 0 ? -1 : 1; a.x += q.x * sg; a.y += q.y * sg; a.z += q.z * sg; a.w += q.w * sg; } }
+  const out = {}; for (const n in acc) { const a = acc[n]; out[n] = new THREE.Quaternion(a.x, a.y, a.z, a.w).normalize(); } return out;
+}
+function amplify(o) {
+  for (const n in o.b) { const k = AMP[n.replace(/^(Left|Right)/, '')]; if (!k) continue; const bn = o.b[n], r = o.rest[n];
+    QB.copy(r).invert().multiply(bn.quaternion); if (QB.w < 0) { QB.x = -QB.x; QB.y = -QB.y; QB.z = -QB.z; QB.w = -QB.w; }
+    const a = 2 * Math.acos(Math.min(1, QB.w)), s = Math.sqrt(Math.max(1e-9, 1 - QB.w * QB.w)); if (a < 1e-4) continue;
+    AX.set(QB.x / s, QB.y / s, QB.z / s); QR.setFromAxisAngle(AX, a * k); bn.quaternion.copy(r).multiply(QR); }
+}
+const LOOK = [['Spine2', 0.15], ['Neck', 0.35], ['Head', 0.5]];
+function lookTurn(o, ang) {
+  o.holder.updateMatrixWorld(true); o.root.getWorldQuaternion(QA); UP.set(0, 1, 0).applyQuaternion(QA).normalize();
+  for (const [n, w] of LOOK) { const bn = o.b[n]; if (!bn) continue;
+    bn.getWorldQuaternion(QA); QR.setFromAxisAngle(UP, ang * w); QA.premultiply(QR);   // wanted world rotation
+    bn.parent.getWorldQuaternion(QB); bn.quaternion.copy(QB.invert().multiply(QA)); bn.updateMatrixWorld(true); }
+}
 const API = {
   has(name) { if (failed) return false; const m = M[name]; if (!m) { load(name); return false; } return !!m.scene; },
   add(j) { jobs.push(j); },
@@ -112,11 +135,12 @@ const API = {
       // run cycle locked to the distance travelled (feet never slide), then stand the spine up a little (the mocap run leans far forward)
       const dur = o.act.getClip().duration; o.act.time = ((j.ph % 1) + 1) % 1 * dur; o.mixer.update(0);
       const b = o.b;
+      amplify(o); o.root.rotation.set(-LEAN, j.yaw, 0, 'YXZ'); if (j.tw) lookTurn(o, j.tw);
       if (b.Trunk1) { b.Trunk1.rotation.x = TRUNK * 0.55 * j.fw; b.Trunk2.rotation.x = TRUNK * 0.45 * j.fw; }
       const k = j.ky / m.h0;   // canvas px per model metre (height of the run sprite: 56 units)
       o.holder.position.set(j.x, -j.y, j.y * 0.01 + 100);
       o.holder.scale.set(j.kx / m.h0, k, k);
-      o.tilt.rotation.set(ELEV, 0, 0); o.root.position.y = -m.y0;
+      o.tilt.rotation.set(ELEV, 0, 0); { const st = Math.abs(Math.sin(2 * Math.PI * j.ph)); o.root.position.y = -m.y0 + m.h0 * BOUNCE * st; o.tilt.scale.set(1 + 0.05 * (1 - st), 1 - 0.07 * (1 - st), 1 + 0.05 * (1 - st)); }   // hop each step, squash on landing
       o.root.rotation.set(-LEAN, j.yaw, 0, 'YXZ');   // yaw, then stand the body up (the mocap run leans far forward)
     }
     for (const [s, o] of live) if (!seen.has(s)) { scene.remove(o.holder); M[o.name].pool.push(o); live.delete(s); }
@@ -126,7 +150,7 @@ const API = {
     for (const [s, o] of live) { const t = o.b.Trunk2; if (!t || !s._l3m) continue; t.getWorldPosition(V); o.b.Trunk1.getWorldPosition(V2); V.addScaledVector(V.clone().sub(V2), 1.3); const mm = s._l3m; /* tip = past the middle trunk bone */ s._tip3 = [(V.x - mm.e) / mm.a, (-V.y - mm.f) / mm.d]; }
   }
 };
-API._live = live; API._M = M;
+API._live = live; API._M = M; API._AMP = AMP;
 window.BP_L3 = API;
 // nothing flushed for a moment (map, menus): wipe the overlay so no runner is left frozen on top of other screens
 setInterval(() => { if (cv && cv._dirty && performance.now() - (API.t || 0) > 150) { for (const [s, o] of live) { scene.remove(o.holder); M[o.name].pool.push(o); } live.clear(); ren.clear(); cv._dirty = false; } }, 120);

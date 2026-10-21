@@ -2926,9 +2926,10 @@ const y=(90+a)*D;
 const tg=s.ls!==undefined&&G.t-s.ls<0.4?1:0,dv=Math.max(0,Math.min(0.1,G.t-(s._f3t===undefined?G.t:s._f3t)));s._f3t=G.t;
 s._fw3=(s._fw3||0)+(tg-(s._fw3||0))*Math.min(1,dv*(tg?14:6));
 const aim=s._tg&&G.t-s.ls<0.7?Math.atan2(s._tg[0]-s.x,s._tg[1]-s.y):y+Math.PI/2;
-if(s._yw3===undefined)s._yw3=aim;s._yw3+=((((aim-s._yw3)%(2*Math.PI))+3*Math.PI)%(2*Math.PI)-Math.PI)*Math.min(1,dv*9);
+const yb=y-0.35*Math.sin(y);let tw=((aim-yb)%(2*Math.PI)+3*Math.PI)%(2*Math.PI)-Math.PI;tw=Math.max(-1.45,Math.min(1.45,tw));
+s._tw3=s._tw3===undefined?tw:s._tw3+(tw-s._tw3)*Math.min(1,dv*9);
 s._l3m={a:m.a,d:m.d,e:m.e,f:m.f};
-window.BP_L3.add({s,name,col,x:m.c*26.2+m.e,y:m.d*26.2+m.f,kx:m.a*RUN_H,ky:m.d*RUN_H,yaw:s._yw3,fw:s._fw3,ph:((s.d||0)+(s.st==='belt'||s.st==='vanish'?s.dph||0:0))/RUN_STRIDE});
+window.BP_L3.add({s,name,col,x:m.c*26.2+m.e,y:m.d*26.2+m.f,kx:m.a*RUN_H,ky:m.d*RUN_H,yaw:yb,tw:s._tw3,fw:s._fw3,ph:((s.d||0)+(s.st==='belt'||s.st==='vanish'?s.dph||0:0))/RUN_STRIDE});
 s._ra=[0,-2];
 }
 function runBody(ctx,s,view,d,col){
@@ -3908,7 +3909,7 @@ root.Elephant={STAGES:STAGES,ITEMS:ITEMS,SETS:SETS,stageFor:stageFor,svg:svg};
 var BP=window.BP,EL=window.Elephant;
 if(!BP||!EL){if(window.__bpErr)window.__bpErr('Motor/Pofi yuklenemedi: BP='+typeof BP+' EL='+typeof EL);return;}
 var CONFIG={
-version:'2.65.0',
+version:'2.65.1',
 saveKey:'blokpop_save_v1',
 gameKey:'blokpop_game_v1',
 superCost:500,
