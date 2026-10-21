@@ -7,7 +7,7 @@ import { GLTFLoader } from './GLTFLoader.js';
 import { clone as skClone } from './SkeletonUtils.js';
 
 const Q = new URLSearchParams(location.search), num = (k, d) => (Q.has(k) ? +Q.get(k) : d);
-const LEAN = num('lean', 0.28), ELEV = num('l3elev', 0.36), FACE = num('face', 0.6), TRUNK = num('trunk', -55) * Math.PI / 180;
+const LEAN = num('lean', 0.32), ELEV = num('l3elev', 0.21), FACE = num('face', 0.6), TRUNK = num('trunk', -55) * Math.PI / 180;
 // per model: file + how its texture tells body (takes the shooter colour) from details (eyes, costume trims) - same rules as tools/runpofi
 const DEF = {
   pofi: { f: 'live_pofi.glb', hue1: 0.585, sat0: 0.22, val0: 0.42, bake: 0.35, hue2: [2, 2] },
@@ -69,7 +69,7 @@ function load(name) {
 }
 function inst(name, col) {
   const m = M[name], o = m.pool.pop() || (() => {
-    const root = skClone(m.scene), holder = new THREE.Group(), tilt = new THREE.Group(); tilt.add(root); holder.add(tilt);
+    const root = skClone(m.scene), holder = new THREE.Group(), tilt = new THREE.Group(); tilt.add(root); holder.add(tilt); tilt.rotation.set(ELEV, 0, 0);
     let mesh = null; root.traverse((x) => { if (x.isSkinnedMesh) { mesh = x; x.frustumCulled = false; } });
     const mixer = new THREE.AnimationMixer(root), act = mixer.clipAction(m.clip); act.play();
     return { name, holder, tilt, root, mesh, mixer, act, b: bonesOf(root) };
@@ -80,7 +80,7 @@ function inst(name, col) {
 function setup() {
   cv = document.createElement('canvas'); cv.id = 'l3cv'; cv.setAttribute('aria-hidden', 'true');
   cv.style.cssText = 'position:absolute;pointer-events:none;z-index:2';
-  try { ren = new THREE.WebGLRenderer({ canvas: cv, alpha: true, antialias: true, premultipliedAlpha: true }); } catch (e) { failed = true; return; }
+  try { ren = new THREE.WebGLRenderer({ canvas: cv, alpha: true, antialias: true, premultipliedAlpha: true, preserveDrawingBuffer: Q.has('l3dbg') }); } catch (e) { failed = true; return; }
   ren.setPixelRatio(1); ren.outputColorSpace = THREE.SRGBColorSpace; ren.toneMapping = THREE.ACESFilmicToneMapping; ren.toneMappingExposure = 1.05; ren.setClearColor(0, 0);
   scene = new THREE.Scene();
   const key = new THREE.DirectionalLight(0xffffff, 2.6); key.position.set(-1.2, 2.2, 1.6); scene.add(key);
@@ -89,7 +89,7 @@ function setup() {
   scene.add(new THREE.HemisphereLight(0xffffff, 0x6a6aa0, 0.9));
   cam = new THREE.OrthographicCamera(0, 1, 0, -1, -5000, 5000);
 }
-const V = new THREE.Vector3();
+const V = new THREE.Vector3(), V2 = new THREE.Vector3();
 const API = {
   has(name) { if (failed) return false; const m = M[name]; if (!m) { load(name); return false; } return !!m.scene; },
   add(j) { jobs.push(j); },
@@ -123,9 +123,10 @@ const API = {
     jobs = [];
     ren.render(scene, cam); cv._dirty = true;
     // trunk tips for the next shots, in each Pofi's own drawing frame (engine runBody local units)
-    for (const [s, o] of live) { const t = o.b.Trunk2; if (!t || !s._l3m) continue; t.getWorldPosition(V); const mm = s._l3m; s._tip3 = [(V.x - mm.e) / mm.a, (-V.y - mm.f) / mm.d]; }
+    for (const [s, o] of live) { const t = o.b.Trunk2; if (!t || !s._l3m) continue; t.getWorldPosition(V); o.b.Trunk1.getWorldPosition(V2); V.addScaledVector(V.clone().sub(V2), 1.3); const mm = s._l3m; /* tip = past the middle trunk bone */ s._tip3 = [(V.x - mm.e) / mm.a, (-V.y - mm.f) / mm.d]; }
   }
 };
+API._live = live; API._M = M;
 window.BP_L3 = API;
 // nothing flushed for a moment (map, menus): wipe the overlay so no runner is left frozen on top of other screens
 setInterval(() => { if (cv && cv._dirty && performance.now() - (API.t || 0) > 150) { for (const [s, o] of live) { scene.remove(o.holder); M[o.name].pool.push(o); } live.clear(); ren.clear(); cv._dirty = false; } }, 120);
