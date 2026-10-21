@@ -2882,8 +2882,9 @@ Object.keys(C).forEach((v)=>{const m=C[v],b=new Image(),d=new Image(),set=/^f/.t
 const ok=()=>{if(--l===0){m.bi=b;m.di=d;set.v[key]=m;}};b.onload=ok;d.onload=ok;b.src=m.body;d.src=m.det;});
 return o;
 }
+const COSTUME3D=typeof location!=='undefined'&&/[?&]chars=1/.test(location.search);
 function charOf(g,s){
-const C=typeof window!=='undefined'&&window.BLOKPOP_CHARS;if(!CHARS||!C||!s.id)return null;
+const C=typeof window!=='undefined'&&window.BLOKPOP_CHARS;if(!CHARS||!C||!s.id||!COSTUME3D)return null;
 const av=CHARN.filter((n)=>C[n]);if(!av.length)return null;
 const k=(s.id*5+(g?g.L:0))%5;return k<3?av[(s.id+k)%av.length]:null;
 }
@@ -3909,7 +3910,7 @@ root.Elephant={STAGES:STAGES,ITEMS:ITEMS,SETS:SETS,stageFor:stageFor,svg:svg};
 var BP=window.BP,EL=window.Elephant;
 if(!BP||!EL){if(window.__bpErr)window.__bpErr('Motor/Pofi yuklenemedi: BP='+typeof BP+' EL='+typeof EL);return;}
 var CONFIG={
-version:'2.65.1',
+version:'2.65.3',
 saveKey:'blokpop_save_v1',
 gameKey:'blokpop_game_v1',
 superCost:500,
@@ -5484,7 +5485,7 @@ function splashPofi() {
   if (ok && !BP.p3ready()) { pofiWhenReady(put); setTimeout(function () { if (!el.firstChild) put(); }, 2500); } else put();
 }
 function boot2() {
-  setTimeout(function () { ['super', 'astronot', 'ejderha'].forEach(function (n) { try { var sc = document.createElement('script'); sc.src = 'char_' + n + '.js'; document.head.appendChild(sc); } catch (e) {} }); if (!/[?&]l3=0/.test(location.search)) try { var l3 = document.createElement('script'); l3.type = 'module'; l3.src = 'live3d.js'; document.head.appendChild(l3); } catch (e) {} }, 1500);   // v2.64: costume characters (big, loaded after start)
+  setTimeout(function () { if (/[?&]chars=1/.test(location.search)) ['super', 'astronot', 'ejderha'].forEach(function (n) { try { var sc = document.createElement('script'); sc.src = 'char_' + n + '.js'; document.head.appendChild(sc); } catch (e) {} }); if (/[?&]l3=1/.test(location.search)) try { var l3 = document.createElement('script'); l3.type = 'module'; l3.src = 'live3d.js'; document.head.appendChild(l3); } catch (e) {} }, 1500);   // v2.64: costume characters (big, loaded after start)
   window.pofiDance = pofiDance; window.startBonus = startBonus; window.bonusState = function () { return BR; }; try { BP.setComboWords(t('combo').split('|')); } catch (e) {}   // v2.64: dance frames load in the background
   load();
   S.stage = Math.max(S.stage, 1);
