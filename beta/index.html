@@ -1747,12 +1747,16 @@ s.sc+=(1-s.sc)*Math.min(1,dt*10);
 if(s.st==='enter'){
 s.en=Math.min(1,s.en+dt/(RUN_POFI?0.5:ENTER_T));const c=s.car;
 if(s.en>E0&&c.st==='boarding'&&(c.u===undefined||c.u<slotU(0)-0.5)){s.en=E0;s.wt=(s.wt||0)+dt;}else s.wt=0;
-const hopW=s.wt?Math.abs(Math.sin(s.wt*8))*7:0;
+const hopW=0;if(s.wt){s.side='b';s.ang=0;s.d=s.wt*150;if(Math.random()<dt*9)g.parts.push({k:'dot',x:s.x-8+Math.random()*6,y:s.y+24,vx:-40-Math.random()*50,vy:-30-Math.random()*40,l:0.35,max:0.35,c:'rgba(230,225,255,0.7)',s:2+Math.random()*2});}
 if(s.resSlot!==undefined&&s.en>=(E0+E1)/2)releaseSlot(g,s);
 if(s.qCol!==undefined&&s.en>=(E0+E1)/2){if(g.qHold)g.qHold[s.qCol]=Math.max(0,g.qHold[s.qCol]-1);s.qCol=undefined;layout(g,false);}
 if(RUN_POFI){
 if(s.en<E0){s.x=s.fx;s.y=s.fy;}
-else{const u=(s.en-E0)/(1-E0),e=u*u*(3-2*u);s.x=s.fx+(ENTRY.x-s.fx)*e;s.y=s.fy+(ENTRY.y-s.fy)*e-Math.sin(Math.PI*u)*46;}
+else{
+const u=(s.en-E0)/(1-E0),cx=BX0+R+4;
+if(u<0.62){const v=u/0.62,e=v*v*(3-2*v);s.x=s.fx+(cx-s.fx)*e;s.y=s.fy+(ENTRY.y-s.fy)*e-Math.sin(Math.PI*v)*46;s.rn=false;}
+else{const v=(u-0.62)/0.38;s.x=cx+(ENTRY.x-cx)*v;s.y=ENTRY.y;s.rn=true;s.side='b';s.ang=0;s.d=s.x-cx;}
+}
 s.y-=hopW;
 if(s.en>=E1&&c.st==='boarding'){c.lx=c.x;c.ly=c.y;const qi=g.cq.indexOf(c);if(qi>=0)g.cq.splice(qi,1);c.st='active';}
 if(s.en>=E1){c.x=s.x;c.y=s.y+FEET0;}
@@ -1960,7 +1964,9 @@ function launch(g,s,from){
 const c=freeCar(g);c.st='boarding';c.s=s;s.car=c;
 s.st='enter';s.en=0;s.fx=s.x;s.fy=s.y;
 g.active.push(s);
-H.sfx('launch');H.vib(6);
+const lc=g.pal[s.c];g.parts.push({k:'glow',x:s.x,y:s.y,l:0.3,max:0.3,c:lc,s:34},{k:'ring',x:s.x,y:s.y,l:0.35,max:0.35,c:lc,s:10},{k:'ring',x:s.x,y:s.y,l:0.25,max:0.25,c:'#ffffff',s:4});
+for(let q=0;q<10;q++){const a=Math.random()*6.283,v=80+Math.random()*150;g.parts.push({k:'dot',x:s.x,y:s.y,vx:Math.cos(a)*v,vy:Math.sin(a)*v-90,l:0.45,max:0.45,c:q&1?'#ffffff':lc,s:2+Math.random()*2});}
+H.sfx('launch');H.vib(12);
 }
 function deny(g){if(activeCount(g)<MAX_BELT)g.noCar=(g.noCar|0)+1;g.deny=0.5;H.sfx('deny');H.vib([12,30,12]);H.toast('full');return false;}
 function launchFromQueue(c){
@@ -2891,7 +2897,7 @@ cx.putImageData(d,0,0);cx.drawImage(o.di,0,0);
 return(RUN.cache[key]=cv);
 }
 function runOk(view){if(!RUN.init)runInit();return!!(RUN_POFI&&RUN.v[view]);}
-function runView(s){if(!s||!(s.st==='belt'||s.st==='vanish'))return null;const k=runKey(s),v=s.side==='t'||s.side==='b'?'side':s.side==='l'?'front':'back';return runOk(k)?v:null;}
+function runView(s){if(!s||!(s.st==='belt'||s.st==='vanish'||(s.st==='enter'&&(s.wt>0||s.rn))))return null;const k=runKey(s),v=s.side==='t'||s.side==='b'?'side':s.side==='l'?'front':'back';return runOk(k)?v:null;}
 function runKey(s){const k={b:'rb',t:'rt',l:'front',r:'back'}[s.side];return RUN.v[k]||!RUN.v.side||(s.side!=='b'&&s.side!=='t')?k:'side';}
 function runBody(ctx,s,view,d,col){
 if(runView(s)!==view)return false;
@@ -3841,7 +3847,7 @@ root.Elephant={STAGES:STAGES,ITEMS:ITEMS,SETS:SETS,stageFor:stageFor,svg:svg};
 var BP=window.BP,EL=window.Elephant;
 if(!BP||!EL){if(window.__bpErr)window.__bpErr('Motor/Pofi yuklenemedi: BP='+typeof BP+' EL='+typeof EL);return;}
 var CONFIG={
-version:'2.63.21',
+version:'2.63.22',
 saveKey:'blokpop_save_v1',
 gameKey:'blokpop_game_v1',
 superCost:500,
@@ -4182,7 +4188,7 @@ var r=1+Math.min(8,(i||0))*0.025+(Math.random()-0.5)*0.01;
 if(!playSmp('tick',0.26,r)){tone(1245*r,0.12,'sine',0.06,0,0);tone(2890*r,0.05,'sine',0.015,0.002);}
 },
 coinDone:function(){if(!playSmp('done',0.5,1)){tone(1175,0.3,'sine',0.08,0,0,true);tone(1568,0.45,'sine',0.08,0.075,0,true);}},
-launch:function(){tone(330,0.1,'sine',0.2,0,170);tone(520,0.06,'sine',0.07,0.004,330);},
+launch:function(){noise(0.18,0.12,0,'bandpass',600,2600);tone(300,0.14,'sine',0.22,0,520);tone(660,0.08,'triangle',0.1,0.06,980);tone(1320,0.05,'sine',0.05,0.1,1600);},
 lose:function(){tone(392,0.7,'sawtooth',0.12,0,130);tone(196,0.8,'sine',0.18,0,62);noise(0.4,0.07,0,'lowpass',1200,200);},
 slot:function(){tone(500,0.12,'sine',0.2);tone(750,0.16,'sine',0.2,0.09,0,true);},
 magnet:function(){tone(220,0.3,'sine',0.2,0,800);noise(0.25,0.08,0.05,'bandpass',600,2500);},
