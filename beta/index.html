@@ -1800,7 +1800,7 @@ s.x=pt.x;s.y=pt.y;s.side=pt.side;s.ang=pt.ang;s.cd-=dt;
 if(s.cd<=0&&s.a>0){
 const t=findTarget(g,pt.side,pt.x,pt.y);
 if(t&&g.grid[t.r][t.c]===s.c){
-g.res[t.r][t.c]=true;s.a--;s.cd=FIRE_CD;s.sc=1.06;s.wig=0.4;
+g.res[t.r][t.c]=true;s.a--;s.cd=FIRE_CD;s.sc=1.06;s.wig=0.4;s.ls=g.t;
 const tp=trunkTip(s),k=(s.sc||1)*BELT_S,bx=s.x+tp[0]*k,by=s.y+FEET0+(tp[1]-26.4)*k;
 for(let q=0;q<3;q++)g.parts.push({k:'dot',x:bx,y:by,vx:(g.rng()-0.5)*90,vy:(g.rng()-0.5)*90,l:0.22,max:0.22,c:'#ffffff',s:2.4});
 g.parts.push({k:'glow',x:bx,y:by,l:0.18,max:0.18,c:g.pal[s.c],s:15});g.parts.push({k:'ring',x:bx,y:by,l:0.22,max:0.22,c:g.pal[s.c],s:3});
@@ -2875,8 +2875,9 @@ const CHARN=['super','astronot','ejderha'],CHARR={};
 function charRun(name){
 if(CHARR[name])return CHARR[name];
 const C=typeof window!=='undefined'&&window.BLOKPOP_CHARS&&window.BLOKPOP_CHARS[name];if(!C||typeof Image==='undefined')return null;
-const o=CHARR[name]={init:true,v:{},cache:{},n:Object.keys(C).length};
-Object.keys(C).forEach((v)=>{const m=C[v],b=new Image(),d=new Image();let l=2;const ok=()=>{if(--l===0){m.bi=b;m.di=d;o.v[v]=m;}};b.onload=ok;d.onload=ok;b.src=m.body;d.src=m.det;});
+const o=CHARR[name]={init:true,v:{},cache:{},n:4,f:{init:true,v:{},cache:{}},i:{init:true,v:{},cache:{}}};
+Object.keys(C).forEach((v)=>{const m=C[v],b=new Image(),d=new Image(),set=/^f/.test(v)&&v!=='front'?o.f:/^i/.test(v)?o.i:o,key=set===o?v:v.slice(1);let l=2;
+const ok=()=>{if(--l===0){m.bi=b;m.di=d;set.v[key]=m;}};b.onload=ok;d.onload=ok;b.src=m.body;d.src=m.det;});
 return o;
 }
 function charOf(g,s){
@@ -3011,9 +3012,14 @@ function drawShooter(ctx,g,s,alpha,myst){
 ACCK=s.st==='queue'?0.9:1;const old=skin,cn=!myst&&charOf(g,s),cr=cn&&charRun(cn);
 if(cr&&Object.keys(cr.v).length>=cr.n){
 RUN=cr;skin={head:null,face:null,neck:null,ear:null,back:null,fx:null,stage:1};
-const live=s.st==='belt'||s.st==='vanish'||(s.st==='enter'&&(s.wt>0||s.rn)),sd=s.side,dd=s.d;
-if(!live){s.side='r';s.d=0;s._still=true;}
-try{return drawShooter0(ctx,g,s,alpha,myst);}finally{ACCK=1;skin=old;RUN=RUN0;if(!live){s.side=sd;s.d=dd;s._still=false;}}
+const live=s.st==='belt'||s.st==='vanish'||(s.st==='enter'&&(s.wt>0||s.rn)),sd=s.side,dd=s.d,aa=s.ang;
+if(live&&s.ls!==undefined&&g&&g.t-s.ls<0.3&&Object.keys(cr.f.v).length>=4)RUN=cr.f;
+if(!live){
+s.side='r';s._still=true;
+if(cr.i.v.back){RUN=cr.i;s.ang=-Math.PI/2;const n=cr.i.v.back.n,p=((g?g.t:0)*0.6+(s.id||0)*0.37)%2,u=p<1?p:2-p;s.d=u*(n-1)/n*RUN_STRIDE;}
+else s.d=0;
+}
+try{return drawShooter0(ctx,g,s,alpha,myst);}finally{ACCK=1;skin=old;RUN=RUN0;if(!live){s.side=sd;s.d=dd;s.ang=aa;s._still=false;}}
 }
 const cs=CHARS&&!myst?charSkin(g,s):null;if(cs)skin=cs;
 try{return drawShooter0(ctx,g,s,alpha,myst);}finally{ACCK=1;skin=old;}
@@ -3867,7 +3873,7 @@ root.Elephant={STAGES:STAGES,ITEMS:ITEMS,SETS:SETS,stageFor:stageFor,svg:svg};
 var BP=window.BP,EL=window.Elephant;
 if(!BP||!EL){if(window.__bpErr)window.__bpErr('Motor/Pofi yuklenemedi: BP='+typeof BP+' EL='+typeof EL);return;}
 var CONFIG={
-version:'2.63.23',
+version:'2.63.24',
 saveKey:'blokpop_save_v1',
 gameKey:'blokpop_game_v1',
 superCost:500,
