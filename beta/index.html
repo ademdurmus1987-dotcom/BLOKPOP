@@ -2870,7 +2870,20 @@ num(0,8);
 return true;
 }
 p3Init();
-const RUN={init:false,v:{},cache:{}},RUN_STRIDE=70,RUN_H=56;
+let RUN={init:false,v:{},cache:{}};const RUN0=RUN,RUN_STRIDE=70,RUN_H=56;
+const CHARN=['super','astronot','ejderha'],CHARR={};
+function charRun(name){
+if(CHARR[name])return CHARR[name];
+const C=typeof window!=='undefined'&&window.BLOKPOP_CHARS&&window.BLOKPOP_CHARS[name];if(!C||typeof Image==='undefined')return null;
+const o=CHARR[name]={init:true,v:{},cache:{},n:Object.keys(C).length};
+Object.keys(C).forEach((v)=>{const m=C[v],b=new Image(),d=new Image();let l=2;const ok=()=>{if(--l===0){m.bi=b;m.di=d;o.v[v]=m;}};b.onload=ok;d.onload=ok;b.src=m.body;d.src=m.det;});
+return o;
+}
+function charOf(g,s){
+const C=typeof window!=='undefined'&&window.BLOKPOP_CHARS;if(!CHARS||!C||!s.id)return null;
+const av=CHARN.filter((n)=>C[n]);if(!av.length)return null;
+const k=(s.id*5+(g?g.L:0))%5;return k<3?av[(s.id+k)%av.length]:null;
+}
 function runInit(){
 RUN.init=true;
 try{
@@ -2897,7 +2910,7 @@ cx.putImageData(d,0,0);cx.drawImage(o.di,0,0);
 return(RUN.cache[key]=cv);
 }
 function runOk(view){if(!RUN.init)runInit();return!!(RUN_POFI&&RUN.v[view]);}
-function runView(s){if(!s||!(s.st==='belt'||s.st==='vanish'||(s.st==='enter'&&(s.wt>0||s.rn))))return null;const k=runKey(s),v=s.side==='t'||s.side==='b'?'side':s.side==='l'?'front':'back';return runOk(k)?v:null;}
+function runView(s){if(!s||!(s.st==='belt'||s.st==='vanish'||(s.st==='enter'&&(s.wt>0||s.rn))||s._still))return null;const k=runKey(s),v=s.side==='t'||s.side==='b'?'side':s.side==='l'?'front':'back';return runOk(k)?v:null;}
 function runKey(s){const k={b:'rb',t:'rt',l:'front',r:'back'}[s.side];return RUN.v[k]||!RUN.v.side||(s.side!=='b'&&s.side!=='t')?k:'side';}
 function runBody(ctx,s,view,d,col){
 if(runView(s)!==view)return false;
@@ -2995,7 +3008,14 @@ const p=SETS[k].parts;
 return{head:p.head||null,face:p.face||null,neck:p.neck||null,ear:p.ear||null,back:p.back||null,fx:null,stage:skin.stage};
 }
 function drawShooter(ctx,g,s,alpha,myst){
-ACCK=s.st==='queue'?0.9:1;const old=skin,cs=CHARS&&!myst?charSkin(g,s):null;if(cs)skin=cs;
+ACCK=s.st==='queue'?0.9:1;const old=skin,cn=!myst&&charOf(g,s),cr=cn&&charRun(cn);
+if(cr&&Object.keys(cr.v).length>=cr.n){
+RUN=cr;skin={head:null,face:null,neck:null,ear:null,back:null,fx:null,stage:1};
+const live=s.st==='belt'||s.st==='vanish'||(s.st==='enter'&&(s.wt>0||s.rn)),sd=s.side,dd=s.d;
+if(!live){s.side='r';s.d=0;s._still=true;}
+try{return drawShooter0(ctx,g,s,alpha,myst);}finally{ACCK=1;skin=old;RUN=RUN0;if(!live){s.side=sd;s.d=dd;s._still=false;}}
+}
+const cs=CHARS&&!myst?charSkin(g,s):null;if(cs)skin=cs;
 try{return drawShooter0(ctx,g,s,alpha,myst);}finally{ACCK=1;skin=old;}
 }
 function drawShooter0(ctx,g,s,alpha,myst){
@@ -3847,7 +3867,7 @@ root.Elephant={STAGES:STAGES,ITEMS:ITEMS,SETS:SETS,stageFor:stageFor,svg:svg};
 var BP=window.BP,EL=window.Elephant;
 if(!BP||!EL){if(window.__bpErr)window.__bpErr('Motor/Pofi yuklenemedi: BP='+typeof BP+' EL='+typeof EL);return;}
 var CONFIG={
-version:'2.63.22',
+version:'2.63.23',
 saveKey:'blokpop_save_v1',
 gameKey:'blokpop_game_v1',
 superCost:500,
@@ -5408,6 +5428,7 @@ function splashPofi() {
   if (ok && !BP.p3ready()) { pofiWhenReady(put); setTimeout(function () { if (!el.firstChild) put(); }, 2500); } else put();
 }
 function boot2() {
+  setTimeout(function () { ['super', 'astronot', 'ejderha'].forEach(function (n) { try { var sc = document.createElement('script'); sc.src = 'char_' + n + '.js'; document.head.appendChild(sc); } catch (e) {} }); }, 1500);   // v2.64: costume characters (big, loaded after start)
   window.pofiDance = pofiDance; window.startBonus = startBonus; window.bonusState = function () { return BR; }; try { BP.setComboWords(t('combo').split('|')); } catch (e) {}   // v2.64: dance frames load in the background
   load();
   S.stage = Math.max(S.stage, 1);
