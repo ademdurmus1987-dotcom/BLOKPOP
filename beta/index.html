@@ -2775,7 +2775,7 @@ if(pass===0){wing3d(ctx,-15.5,1,-1,0.3,col,true,14,15.5);wing3d(ctx,15.5,1,1,0.3
 }
 function runDraw(ctx,s,col,plain,num){
 const key=runKey(s);if(!RUN.v[key])return false;if(runView(s)&&(s.st==='belt'||s.st==='vanish'||s.st==='enter')&&l3Name(s))plain=true;
-const away=key==='rb'||key==='back';
+const away=key==='back'||(key==='rb'&&!(RUN.v.rb&&RUN.v.rb.prof));
 const BIG=(f)=>{ctx.save();ctx.translate(0,2);ctx.scale(0.6,0.6);ctx.translate(0,-2);f();ctx.restore();};
 if(!plain){
 skinFx(ctx,skin.fx,0);
@@ -3910,7 +3910,7 @@ root.Elephant={STAGES:STAGES,ITEMS:ITEMS,SETS:SETS,stageFor:stageFor,svg:svg};
 var BP=window.BP,EL=window.Elephant;
 if(!BP||!EL){if(window.__bpErr)window.__bpErr('Motor/Pofi yuklenemedi: BP='+typeof BP+' EL='+typeof EL);return;}
 var CONFIG={
-version:'2.65.3',
+version:'2.65.4',
 saveKey:'blokpop_save_v1',
 gameKey:'blokpop_game_v1',
 superCost:500,
