@@ -4127,7 +4127,7 @@ root.Elephant={STAGES:STAGES,ITEMS:ITEMS,SETS:SETS,stageFor:stageFor,svg:svg};
 var BP=window.BP,EL=window.Elephant;
 if(!BP||!EL){if(window.__bpErr)window.__bpErr('Motor/Pofi yuklenemedi: BP='+typeof BP+' EL='+typeof EL);return;}
 var CONFIG={
-version:'2.67.1',
+version:'2.68.0',
 saveKey:'blokpop_save_v1',
 gameKey:'blokpop_game_v1',
 superCost:500,
@@ -5537,6 +5537,7 @@ closeAll();
 curLevel=L;
 var g=['#6f52d8','#3b2596'],gm=$('game');
 gm.style.setProperty('--g1',g[0]);gm.style.setProperty('--g2',g[1]);
+gm.style.background=BP.isEvent(L)?'':'linear-gradient(180deg,rgba(10,8,40,.35),rgba(10,8,40,.15) 40%,rgba(10,8,40,.45)),url(bg/w'+('0'+(worldOf(L)+1)).slice(-2)+'.webp) center/cover no-repeat,var(--g2)';
 var resumed=false;
 if(snap){try{resumed=!!BP.restore(snap);}catch(e){resumed=false;}if(!resumed)clearGame();}
 if(!resumed){
