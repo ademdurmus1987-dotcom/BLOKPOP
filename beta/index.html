@@ -4167,7 +4167,7 @@ root.Elephant={STAGES:STAGES,ITEMS:ITEMS,SETS:SETS,stageFor:stageFor,svg:svg};
 var BP=window.BP,EL=window.Elephant;
 if(!BP||!EL){if(window.__bpErr)window.__bpErr('Motor/Pofi yuklenemedi: BP='+typeof BP+' EL='+typeof EL);return;}
 var CONFIG={
-version:'2.69.1',
+version:'2.69.2',
 saveKey:'blokpop_save_v1',
 gameKey:'blokpop_game_v1',
 superCost:500,
@@ -4536,19 +4536,7 @@ for(var q=0;q<6;q++){var f=1900+Math.random()*1400,d=q*0.028+Math.random()*0.01;
 tone(2637,0.5,'sine',0.06,0.17,0,true);tone(2637*2.76,0.3,'sine',0.025,0.17,0,true);tone(3951,0.45,'sine',0.04,0.2,0,true);noise(0.2,0.015,0.17,'highpass',8000,11000);
 },
 launch:function(){
-if(!AC||!S.set.sound)return;
-[[0,150,1],[0.15,168,0.9]].forEach(function(b){
-try{
-var t0=AC.currentTime+b[0],d=0.12,o=AC.createOscillator(),g=AC.createGain();
-o.type='sawtooth';o.frequency.setValueAtTime(b[1]*0.8,t0);o.frequency.exponentialRampToValueAtTime(b[1],t0+0.025);o.frequency.exponentialRampToValueAtTime(b[1]*0.85,t0+d);
-g.gain.setValueAtTime(0.0001,t0);g.gain.exponentialRampToValueAtTime(0.55*b[2],t0+0.012);g.gain.setValueAtTime(0.5*b[2],t0+d*0.6);g.gain.exponentialRampToValueAtTime(0.0001,t0+d);
-[[750,5,1],[1150,7,0.55],[300,2,0.7]].forEach(function(fm){var f=AC.createBiquadFilter(),fg=AC.createGain();f.type='bandpass';f.frequency.setValueAtTime(fm[0]*0.6,t0);f.frequency.exponentialRampToValueAtTime(fm[0],t0+0.03);f.Q.value=fm[1];fg.gain.value=fm[2];o.connect(f);f.connect(fg);fg.connect(g);});
-g.connect(master);o.start(t0);o.stop(t0+d+0.03);
-}catch(e){}
-noise(0.03,0.35*b[2],b[0],'lowpass',900,300);
-tone(95,0.13,'sine',0.42*b[2],b[0],60);
-tone(b[1]*0.9,0.04,'sine',0.18*b[2],b[0]+0.11,80);
-});
+tone(520,0.07,'sine',0.32,0,1100);tone(1040,0.05,'sine',0.08,0.005,1900);noise(0.012,0.12,0,'bandpass',2500,2000);
 },
 lose:function(){tone(392,0.7,'sawtooth',0.12,0,130);tone(196,0.8,'sine',0.18,0,62);noise(0.4,0.07,0,'lowpass',1200,200);},
 slot:function(){tone(500,0.12,'sine',0.2);tone(750,0.16,'sine',0.2,0.09,0,true);},
