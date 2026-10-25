@@ -4167,7 +4167,7 @@ root.Elephant={STAGES:STAGES,ITEMS:ITEMS,SETS:SETS,stageFor:stageFor,svg:svg};
 var BP=window.BP,EL=window.Elephant;
 if(!BP||!EL){if(window.__bpErr)window.__bpErr('Motor/Pofi yuklenemedi: BP='+typeof BP+' EL='+typeof EL);return;}
 var CONFIG={
-version:'2.69.2',
+version:'2.69.3',
 saveKey:'blokpop_save_v1',
 gameKey:'blokpop_game_v1',
 superCost:500,
@@ -4536,7 +4536,7 @@ for(var q=0;q<6;q++){var f=1900+Math.random()*1400,d=q*0.028+Math.random()*0.01;
 tone(2637,0.5,'sine',0.06,0.17,0,true);tone(2637*2.76,0.3,'sine',0.025,0.17,0,true);tone(3951,0.45,'sine',0.04,0.2,0,true);noise(0.2,0.015,0.17,'highpass',8000,11000);
 },
 launch:function(){
-tone(520,0.07,'sine',0.32,0,1100);tone(1040,0.05,'sine',0.08,0.005,1900);noise(0.012,0.12,0,'bandpass',2500,2000);
+tone(330,0.09,'sine',0.4,0,720);tone(150,0.09,'sine',0.3,0,95);tone(660,0.05,'sine',0.07,0.005,1200);noise(0.014,0.14,0,'bandpass',1800,1300);
 },
 lose:function(){tone(392,0.7,'sawtooth',0.12,0,130);tone(196,0.8,'sine',0.18,0,62);noise(0.4,0.07,0,'lowpass',1200,200);},
 slot:function(){tone(500,0.12,'sine',0.2);tone(750,0.16,'sine',0.2,0.09,0,true);},
@@ -5609,7 +5609,7 @@ S.seenSp=S.seenSp||{};var msg=t('spNew').split('|');
 ['big','ice','stone'].some(function(kd,i){if(!kinds[kd]||S.seenSp[kd])return false;S.seenSp[kd]=1;save();setTimeout(function(){toast(msg[i]);},2300);return true;});
 }
 var launches=0;
-BP.hooks.sfx=function(n,a){ensureAudio();if(SFX[n])SFX[n](a);if(n==='launch')questEvent('launch');};
+BP.hooks.sfx=function(n,a){ensureAudio();if(SFX[n])SFX[n](a);if(n==='launch'){vib(28);questEvent('launch');}};
 BP.hooks.vib=vib;
 var warnT=0,warnHideT=0,warnLast=0;
 function beltWarn(){
