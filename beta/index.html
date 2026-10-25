@@ -4167,7 +4167,7 @@ root.Elephant={STAGES:STAGES,ITEMS:ITEMS,SETS:SETS,stageFor:stageFor,svg:svg};
 var BP=window.BP,EL=window.Elephant;
 if(!BP||!EL){if(window.__bpErr)window.__bpErr('Motor/Pofi yuklenemedi: BP='+typeof BP+' EL='+typeof EL);return;}
 var CONFIG={
-version:'2.69.3',
+version:'2.69.4',
 saveKey:'blokpop_save_v1',
 gameKey:'blokpop_game_v1',
 superCost:500,
@@ -4511,10 +4511,9 @@ launch:function(){noise(0.2,0.14,0,'bandpass',400,2200);tone(260,0.16,'triangle'
 shoot:function(){var n=Date.now();if(n-lastShoot<60)return;lastShoot=n;tone(300,0.04,'triangle',0.05,0,140);},
 pop:function(){
 var n=Date.now();if(n-lastPop<40)return;lastPop=n;
-tone(170,0.12,'sine',0.4,0,55);
-tone(95,0.08,'triangle',0.28,0,45);
-noise(0.07,0.3,0,'lowpass',1100,180);
-noise(0.025,0.16,0,'bandpass',2200,800);
+tone(150,0.045,'sine',0.3,0,105);
+tone(420,0.03,'triangle',0.08,0,260);
+noise(0.03,0.14,0,'lowpass',900,250);
 },
 deny:function(){tone(120,0.1,'sine',0.3,0,70);noise(0.06,0.14,0,'lowpass',600,200);},
 done:function(){tone(620,0.12,'triangle',0.14,0,260);noise(0.1,0.07,0,'lowpass',2500,400);},
@@ -4536,7 +4535,7 @@ for(var q=0;q<6;q++){var f=1900+Math.random()*1400,d=q*0.028+Math.random()*0.01;
 tone(2637,0.5,'sine',0.06,0.17,0,true);tone(2637*2.76,0.3,'sine',0.025,0.17,0,true);tone(3951,0.45,'sine',0.04,0.2,0,true);noise(0.2,0.015,0.17,'highpass',8000,11000);
 },
 launch:function(){
-tone(330,0.09,'sine',0.4,0,720);tone(150,0.09,'sine',0.3,0,95);tone(660,0.05,'sine',0.07,0.005,1200);noise(0.014,0.14,0,'bandpass',1800,1300);
+tone(830,0.05,'sine',0.42,0,1050);tone(1660,0.035,'sine',0.06,0,2100);
 },
 lose:function(){tone(392,0.7,'sawtooth',0.12,0,130);tone(196,0.8,'sine',0.18,0,62);noise(0.4,0.07,0,'lowpass',1200,200);},
 slot:function(){tone(500,0.12,'sine',0.2);tone(750,0.16,'sine',0.2,0.09,0,true);},
