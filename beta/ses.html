@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="tr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Blokpop Ses Deneme</title>
+<style>
+:root{--bg:#141a3a;--card:#232c63;--acc:#ffd23f;--tx:#fff}
+body{margin:0;background:radial-gradient(circle at 50% 0,#3a4aa8,var(--bg) 70%);color:var(--tx);font-family:system-ui,sans-serif;min-height:100vh;padding:16px;box-sizing:border-box}
+h1{font-size:22px;text-align:center;margin:8px 0 4px}p{text-align:center;opacity:.8;margin:0 0 16px;font-size:14px}
+.g{display:grid;grid-template-columns:1fr 1fr;gap:12px;max-width:480px;margin:0 auto}
+button{border:0;border-radius:18px;padding:18px 10px;background:linear-gradient(180deg,#4a5ad8,#2a36a0);color:#fff;font-size:17px;font-weight:700;box-shadow:0 5px 0 #161d5a,0 8px 18px #0006;transition:transform .08s}
+button:active{transform:translateY(4px);box-shadow:0 1px 0 #161d5a}
+button small{display:block;font-weight:400;font-size:12px;opacity:.8;margin-top:4px}
+.n{display:inline-block;background:var(--acc);color:#222;border-radius:50%;width:26px;height:26px;line-height:26px;margin-bottom:6px}
+</style></head><body>
+<h1>Pofi dokunma sesi</h1><p>Dokunup dinleyin, beğendiğinizin numarasını söyleyin.</p>
+<div class="g" id="g"></div>
+<script>
+var AC;function ac(){if(!AC)AC=new (window.AudioContext||window.webkitAudioContext)();if(AC.state==='suspended')AC.resume();return AC}
+function tone(f,d,type,vol,delay,slide){var a=ac(),t0=a.currentTime+(delay||0),o=a.createOscillator(),g=a.createGain();o.type=type||'sine';o.frequency.setValueAtTime(f,t0);if(slide)o.frequency.exponentialRampToValueAtTime(slide,t0+d);g.gain.setValueAtTime(0.0001,t0);g.gain.exponentialRampToValueAtTime(vol,t0+0.005);g.gain.exponentialRampToValueAtTime(0.0001,t0+d);o.connect(g);g.connect(a.destination);o.start(t0);o.stop(t0+d+0.02)}
+function noise(d,vol,delay,type,f0,f1){var a=ac(),t0=a.currentTime+(delay||0),len=a.sampleRate*d|0,b=a.createBuffer(1,len,a.sampleRate),x=b.getChannelData(0);for(var i=0;i<len;i++)x[i]=Math.random()*2-1;var s=a.createBufferSource(),f=a.createBiquadFilter(),g=a.createGain();s.buffer=b;f.type=type;f.frequency.setValueAtTime(f0,t0);if(f1)f.frequency.exponentialRampToValueAtTime(f1,t0+d);g.gain.setValueAtTime(vol,t0);g.gain.exponentialRampToValueAtTime(0.0001,t0+d);s.connect(f);f.connect(g);g.connect(a.destination);s.start(t0)}
+var S=[
+ ['Baloncuk pop','kısa, yuvarlak',function(){tone(400,0.08,'sine',0.5,0,900);tone(800,0.04,'sine',0.1,0,1500)}],
+ ['Tok tık','tahta tuş gibi',function(){tone(700,0.04,'triangle',0.5,0,500);noise(0.02,0.4,0,'bandpass',1500,900)}],
+ ['Parmak şıklatma','net, kuru',function(){noise(0.03,0.6,0,'bandpass',2500,1800);tone(1200,0.03,'sine',0.2,0,900)}],
+ ['Kalın pop','dolgun, tok',function(){tone(250,0.1,'sine',0.6,0,520);tone(500,0.06,'triangle',0.2,0,900);noise(0.02,0.3,0,'lowpass',1200,400)}],
+ ['Damla','su damlası',function(){tone(600,0.09,'sine',0.5,0,1600)}],
+ ['Oyun tuşu','klasik menü tuşu',function(){tone(880,0.05,'square',0.12);tone(1320,0.06,'square',0.1,0.045)}],
+ ['Lastik top','zıplayan',function(){tone(300,0.07,'sine',0.5,0,180);tone(350,0.06,'sine',0.35,0.07,220)}],
+ ['Şampanya mantarı','pop!',function(){noise(0.05,0.5,0,'bandpass',900,300);tone(500,0.06,'sine',0.4,0,250)}],
+ ['Yumuşak tık','hafif, kibar',function(){tone(1000,0.03,'sine',0.35,0,700);tone(2000,0.02,'sine',0.08)}],
+ ['Şu anki ses','v2.69.4 (referans)',function(){tone(830,0.05,'sine',0.42,0,1050);tone(1660,0.035,'sine',0.06,0,2100)}]
+];
+var g=document.getElementById('g');S.forEach(function(s,i){var b=document.createElement('button');b.innerHTML='<span class="n">'+(i+1)+'</span><br>'+s[0]+'<small>'+s[1]+'</small>';b.onclick=function(){s[2]();try{navigator.vibrate&&navigator.vibrate(28)}catch(e){}};g.appendChild(b)});
+</script></body></html>
