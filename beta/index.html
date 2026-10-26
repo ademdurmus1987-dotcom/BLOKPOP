@@ -3369,7 +3369,7 @@ const R3_FS='precision highp float;varying vec3 vN;varying vec3 vCol;varying vec
 'float crack(float dmg){vec3 a=abs(vLoc);vec2 uv=a.x>a.y&&a.x>a.z?vLoc.yz:(a.y>a.z?vLoc.xz:vLoc.xy);uv=uv*3.3+vec2(sign(vLoc.x)*1.7,sign(vLoc.z)*2.3);vec2 i=floor(uv),f=fract(uv);float d1=8.0,d2=8.0;'+
 'for(int y=-1;y<=1;y++)for(int x=-1;x<=1;x++){vec2 o=vec2(float(x),float(y));vec2 h=fract(sin(vec2(dot(i+o,vec2(127.1,311.7)),dot(i+o,vec2(269.5,183.3))))*43758.5453);vec2 r=o+h-f;float d=dot(r,r);if(d<d1){d2=d1;d1=d;}else if(d<d2)d2=d;}'+
 'float e=sqrt(d2)-sqrt(d1);return (1.0-smoothstep(0.015,0.05+0.07*dmg,e))*step(0.01,dmg);}'+
-'uniform sampler2D uSh;uniform vec3 uL;uniform vec3 uEye;uniform float uCube;uniform float uGround;uniform float uShOn;uniform float uA;uniform vec4 uTray;uniform float uTrayR;uniform float uZS;'+
+'uniform sampler2D uSh;uniform vec3 uL;uniform vec3 uEye;uniform float uCube;uniform float uGround;uniform float uShOn;uniform float uA;uniform float uGloss;uniform vec4 uTray;uniform float uTrayR;uniform float uZS;'+
 'uniform sampler2D uHT;uniform vec4 uGrid;uniform float uFloor;uniform float uHOn;'+
 'float sdRB(vec2 p,vec2 b,float r){vec2 q=abs(p)-b+r;return length(max(q,0.0))+min(max(q.x,q.y),0.0)-r;}'+
 'float hAt(vec2 g){return texture2D(uHT,g/uGrid.w).r*5.1;}'+
@@ -3392,9 +3392,12 @@ const R3_FS='precision highp float;varying vec3 vN;varying vec3 vCol;varying vec
 'vec3 bc=vCol;float spP=uCube>0.5?uMat.x:14.0,spS=uCube>0.5?uMat.y:0.035,fr=uCube>0.5?uMat.z:0.08,mt=uCube>0.5?uMetal:0.0;'+
 'if(uCube>0.5&&vK.x>0.5){if(vK.x<1.5){float fz=fract(sin(dot(floor(vLoc.xz*7.0+vLoc.y*3.0),vec2(41.3,17.9)))*9137.53);bc=mix(vCol,vec3(0.5,0.84,1.0),0.62)*(0.92+0.16*fz);spP=90.0;spS=1.0;fr=1.1;}else if(vK.x<2.5){float gr=fract(sin(dot(floor(vLoc.xz*9.0+vLoc.y*5.0),vec2(12.9898,78.233)))*43758.5453);bc=mix(vCol,vec3(0.25,0.24,0.3),0.72)*(0.8+0.3*gr);spS=0.06;fr=0.02;}'+
 'bc*=1.0-crack(vK.y)*(0.4+0.5*vK.y);}'+
-'float li=uCube>0.5?1.18:0.82;vec3 col=bc*(amb*ao+vec3(1.0,0.96,0.92)*(0.25*wrap+0.75*nl)*li*sh)*(1.0-0.45*mt);float sp=pow(max(dot(n,h),0.0),spP)*spS*sh;'+
+'float gl2=(uCube>0.5&&vK.x<0.5)?uGloss:0.0;if(gl2>0.0){float lu=dot(bc,vec3(0.299,0.587,0.114));bc=clamp(mix(vec3(lu),bc,1.0+0.4*gl2)*(1.0+0.08*gl2),0.0,1.0);spP=mix(spP,48.0,gl2);spS=mix(spS,0.55,gl2);fr=mix(fr,0.22,gl2);}'+
+'float li=uCube>0.5?1.18+0.14*gl2:0.82;vec3 col=bc*(amb*ao+vec3(1.0,0.96,0.92)*(0.25*wrap+0.75*nl)*li*sh)*(1.0-0.45*mt);float sp=pow(max(dot(n,h),0.0),spP)*spS*sh;'+
 'vec3 spc=mix(vec3(1.0),bc*2.2+0.15,mt);float rim=pow(1.0-max(dot(n,v),0.0),3.0);'+
 'col*=fao;col+=spc*sp+mix(bc,spc,mt)*rim*fr+bc*uMat.w*(uCube>0.5?1.0:0.0)+(uCube>0.5&&vK.x>0.5&&vK.x<1.5?vec3(0.45,0.8,1.0)*rim*0.9:vec3(0.0));'+
+'if(gl2>0.0){float top=smoothstep(0.6,0.9,n.y);vec2 q=vLoc.xz-vec2(-0.2,-0.2);float spot=(1.0-smoothstep(0.08,0.2,length(q*vec2(1.0,1.6))))*top;'+
+'float edge=top*smoothstep(0.32,0.46,max(abs(vLoc.x),abs(vLoc.z)))*0.25;float front=(1.0-top)*smoothstep(0.0,0.5,vLoc.y+0.3)*0.18*max(n.z,0.0);col+=vec3(1.0)*(spot*0.75+edge+front)*gl2*sh;}'+
 'if(uCube>0.5&&mt>0.0)col+=bc*mt*0.35*pow(max(n.y,0.0),2.0);gl_FragColor=vec4(pow(tone(col),vec3(1.0/2.2))*uA,uA);}';
 function r3Prog(gl,vs,fs){const p=gl.createProgram();[[gl.VERTEX_SHADER,vs],[gl.FRAGMENT_SHADER,fs]].forEach(([t,s])=>{const sh=gl.createShader(t);gl.shaderSource(sh,s);gl.compileShader(sh);if(!gl.getShaderParameter(sh,gl.COMPILE_STATUS))throw new Error(gl.getShaderInfoLog(sh));gl.attachShader(p,sh);});
 gl.linkProgram(p);if(!gl.getProgramParameter(p,gl.LINK_STATUS))throw new Error(gl.getProgramInfoLog(p));const u={},a={};
@@ -3606,9 +3609,10 @@ else for(const[k,v]of[['iOff',[0,0,0]],['iCol',[1,1,1]],['iHS',[1,1]],['iRot',[0
 gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER,m.idx);
 }
 let TRAY_A=0.5;try{if(typeof location!=='undefined'){const m=/[?&]ta=([\d.]+)/.exec(location.search);if(m)TRAY_A=Math.max(0.05,Math.min(1,+m[1]));}}catch(e){}
+let GLOSS=1;try{if(typeof location!=='undefined'&&/[?&]gloss=0/.test(location.search))GLOSS=0;}catch(e){}
 function r3Scene(pr,VP,K,depthOnly){
 const gl=R3.gl,u=pr.u;
-gl.useProgram(pr.p);if(u.uA)gl.uniform1f(u.uA,1);gl.uniformMatrix4fv(u.uVP,false,VP);if(u.uLVP)gl.uniformMatrix4fv(u.uLVP,false,R3.LVP);
+gl.useProgram(pr.p);if(u.uA)gl.uniform1f(u.uA,1);if(u.uGloss)gl.uniform1f(u.uGloss,GLOSS);gl.uniformMatrix4fv(u.uVP,false,VP);if(u.uLVP)gl.uniformMatrix4fv(u.uLVP,false,R3.LVP);
 if(!depthOnly){gl.uniform3fv(u.uL,R3.L);gl.uniform3fv(u.uEye,K.C);gl.uniform1f(u.uShOn,R3.shTex?1:0);gl.activeTexture(gl.TEXTURE0);gl.bindTexture(gl.TEXTURE_2D,R3.shTex||null);gl.uniform1i(u.uSh,0);
 const t=R3.trayRect;gl.uniform4f(u.uTray,t[0],t[1],t[2],t[3]);gl.uniform1f(u.uTrayR,t[4]);gl.uniform1f(u.uZS,K.ZS);
 if(u.uHT){gl.activeTexture(gl.TEXTURE1);gl.bindTexture(gl.TEXTURE_2D,R3.hTex);gl.uniform1i(u.uHT,1);gl.uniform4f(u.uGrid,GX,GY,CS,N);gl.uniform1f(u.uFloor,R3.floor);gl.uniform1f(u.uHOn,R3.hTex?1:0);gl.activeTexture(gl.TEXTURE0);}
@@ -4179,7 +4183,7 @@ root.Elephant={STAGES:STAGES,ITEMS:ITEMS,SETS:SETS,stageFor:stageFor,svg:svg};
 var BP=window.BP,EL=window.Elephant;
 if(!BP||!EL){if(window.__bpErr)window.__bpErr('Motor/Pofi yuklenemedi: BP='+typeof BP+' EL='+typeof EL);return;}
 var CONFIG={
-version:'2.69.11',
+version:'2.69.12',
 saveKey:'blokpop_save_v1',
 gameKey:'blokpop_game_v1',
 superCost:500,
