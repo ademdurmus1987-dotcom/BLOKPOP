@@ -3618,10 +3618,13 @@ const t=R3.trayRect;gl.uniform4f(u.uTray,t[0],t[1],t[2],t[3]);gl.uniform1f(u.uTr
 if(u.uHT){gl.activeTexture(gl.TEXTURE1);gl.bindTexture(gl.TEXTURE_2D,R3.hTex);gl.uniform1i(u.uHT,1);gl.uniform4f(u.uGrid,GX,GY,CS,N);gl.uniform1f(u.uFloor,R3.floor);gl.uniform1f(u.uHOn,R3.hTex?1:0);gl.activeTexture(gl.TEXTURE0);}
 if(u.uMat){gl.uniform4f(u.uMat,28,0.16,0.08,0);gl.uniform1f(u.uMetal,0);}
 gl.uniform1f(u.uCube,0);gl.uniform1f(u.uGround,1);gl.uniform3f(u.uScale,1,1,1);gl.enable(gl.BLEND);gl.blendFunc(gl.ONE,gl.ONE_MINUS_SRC_ALPHA);gl.depthMask(false);
-r3Bind(pr,R3.ground,false);gl.drawElements(gl.TRIANGLES,R3.ground.n,gl.UNSIGNED_SHORT,0);gl.disable(gl.BLEND);gl.depthMask(true);gl.uniform1f(u.uGround,0);}
-const ta=depthOnly?1:TRAY_A;if(u.uA)gl.uniform1f(u.uA,ta);if(ta<1){gl.enable(gl.BLEND);gl.blendFunc(gl.ONE,gl.ONE_MINUS_SRC_ALPHA);}
-gl.uniform3f(u.uScale,1,1,1);if(u.uCube)gl.uniform1f(u.uCube,0);r3Bind(pr,R3.tray,false);gl.drawElements(gl.TRIANGLES,R3.tray.n,gl.UNSIGNED_SHORT,0);
-if(ta<1)gl.disable(gl.BLEND);if(u.uA)gl.uniform1f(u.uA,1);
+if(TRAY_A>=1){r3Bind(pr,R3.ground,false);gl.drawElements(gl.TRIANGLES,R3.ground.n,gl.UNSIGNED_SHORT,0);}gl.disable(gl.BLEND);gl.depthMask(true);gl.uniform1f(u.uGround,0);}
+const ta=depthOnly?1:TRAY_A;
+gl.uniform3f(u.uScale,1,1,1);if(u.uCube)gl.uniform1f(u.uCube,0);r3Bind(pr,R3.tray,false);
+if(ta<1){gl.colorMask(false,false,false,false);gl.drawElements(gl.TRIANGLES,R3.tray.n,gl.UNSIGNED_SHORT,0);gl.colorMask(true,true,true,true);
+gl.depthFunc(gl.LEQUAL);gl.depthMask(false);gl.enable(gl.BLEND);gl.blendFunc(gl.ONE,gl.ONE_MINUS_SRC_ALPHA);}
+if(u.uA)gl.uniform1f(u.uA,ta);gl.drawElements(gl.TRIANGLES,R3.tray.n,gl.UNSIGNED_SHORT,0);
+if(ta<1){gl.disable(gl.BLEND);gl.depthMask(true);gl.depthFunc(gl.LESS);}if(u.uA)gl.uniform1f(u.uA,1);
 if(R3.NI>0){const sty=R3.styD||R3_STY.candy,cs=CS*(sty.gap||0.935),mesh=(R3.mesh&&R3.mesh[sty.mesh])||R3.cube;gl.uniform3f(u.uScale,cs,sty.mesh==='ball'?cs:CS,cs*K.ZS);if(u.uCube)gl.uniform1f(u.uCube,1);
 if(u.uMat){gl.uniform4f(u.uMat,sty.mat[0],sty.mat[1],sty.mat[2],sty.mat[3]);gl.uniform1f(u.uMetal,sty.metal||0);}
 if(u.uHOn&&R3.anim)gl.uniform1f(u.uHOn,0);
@@ -4183,7 +4186,7 @@ root.Elephant={STAGES:STAGES,ITEMS:ITEMS,SETS:SETS,stageFor:stageFor,svg:svg};
 var BP=window.BP,EL=window.Elephant;
 if(!BP||!EL){if(window.__bpErr)window.__bpErr('Motor/Pofi yuklenemedi: BP='+typeof BP+' EL='+typeof EL);return;}
 var CONFIG={
-version:'2.69.12',
+version:'2.69.13',
 saveKey:'blokpop_save_v1',
 gameKey:'blokpop_game_v1',
 superCost:500,
