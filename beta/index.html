@@ -3534,7 +3534,7 @@ const WORLD_RIB=[['#7ee06a','#2f9a3a'],['#ff9ad0','#e0458f'],['#ffb05c','#e0573a
 function worldTray(L){
 const w=WORLD_RIB[Math.floor(Math.max(0,(L||1)-1)/50)%WORLD_RIB.length],a=hexHsl(w[0]),b=hexHsl(w[1]);
 const deep=(l,s)=>hslHex(b[0],Math.min(0.7,b[1]*s),l);
-return[hslHex(a[0],Math.min(0.75,a[1]*0.8),Math.max(0.68,Math.min(0.8,a[2]+0.06))),deep(0.2,0.75),deep(0.25,0.75),deep(0.15,0.7),hslHex(b[0],Math.min(0.75,b[1]*0.85),0.5)];
+return[hslHex(a[0],Math.min(0.75,a[1]*0.8),Math.max(0.68,Math.min(0.8,a[2]+0.06))),deep(0.2,0.75),deep(0.25,0.75),deep(TOON?0.42:0.15,TOON?0.45:0.7),hslHex(b[0],Math.min(0.75,b[1]*0.85),0.5)];
 }
 let TPAL=null;
 function toonPal(L){const t=worldTray(L),h=hexHsl(t[4])[0];return{ink:hslHex(h,0.55,0.13),rim:t[0],deep:hslHex(h,0.5,0.26),lane:hslHex(h,0.45,0.32),line:hslHex(h,0.5,0.42)};}
@@ -3552,6 +3552,7 @@ const key=g.L+':'+N+':'+g.pal.join(',');if(R3.bgKey===key)return;R3.bgKey=key;
 const m=r3BgMask(g.grid);R3.low=m.low;
 R3.styN=styleOf(g.L);R3.styL=g.L;const sty=R3.styD=R3_STY[R3.styN];
 R3.hFG=m.any?2.1:1.6;R3.hBG=1.0;
+if(TOON&&!TC){R3.hFG=m.any?HF_TOON:HF_TOON*0.8;R3.hBG=1.15;}
 R3.colH=null;R3.hTop=R3.hFG;
 if(sty.flat){R3.hFG=m.any?1.25:1.0;R3.hBG=1.0;R3.hTop=R3.hFG;}
 if(TOON&&TC&&!RELIEF){R3.hFG=R3.hBG=R3.hTop=CUBE_H;}
@@ -3646,6 +3647,7 @@ else for(const[k,v]of[['iOff',[0,0,0]],['iCol',[1,1,1]],['iHS',[1,1]],['iRot',[0
 gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER,m.idx);
 }
 let TOON=1;try{if(typeof location!=='undefined'&&/[?&]toon=0/.test(location.search))TOON=0;}catch(e){}
+let HF_TOON=3.0;try{if(typeof location!=='undefined'){const m=/[?&]hf=([\d.]+)/.exec(location.search);if(m)HF_TOON=+m[1];}}catch(e){}
 let TC=0;try{if(typeof location!=='undefined'&&/[?&]tc=1/.test(location.search))TC=1;}catch(e){}
 let CUBE_DZ=0.55,CUBE_INK=0,CUBE_GAP=0,CAM_TH=0,CUBE_H=0.8,CUBE_RAD=0.44,RELIEF=0;try{if(typeof location!=='undefined'){const q=location.search;let m;if((m=/[?&]ch=([\d.]+)/.exec(q)))CUBE_H=+m[1];if((m=/[?&]rad=([\d.]+)/.exec(q)))CUBE_RAD=+m[1];if(/[?&]relief=1/.test(q))RELIEF=1;if((m=/[?&]dz=([\d.]+)/.exec(q)))CUBE_DZ=+m[1];if(/[?&]ink=1/.test(q))CUBE_INK=1;if((m=/[?&]gap=([\d.]+)/.exec(q)))CUBE_GAP=+m[1];if((m=/[?&]th=([\d.]+)/.exec(q)))CAM_TH=+m[1];}}catch(e){}
 let TRAY_A=TOON?1:0.5;try{if(typeof location!=='undefined'){const m=/[?&]ta=([\d.]+)/.exec(location.search);if(m)TRAY_A=Math.max(0.05,Math.min(1,+m[1]));}}catch(e){}
@@ -4240,7 +4242,7 @@ root.Elephant={STAGES:STAGES,ITEMS:ITEMS,SETS:SETS,stageFor:stageFor,svg:svg};
 var BP=window.BP,EL=window.Elephant;
 if(!BP||!EL){if(window.__bpErr)window.__bpErr('Motor/Pofi yuklenemedi: BP='+typeof BP+' EL='+typeof EL);return;}
 var CONFIG={
-version:'2.72.3',
+version:'2.72.4',
 saveKey:'blokpop_save_v1',
 gameKey:'blokpop_game_v1',
 superCost:500,
