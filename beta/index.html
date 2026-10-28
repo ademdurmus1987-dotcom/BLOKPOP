@@ -5784,7 +5784,7 @@ try{levelLook(L);}catch(e){}
 function levelLook(L){
 var old=document.querySelector('.lvSty');if(old)old.remove();
 var names=t('sty').split('|'),k=['candy','sculpt','balloon','crystal','neon','gold'].indexOf(BP.styleOf(L));
-if(L>=4&&k>=0){var el=document.createElement('div');el.className='lvSty s'+k;el.innerHTML='<b>'+names[k]+'</b>';$('game').appendChild(el);setTimeout(function(){el.remove();},2600);}
+if(false&&L>=4&&k>=0){var el=document.createElement('div');el.className='lvSty s'+k;el.innerHTML='<b>'+names[k]+'</b>';$('game').appendChild(el);setTimeout(function(){el.remove();},2600);}
 var g=BP.G,kinds={};(g&&g.units||[]).forEach(function(U){kinds[U.kind]=1;});
 S.seenSp=S.seenSp||{};var msg=t('spNew').split('|');
 ['big','ice','stone'].some(function(kd,i){if(!kinds[kd]||S.seenSp[kd])return false;S.seenSp[kd]=1;save();setTimeout(function(){toast(msg[i]);},2300);return true;});
