@@ -1701,6 +1701,8 @@ if(!(r>=0&&r<n0&&c>=0&&c<n0)||g.grid[r][c]<0||!cellLive(g,r,c))return;
 claimCell(g,r,c);
 g.bullets.push({x:b[3],y:b[4],px:b[3],py:b[4],r,c,col:g.grid[r][c],tx:GX+c*CS+CS/2,ty:GY+r*CS+CS/2});
 });
+{let am=g.bullets.length;g.q.forEach((col)=>col.forEach((s)=>{am+=Math.max(0,s.a);}));g.bench.forEach((s)=>{if(s)am+=Math.max(0,s.a);});g.active.forEach((s)=>{am+=Math.max(0,s.a);});
+if(am!==g.remPx){G=null;return null;}}
 restoreCars(g,sn);
 g.t=+sn.t||0;g.peak=Math.max(0,sn.peak|0);g.revives=Math.max(0,sn.revives|0);g.superUsed=!!sn.superUsed;g.maxCombo=sn.maxCombo|0;
 if(g.gift&&sn.gift&&sn.gift.open)g.gift.open=true;if(sn.giftCoins)g.giftCoins=sn.giftCoins|0;
@@ -3593,7 +3595,7 @@ const top=Math.max(2.2,Math.min(3.4,(R3_LANE-4)/CS));R3.colH={};
 ks.forEach((v,i)=>{R3.colH[v]=1.5+(top-1.5)*(ks.length>1?i/(ks.length-1):1);});
 R3.hTop=top;
 }
-if(TOON&&!TC&&!sty.flat&&m.any){R3.deco=r3DecoMask(g.grid,m.low);if(R3.deco){R3.hDeco=DECO_H;R3.hTop=DECO_H;}}
+if(TOON&&!TC&&m.any){R3.colH=null;R3.hBG=R3.hFG*BG_RATIO;R3.hTop=R3.hBG;R3.deco=r3DecoMask(g.grid,m.low);if(R3.deco)R3.hDeco=R3.hBG;}
 R3.big=0;(g.units||[]).forEach((U)=>{if(U.kind==='big')R3.big=Math.max(R3.big,U.k);});
 }
 function r3H(r,c,v){return R3.low&&R3.low[r*N+c]?R3.hBG:R3.deco&&R3.deco[r*N+c]?R3.hDeco:R3.colH&&R3.colH[v]!==undefined?R3.colH[v]:R3.hFG;}
@@ -3678,7 +3680,7 @@ else for(const[k,v]of[['iOff',[0,0,0]],['iCol',[1,1,1]],['iHS',[1,1]],['iRot',[0
 gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER,m.idx);
 }
 let TOON=1;try{if(typeof location!=='undefined'&&/[?&]toon=0/.test(location.search))TOON=0;}catch(e){}
-let HF_TOON=2.4,PIC_H=1.35,DECO_H=2.3;try{if(typeof location!=='undefined'){const m=/[?&]hf=([\d.]+)/.exec(location.search);if(m)HF_TOON=+m[1];}}catch(e){}
+let HF_TOON=2.4,PIC_H=1.35,DECO_H=2.3,BG_RATIO=1.7;try{if(typeof location!=='undefined'){const m=/[?&]hf=([\d.]+)/.exec(location.search);if(m)HF_TOON=+m[1];}}catch(e){}
 let TC=0;try{if(typeof location!=='undefined'&&/[?&]tc=1/.test(location.search))TC=1;}catch(e){}
 let CUBE_DZ=0.55,CUBE_INK=0,CUBE_GAP=0,CAM_TH=0,CUBE_H=0.8,CUBE_RAD=0.44,RELIEF=0;try{if(typeof location!=='undefined'){const q=location.search;let m;if((m=/[?&]ch=([\d.]+)/.exec(q)))CUBE_H=+m[1];if((m=/[?&]rad=([\d.]+)/.exec(q)))CUBE_RAD=+m[1];if(/[?&]relief=1/.test(q))RELIEF=1;if((m=/[?&]dz=([\d.]+)/.exec(q)))CUBE_DZ=+m[1];if(/[?&]ink=1/.test(q))CUBE_INK=1;if((m=/[?&]gap=([\d.]+)/.exec(q)))CUBE_GAP=+m[1];if((m=/[?&]th=([\d.]+)/.exec(q)))CAM_TH=+m[1];}}catch(e){}
 let TRAY_A=TOON?1:0.5;try{if(typeof location!=='undefined'){const m=/[?&]ta=([\d.]+)/.exec(location.search);if(m)TRAY_A=Math.max(0.05,Math.min(1,+m[1]));}}catch(e){}
@@ -4273,7 +4275,7 @@ root.Elephant={STAGES:STAGES,ITEMS:ITEMS,SETS:SETS,stageFor:stageFor,svg:svg};
 var BP=window.BP,EL=window.Elephant;
 if(!BP||!EL){if(window.__bpErr)window.__bpErr('Motor/Pofi yuklenemedi: BP='+typeof BP+' EL='+typeof EL);return;}
 var CONFIG={
-version:'2.73.0',
+version:'2.73.1',
 saveKey:'blokpop_save_v1',
 gameKey:'blokpop_game_v1',
 superCost:500,
