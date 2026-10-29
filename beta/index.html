@@ -3576,17 +3576,17 @@ function styleOf(L){
 if(STY_FORCE)return STY_FORCE;
 if(isEvent(L))return'halloween';
 if(L<4)return'candy';
-if(L%10===0)return'gold';
+
 return['sculpt','balloon','candy','crystal','neon','candy','sculpt','crystal','balloon'][(L-4)%9];
 }
 function r3Bg(g){
 const key=g.L+':'+N+':'+g.pal.join(',');if(R3.bgKey===key)return;R3.bgKey=key;
 const m=r3BgMask(g.grid);R3.low=m.low;
-R3.styN=styleOf(g.L);R3.styL=g.L;const sty=R3.styD=R3_STY[R3.styN];
+R3.styN=styleOf(g.L);R3.styL=g.L;const sty=R3.styD=(TOON&&!STY_FORCE&&!isEvent(g.L))?R3_STY.candy:R3_STY[R3.styN];
 R3.hFG=m.any?2.1:1.6;R3.hBG=1.0;
 R3.deco=null;if(TOON&&!TC){R3.hFG=R3.hBG=PIC_H;}
 R3.colH=null;R3.hTop=R3.hFG;
-if(sty.flat){R3.hFG=m.any?1.25:1.0;R3.hBG=1.0;R3.hTop=R3.hFG;}
+if(sty.flat&&!TOON){R3.hFG=m.any?1.25:1.0;R3.hBG=1.0;R3.hTop=R3.hFG;}
 if(TOON&&TC&&!RELIEF){R3.hFG=R3.hBG=R3.hTop=CUBE_H;}
 else if(sty.sculpt&&!(TOON&&!TC)){
 const used={};for(let r=0;r<N;r++)for(let c=0;c<N;c++){const v=g.grid[r][c];if(v>=0&&!(R3.low&&R3.low[r*N+c]))used[v]=1;}
@@ -3595,7 +3595,7 @@ const top=Math.max(2.2,Math.min(3.4,(R3_LANE-4)/CS));R3.colH={};
 ks.forEach((v,i)=>{R3.colH[v]=1.5+(top-1.5)*(ks.length>1?i/(ks.length-1):1);});
 R3.hTop=top;
 }
-if(TOON&&!TC&&m.any){R3.colH=null;R3.hBG=R3.hFG;R3.hFG=R3.hBG*PIC_RATIO;R3.hTop=R3.hFG;R3.deco=null;}
+if(TOON&&!TC){R3.colH=null;R3.hBG=R3.hFG;R3.hFG=R3.hBG*PIC_RATIO;R3.hTop=R3.hFG;R3.deco=null;}
 R3.big=0;(g.units||[]).forEach((U)=>{if(U.kind==='big')R3.big=Math.max(R3.big,U.k);});
 }
 function r3H(r,c,v){return R3.low&&R3.low[r*N+c]?R3.hBG:R3.deco&&R3.deco[r*N+c]?R3.hDeco:R3.colH&&R3.colH[v]!==undefined?R3.colH[v]:R3.hFG;}
@@ -3700,7 +3700,7 @@ if(ta<1){gl.colorMask(false,false,false,false);gl.drawElements(gl.TRIANGLES,R3.t
 gl.depthFunc(gl.LEQUAL);gl.depthMask(false);gl.enable(gl.BLEND);gl.blendFunc(gl.ONE,gl.ONE_MINUS_SRC_ALPHA);}
 if(u.uA)gl.uniform1f(u.uA,ta);gl.drawElements(gl.TRIANGLES,R3.tray.n,gl.UNSIGNED_SHORT,0);
 if(ta<1){gl.disable(gl.BLEND);gl.depthMask(true);gl.depthFunc(gl.LESS);}if(u.uA)gl.uniform1f(u.uA,1);
-if(R3.NI>0){const sty=R3.styD||R3_STY.candy,cs=CS*(sty.mesh==='ball'&&!(TOON&&TC&&!STY_FORCE)?(sty.gap||0.935):(CUBE_GAP||sty.gap||(TOON&&TC?0.92:0.975))),mesh=(TOON&&TC&&!STY_FORCE)?R3.cube:(R3.mesh&&R3.mesh[sty.mesh])||R3.cube;
+if(R3.NI>0){const sty=(TOON&&!STY_FORCE)?R3_STY.candy:(R3.styD||R3_STY.candy),cs=CS*(sty.mesh==='ball'&&!(TOON&&TC&&!STY_FORCE)?(sty.gap||0.935):(CUBE_GAP||sty.gap||(TOON&&TC?0.92:0.975))),mesh=(TOON&&TC&&!STY_FORCE)?R3.cube:(R3.mesh&&R3.mesh[sty.mesh])||R3.cube;
 const ball=sty.mesh==='ball'&&!(TOON&&TC&&!STY_FORCE);gl.uniform3f(u.uScale,cs,ball?cs:CS,cs*K.ZS*(ball||!(TOON&&TC)?1:CUBE_DZ));if(u.uCube)gl.uniform1f(u.uCube,1);if(u.uEdge)gl.uniform1f(u.uEdge,ball?0:CUBE_INK);
 {const ms=(TOON&&TC&&!STY_FORCE&&!sty.metal)?R3_STY.candy:sty;if(u.uMat){gl.uniform4f(u.uMat,ms.mat[0],ms.mat[1],ms.mat[2],ms.mat[3]);gl.uniform1f(u.uMetal,ms.metal||0);}}
 if(u.uHOn&&R3.anim)gl.uniform1f(u.uHOn,0);
@@ -4275,7 +4275,7 @@ root.Elephant={STAGES:STAGES,ITEMS:ITEMS,SETS:SETS,stageFor:stageFor,svg:svg};
 var BP=window.BP,EL=window.Elephant;
 if(!BP||!EL){if(window.__bpErr)window.__bpErr('Motor/Pofi yuklenemedi: BP='+typeof BP+' EL='+typeof EL);return;}
 var CONFIG={
-version:'2.75.1',
+version:'2.75.2',
 saveKey:'blokpop_save_v1',
 gameKey:'blokpop_game_v1',
 superCost:500,
