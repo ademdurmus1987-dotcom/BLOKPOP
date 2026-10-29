@@ -1,4 +1,4 @@
-const C='blokpop-beta-v78';const F=['./','./index.html','./manifest.webmanifest','./icon-192.png','./icon-512.png','./items3d.js','./runpofi.js','./sfx.js','./avatars.js','./LICENSES.txt','./splash.mp4'];
+const C='blokpop-beta-v79';const F=['./','./index.html','./manifest.webmanifest','./icon-192.png','./icon-512.png','./items3d.js','./runpofi.js','./sfx.js','./avatars.js','./LICENSES.txt','./splash.mp4'];
 self.addEventListener('install',e=>{e.waitUntil(caches.open(C).then(c=>c.addAll(F).then(()=>Promise.all(['./evo.mp4','./evo.jpg'].map(u=>fetch(u).then(r=>r.ok?c.put(u,r):0).catch(()=>0))))).then(()=>self.skipWaiting()))});
 self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(k=>Promise.all(k.filter(x=>x!==C&&x.indexOf(C.replace(/\d+$/,''))===0).map(x=>caches.delete(x)))).then(()=>self.clients.claim()))});
 // iOS Safari needs HTTP Range answers for <video>; serve them from the cache (206 slices)
