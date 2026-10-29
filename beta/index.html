@@ -3415,7 +3415,7 @@ const R3_FS='precision highp float;varying vec3 vN;varying vec3 vCol;varying vec
 'float sh=uShOn>0.5?shadow(max(dot(normalize(vN),normalize(uL)),0.0)):1.0,fao=(uCube<0.5&&uHOn>0.5)?floorAO():1.0;'+
 'if(uCube>0.5)sh=mix(1.0,sh,smoothstep(0.08,0.35,dot(normalize(vN),normalize(uL))));if(uCube>0.5&&uHOn>0.5&&vN.y>0.7*length(vN))sh=topLight();if(uCube<0.5)sh=mix(0.4,1.0,sh);'+
 'vec3 n=normalize(vN),l=normalize(uL),v=normalize(uEye-vW),h=normalize(l+v);float nl=max(dot(n,l),0.0);float wrap=max((dot(n,l)+0.35)/1.35,0.0);'+
-'vec3 amb=mix(vec3(0.2,0.12,0.42),vec3(0.62,0.58,1.0),n.y*0.5+0.5)*(uCube>0.5?0.36:0.5);float ao=1.0;if(uCube>0.5)ao=mix(0.55,1.0,smoothstep(-1.0,0.2,vLy))*(abs(n.y)>0.6?1.0:0.92);'+
+'vec3 amb=mix(vec3(0.2,0.12,0.42),vec3(0.62,0.58,1.0),n.y*0.5+0.5)*(uCube>0.5?0.36:0.5);float ao=1.0;if(uCube>0.5)ao=mix(0.84,1.0,smoothstep(-1.0,0.2,vLy))*(abs(n.y)>0.6?1.0:0.92);'+
 'vec3 bc=vCol;float spP=uCube>0.5?uMat.x:14.0,spS=uCube>0.5?uMat.y:0.035,fr=uCube>0.5?uMat.z:0.08,mt=uCube>0.5?uMetal:0.0;'+
 'if(uCube>0.5&&vK.x>0.5){if(vK.x<1.5){float fz=fract(sin(dot(floor(vLoc.xz*7.0+vLoc.y*3.0),vec2(41.3,17.9)))*9137.53);bc=mix(vCol,vec3(0.5,0.84,1.0),0.62)*(0.92+0.16*fz);spP=90.0;spS=1.0;fr=1.1;}else if(vK.x<2.5){float gr=fract(sin(dot(floor(vLoc.xz*9.0+vLoc.y*5.0),vec2(12.9898,78.233)))*43758.5453);bc=mix(vCol,vec3(0.25,0.24,0.3),0.72)*(0.8+0.3*gr);spS=0.06;fr=0.02;}'+
 'bc*=1.0-crack(vK.y)*(0.4+0.5*vK.y);}'+
@@ -3509,7 +3509,7 @@ if(b)band++;if(m)cen++;if(v<0)continue;an++;ac[v]=(ac[v]||0)+1;if(b)bc[v]=(bc[v]
 const set=new Set();let top=-1,tm=0;
 for(const k in ac){
 const a=ac[k]/an,cs=(cc[k]||0)/Math.max(1,cen),bs=(bc[k]||0)/Math.max(1,band);
-if((a>=0.05&&cs<=0.04&&bc[k])||(a>=0.12&&cs<=0.12&&bs>=0.2))set.add(+k);
+if((a>=0.05&&cs<=0.04&&bs>=0.1)||(a>=0.12&&cs<=0.12&&bs>=0.2))set.add(+k);
 if((bc[k]||0)>tm){tm=bc[k];top=+k;}
 }
 if(top>=0&&tm/Math.max(1,band)>=0.35)set.add(top);
@@ -3552,7 +3552,7 @@ const key=g.L+':'+N+':'+g.pal.join(',');if(R3.bgKey===key)return;R3.bgKey=key;
 const m=r3BgMask(g.grid);R3.low=m.low;
 R3.styN=styleOf(g.L);R3.styL=g.L;const sty=R3.styD=R3_STY[R3.styN];
 R3.hFG=m.any?2.1:1.6;R3.hBG=1.0;
-if(TOON&&!TC){R3.hFG=m.any?HF_TOON:HF_TOON*0.8;R3.hBG=1.15;}
+if(TOON&&!TC){R3.hFG=m.any?HF_TOON:HF_TOON*0.8;R3.hBG=0.6;}
 R3.colH=null;R3.hTop=R3.hFG;
 if(sty.flat){R3.hFG=m.any?1.25:1.0;R3.hBG=1.0;R3.hTop=R3.hFG;}
 if(TOON&&TC&&!RELIEF){R3.hFG=R3.hBG=R3.hTop=CUBE_H;}
@@ -4242,7 +4242,7 @@ root.Elephant={STAGES:STAGES,ITEMS:ITEMS,SETS:SETS,stageFor:stageFor,svg:svg};
 var BP=window.BP,EL=window.Elephant;
 if(!BP||!EL){if(window.__bpErr)window.__bpErr('Motor/Pofi yuklenemedi: BP='+typeof BP+' EL='+typeof EL);return;}
 var CONFIG={
-version:'2.72.5',
+version:'2.72.6',
 saveKey:'blokpop_save_v1',
 gameKey:'blokpop_game_v1',
 superCost:500,
