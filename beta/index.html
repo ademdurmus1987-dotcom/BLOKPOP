@@ -1462,6 +1462,26 @@ for(;;){let best=-1,bd=1e9;for(let r=0;r<n;r++)for(let c=0;c<n;c++){const i=r*n+
 if(best<0)break;m[best]=1;flood(best);}
 return m;
 }
+function paintLabels(grid){
+const n=grid.length,comp=new Int32Array(n*n).fill(-1),out=[],num={};let k=0;
+for(let r=0;r<n;r++)for(let c=0;c<n;c++){const v=grid[r][c];if(v>=0&&num[v]===undefined)num[v]=0;}
+Object.keys(num).map(Number).sort((a,b)=>a-b).forEach((v)=>{num[v]=++k;});
+for(let i0=0;i0<n*n;i0++){
+const v=grid[(i0/n)|0][i0%n];if(v<0||comp[i0]>=0)continue;
+const cells=[i0],id=out.length;comp[i0]=id;
+for(let q=0;q<cells.length;q++){const i=cells[q],r=(i/n)|0,c=i%n;
+[[r-1,c],[r+1,c],[r,c-1],[r,c+1]].forEach(([a,b])=>{if(a>=0&&b>=0&&a<n&&b<n&&comp[a*n+b]<0&&grid[a][b]===v){comp[a*n+b]=id;cells.push(a*n+b);}});}
+const d=new Map(),fr=[];let cr=0,cc=0;
+cells.forEach((i)=>{const r=(i/n)|0,c=i%n;cr+=r;cc+=c;
+if([[r-1,c],[r+1,c],[r,c-1],[r,c+1]].some(([a,b])=>a<0||b<0||a>=n||b>=n||comp[a*n+b]!==id)){d.set(i,0);fr.push(i);}});
+for(let q=0;q<fr.length;q++){const i=fr[q],r=(i/n)|0,c=i%n;
+[[r-1,c],[r+1,c],[r,c-1],[r,c+1]].forEach(([a,b])=>{const j=a*n+b;if(a>=0&&b>=0&&a<n&&b<n&&comp[j]===id&&!d.has(j)){d.set(j,d.get(i)+1);fr.push(j);}});}
+cr/=cells.length;cc/=cells.length;let best=cells[0],bd=-1,bx=1e9;
+cells.forEach((i)=>{const dd=d.get(i),x=Math.hypot(((i/n)|0)-cr,(i%n)-cc);if(dd>bd||(dd===bd&&x<bx)){bd=dd;bx=x;best=i;}});
+out.push({r:(best/n)|0,c:best%n,col:v,num:num[v],d:bd,cells,show:cells.length>=10||(bd>=1&&cells.length>=6)});
+}
+return{labs:out,num};
+}
 function paintDone(g,r,c){return g.orig[r][c]>=0&&(g.grid[r][c]<0||g.res[r][c]);}
 function paintLive(g,r,c){
 if(g.grid[r][c]<0||g.res[r][c])return false;
@@ -1639,7 +1659,7 @@ grid.forEach((r)=>r.forEach((v)=>{if(v>=0)total++;}));
 const units=PAINT?[]:specialUnits(L,grid,seed);units.forEach((U)=>{total+=U.hp-U.cells.length;});
 const res=[];for(let r=0;r<N;r++){res[r]=[];for(let c=0;c<N;c++)res[r][c]=false;}
 R3.burst.length=0;R3.fly.length=0;
-G={units,um:units.length?unitMap(units):null,paint:PAINT,orig:grid.map((r)=>r.slice()),pseed:PAINT?paintSeeds(grid):null,pt:PAINT?new Float32Array(N*N).fill(-9):null,
+G={units,um:units.length?unitMap(units):null,paint:PAINT,orig:grid.map((r)=>r.slice()),pseed:PAINT?paintSeeds(grid):null,pt:PAINT?new Float32Array(N*N).fill(-9):null,plab:PAINT?paintLabels(grid):null,
 L,lvl,pal:lvl.img?lvl.pal.slice():lvl.pal.map(vivid),grid,res,remPx:total,total,seed,
 q:[[],[],[],[]],bench:[],active:[],bullets:[],parts:[],texts:[],
 gift:giftFor(L,grid,seed),state:'play',t:0,combo:0,maxCombo:0,lastHit:-9,shake:0,winDelay:0,winFired:false,
@@ -3347,6 +3367,9 @@ const tx=myst?'?':String(s.a);
 ctx.font='900 17px '+FONT;ctx.textAlign='center';ctx.textBaseline='middle';
 ctx.lineWidth=4.6;ctx.strokeStyle='#2a1b5e';ctx.strokeText(tx,x,y);
 ctx.fillStyle='#ffffff';ctx.fillText(tx,x,y);
+if(G&&G.plab&&!myst&&G.plab.num[s.c]){const bx=x+15,by=y-15;
+ctx.fillStyle='#ffffff';ctx.strokeStyle='#2a1b5e';ctx.lineWidth=2.4;ctx.beginPath();ctx.arc(bx,by,8.5,0,6.283);ctx.fill();ctx.stroke();
+ctx.font='900 12px '+FONT;ctx.fillStyle='#2a1b5e';ctx.fillText(String(G.plab.num[s.c]),bx,by+0.5);}
 }
 };
 if(draw3dPofi(ctx,g,s,view,dir,myst?'#5f54bd':col,kick,plain,num,dark)){ctx.restore();return;}
@@ -3837,6 +3860,13 @@ ctx.restore();
 if(g.state==='play'&&g.units.length){ctx.save();ctx.setTransform(m.a,m.b,m.c,m.d,m.e,m.f);
 hitNums(ctx,g,(U)=>{const h=r3H(U.r0,U.c0,U.col)*(R3.styD.flat?1:U.k>1?1.45:1.12),x=GX+(U.c0+U.k/2)*CS,z=(GY+(U.r0+U.k/2)*CS)*K.ZS,y=R3.floor+CS*h*(R3.styD.mesh==='ball'?0.75:1)+0.5;
 const P=r3P3(K,x,y,z),Q=r3P3(K,x+CS,y,z);return{X:P.X,Y:P.Y,k:Math.max(0.5,Math.abs(Q.X-P.X)/CS)};});
+ctx.restore();}
+if(g.state==='play'&&g.plab){ctx.save();ctx.setTransform(m.a,m.b,m.c,m.d,m.e,m.f);ctx.textAlign='center';ctx.textBaseline='middle';ctx.lineJoin='round';
+for(const lb of g.plab.labs){if(!lb.show||!lb.cells.some((i)=>g.grid[(i/N)|0][i%N]>=0))continue;
+const pd=g.grid[lb.r][lb.c]<0,h=r3H(lb.r,lb.c,lb.col)*(pd?1:0.3),x=GX+(lb.c+0.5)*CS,z=(GY+(lb.r+0.5)*CS)*K.ZS,y=R3.floor+CS*h+0.5;
+const P=r3P3(K,x,y,z),Q=r3P3(K,x+CS,y,z),k=Math.max(0.5,Math.abs(Q.X-P.X)/CS),sz=CS*k*Math.min(2.4,1+0.55*lb.d);
+ctx.font='900 '+sz.toFixed(1)+'px '+FONT;ctx.lineWidth=Math.max(2.5,sz*0.24);ctx.strokeStyle='#24103e';ctx.strokeText(String(lb.num),P.X,P.Y);
+ctx.fillStyle='#ffffff';ctx.fillText(String(lb.num),P.X,P.Y);}
 ctx.restore();}
 ctx.save();ctx.setTransform(m.a,m.b,m.c,m.d,m.e,m.f);
 R3.late.sort((p,q)=>p.s.y-q.s.y);
@@ -4335,7 +4365,7 @@ root.Elephant={STAGES:STAGES,ITEMS:ITEMS,SETS:SETS,stageFor:stageFor,svg:svg};
 var BP=window.BP,EL=window.Elephant;
 if(!BP||!EL){if(window.__bpErr)window.__bpErr('Motor/Pofi yuklenemedi: BP='+typeof BP+' EL='+typeof EL);return;}
 var CONFIG={
-version:'2.78.0',
+version:'2.78.1',
 saveKey:'blokpop_save_v1',
 gameKey:'blokpop_game_v1',
 superCost:500,

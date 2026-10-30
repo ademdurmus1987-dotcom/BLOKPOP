@@ -3,7 +3,7 @@
 // - Internet yokken: saklanan kopya kullanilir, oyun cevrimdisi acilir.
 // - Gorseller, 3D modeller, videolar: once saklanan kopya, arka planda guncellenir.
 // - Oyuncu kaydina (localStorage / IndexedDB) asla dokunmaz.
-const C='blokpop-beta-v82';
+const C='blokpop-beta-v83';
 // @@ASSETS-START (tools/gen-sw-manifest.js ile otomatik uretilir, elle duzenleme)
 const CORE=["./","./index.html","./manifest.webmanifest","./icon-192.png","./icon-512.png","./icon-maskable-512.png","./runpofi.js","./items3d.js","./sfx.js","./avatars.js","./live3d.js","./three.module.min.js","./GLTFLoader.js","./SkeletonUtils.js","./BufferGeometryUtils.js"];
 const EXTRA=["./LICENSES.txt","./bg/w01.webp","./bg/w02.webp","./bg/w03.webp","./bg/w04.webp","./bg/w05.webp","./bg/w06.webp","./bg/w07.webp","./bg/w08.webp","./bg/w09.webp","./bg/w10.webp","./bg/w11.webp","./bg/w12.webp","./bg/w13.webp","./bg/w14.webp","./bg/w15.webp","./bg/w16.webp","./bg/w17.webp","./bg/w18.webp","./bg/w19.webp","./bg/w20.webp","./char_astronot.js","./char_ejderha.js","./char_super.js","./evo.jpg","./evo.mp4","./live_astronot.glb","./live_ejderha.glb","./live_pofi.glb","./live_super.glb","./pofi_dance.webm","./pofi_dance_a.webm","./pofi_knock.webm","./pofi_knock_a.webm","./pofi_spray.webm","./pofi_spray_a.webm","./splash.mp4","./splash_a.webm"];
