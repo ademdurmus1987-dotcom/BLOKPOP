@@ -182,8 +182,18 @@ window.addEventListener('load',function(){setTimeout(function(){if(!window.__boo
 <div class="row"><span data-i18n="vibration"></span><button class="sw" id="swVib" data-act="tgVib"><i></i></button></div>
 <div class="row"><span data-i18n="language"></span><div class="seg"><button id="lgTr" data-act="lang" data-l="tr">TR</button><button id="lgEn" data-act="lang" data-l="en">EN</button></div></div>
 <button class="btn b-blue" data-act="info" data-i18n="infoBtn"></button>
+<button class="btn b-blue" data-act="bkOpen" data-i18n="bkBtn"></button>
 <button class="btn b-pink hidden" id="btnQuit" data-act="toMap" data-i18n="quit"></button>
 <div class="sub" id="verTxt" data-act="ver" style="margin-top:12px;opacity:.6"></div>
+</div></div>
+<div class="modal" id="mBackup"><div class="card">
+<button class="x" data-act="close" aria-label="close">&#10005;</button>
+<h2 data-i18n="bkBtn"></h2>
+<div class="sub" data-i18n="bkInfo" style="margin:4px 0 10px"></div>
+<textarea id="bkTxt" spellcheck="false" autocomplete="off" style="width:100%;height:110px;box-sizing:border-box;border-radius:14px;border:3px solid rgba(0,0,0,.15);padding:10px;font:12px/1.35 monospace;resize:none;background:#fff;color:#333;word-break:break-all"></textarea>
+<button class="btn b-blue" data-act="bkCopy" data-i18n="bkCopy"></button>
+<button class="btn b-blue" data-act="bkFile" data-i18n="bkFile"></button>
+<button class="btn b-pink" data-act="bkImport" data-i18n="bkImport"></button>
 </div></div>
 <div class="modal" id="mShop"><div class="card">
 <button class="x" data-act="close" aria-label="close">&#10005;</button>
@@ -4294,7 +4304,7 @@ root.Elephant={STAGES:STAGES,ITEMS:ITEMS,SETS:SETS,stageFor:stageFor,svg:svg};
 var BP=window.BP,EL=window.Elephant;
 if(!BP||!EL){if(window.__bpErr)window.__bpErr('Motor/Pofi yuklenemedi: BP='+typeof BP+' EL='+typeof EL);return;}
 var CONFIG={
-version:'2.76.0',
+version:'2.77.0',
 saveKey:'blokpop_save_v1',
 gameKey:'blokpop_game_v1',
 superCost:500,
@@ -4352,7 +4362,7 @@ winBanner:'Seviye {n} Tamam!',nextPofi:'YENİ POFİ',sty:'Şeker Küpler|Heykel 
 exitTitle:'Bölümden ayrılmak istiyor musun?',exitSub:'Şimdi çıkarsan bu bölümün ödülünü kazanamayacaksın.',exitStay:'OYUNA DÖN',exitGo:'BÖLÜMDEN ÇIK',
 loseTitle:'Tezgâh doldu!',loseSub:'Ekstra bir yuva açıp kaldığın yerden devam edebilirsin.',
 revive:'+1 yuva ile devam',restart:'Baştan başla',loseAlmost:'AZ KALDI!',loseProg:'RESİM',avNewT:'YENİ POFİ!',avNewS:'Profiline yeni bir Pofi katıldı!',avUse:'Profil resmi yap',avLater:'Sonra',bonusTitle:'ALTIN YAĞMURU!',bonusHint:'Düşen altınlara dokun!',bonusEnd:'MÜTHİŞ!',
-settings:'Ayarlar',sound:'Ses',vibration:'Titreşim',language:'Dil',infoBtn:'Nasıl oynanır / Bilgi',
+settings:'Ayarlar',bkBtn:'Kayıt yedeği',bkInfo:'Aşağıdaki kod tüm ilerlemeni içerir. Kopyalayıp güvenli bir yere sakla. Geri yüklemek için kodu kutuya yapıştırıp İçe aktar\'a bas.',bkCopy:'Kodu kopyala',bkFile:'Dosya olarak indir',bkImport:'İçe aktar',bkCopied:'Kod kopyalandı',bkBad:'Kod geçersiz veya bozuk',bkAsk:'Mevcut ilerlemenin yerine bu yedek yüklensin mi?',bkDone:'Yedek yüklendi',sound:'Ses',vibration:'Titreşim',language:'Dil',infoBtn:'Nasıl oynanır / Bilgi',
 boosters:'Yardımcılar',secDaily:'Günlük Hediye',secBoost:'Yardımcılar',secPacks:'Altın Paketleri',
 giftTitle:'Ücretsiz Altın!',giftDesc:'Her gün gel, seri yaptıkça daha çok kazan.',claim:'AL',comeBack:'Yarın gel',
 streak:'Seri: {n} gün',soon:'Yakında',buy:'Al',owned:'Elinde: {n}',
@@ -4377,7 +4387,7 @@ winBanner:'Level {n} Clear!',nextPofi:'NEW POFI',sty:'Candy Cubes|Sculpture Leve
 exitTitle:'Do you want to leave the level?',exitSub:"If you leave now, you won't earn this level's reward.",exitStay:'BACK TO GAME',exitGo:'LEAVE LEVEL',
 loseTitle:'Bench is full!',loseSub:'Open an extra slot and continue where you left off.',
 revive:'Continue with +1 slot',restart:'Restart',loseAlmost:'SO CLOSE!',loseProg:'PICTURE',avNewT:'NEW POFI!',avNewS:'A new Pofi joined your profile!',avUse:'Make it my picture',avLater:'Later',bonusTitle:'GOLD RUSH!',bonusHint:'Tap the falling coins!',bonusEnd:'AWESOME!',
-settings:'Settings',sound:'Sound',vibration:'Vibration',language:'Language',infoBtn:'How to play / Info',
+settings:'Settings',bkBtn:'Save backup',bkInfo:'The code below contains all your progress. Copy it and keep it somewhere safe. To restore, paste the code into the box and tap Import.',bkCopy:'Copy code',bkFile:'Download as file',bkImport:'Import',bkCopied:'Code copied',bkBad:'Code is invalid or damaged',bkAsk:'Replace your current progress with this backup?',bkDone:'Backup restored',sound:'Sound',vibration:'Vibration',language:'Language',infoBtn:'How to play / Info',
 boosters:'Helpers',secDaily:'Daily Gift',secBoost:'Helpers',secPacks:'Coin Packs',
 giftTitle:'Free Coins!',giftDesc:'Come back every day for a bigger streak bonus.',claim:'CLAIM',comeBack:'Come back tomorrow',
 streak:'Streak: {n} days',soon:'Soon',buy:'Buy',owned:'Owned: {n}',
@@ -4411,9 +4421,44 @@ lv:{},tutorialDone:false,events:[],equip:{},owned:{},chests:{},daily:{last:'',st
 };
 }
 var S=defaults(),memStore=null;
+// ---- v2.77 safe save: backups + IndexedDB mirror + automatic recovery (main key format unchanged) ----
+var SV=(function(){
+var K=CONFIG.saveKey,SLOTS=['_bak_last','_bak_day','_bak_best'],pend=null,lastBak=0,idbP=null,info={from:'none',restored:false};
+function ck(s){var h=2166136261;for(var i=0;i<s.length;i++){h^=s.charCodeAt(i);h=Math.imul(h,16777619);}return(h>>>0).toString(36);}
+function g(k){try{return localStorage.getItem(k);}catch(e){return null;}}
+function p(k,v){try{localStorage.setItem(k,v);return true;}catch(e){return false;}}
+function ok(raw){if(!raw||typeof raw!=='string')return null;try{var d=JSON.parse(raw);return d&&typeof d==='object'&&d.v===1?d:null;}catch(e){return null;}}
+function wrap(raw){return JSON.stringify({sv:2,t:Date.now(),c:ck(raw),d:raw});}
+function unwrap(s){try{var o=JSON.parse(s);if(o&&typeof o.d==='string'&&o.c===ck(o.d)&&ok(o.d))return o;}catch(e){}return null;}
+function prog(d){var n=0;for(var k in(d.stars||{}))n+=(d.stars[k]|0);return(d.unlocked|0)*10+n;}
+function idb(){if(idbP)return idbP;idbP=new Promise(function(res){try{var r=indexedDB.open('blokpop_saves',1);r.onupgradeneeded=function(){r.result.createObjectStore('s');};r.onsuccess=function(){res(r.result);};r.onerror=function(){res(null);};}catch(e){res(null);}});return idbP;}
+function idbPut(raw){idb().then(function(db){if(!db)return;try{db.transaction('s','readwrite').objectStore('s').put(wrap(raw),K);}catch(e){}});}
+function idbGet(cb){idb().then(function(db){if(!db)return cb(null);try{var q=db.transaction('s','readonly').objectStore('s').get(K);q.onsuccess=function(){cb(q.result?unwrap(q.result):null);};q.onerror=function(){cb(null);};}catch(e){cb(null);}});}
+function backups(raw,force){
+var now=Date.now();if(!force&&now-lastBak<20000)return;lastBak=now;
+var d=ok(raw);if(!d)return;var w=wrap(raw);
+p(K+SLOTS[0],w);
+var day=unwrap(g(K+SLOTS[1]));if(!day||new Date(day.t).toDateString()!==new Date(now).toDateString())p(K+SLOTS[1],w);
+var best=unwrap(g(K+SLOTS[2]));if(!best||prog(d)>=prog(JSON.parse(best.d)))p(K+SLOTS[2],w);
+idbPut(raw);
+}
+return{
+read:function(){
+var raw=g(K);if(raw===null&&memStore)raw=memStore;
+if(ok(raw)){info.from='main';if(!g(K+'_legacy_backup'))p(K+'_legacy_backup',raw);return raw;}
+if(raw){var ck2=K+'_corrupt';if(!g(ck2))p(ck2,String(raw).slice(0,400000));}
+var c=SLOTS.map(function(sl){return unwrap(g(K+sl));}).filter(Boolean).sort(function(a,b){return b.t-a.t;});
+if(c.length){info.from='backup';info.restored=true;p(K,c[0].d);return c[0].d;}
+info.from=raw?'corrupt':'none';return null;
+},
+write:function(raw){if(p(K,raw)){pend=null;memStore=null;}else{pend=raw;memStore=raw;}backups(raw,false);},
+flush:function(){var r=pend||g(K);if(pend&&p(K,pend)){pend=null;memStore=null;}if(r)backups(r,true);},
+info:info,ok:ok,wrap:wrap,unwrap:unwrap,
+idbRecover:function(fresh){if(info.from==='main'||info.from==='backup')return;idbGet(function(o){if(!o)return;var d=ok(o.d);if(!d||!fresh())return;if(prog(d)<=10)return;if(p(K,o.d)){info.restored=true;try{location.reload();}catch(e){}}});}
+};
+})();
 function load(){
-var raw=null;
-try{raw=localStorage.getItem(CONFIG.saveKey);}catch(e){raw=memStore;}
+var raw=SV.read();
 if(!raw)return;
 try{
 var d=JSON.parse(raw),b=defaults();
@@ -4436,8 +4481,10 @@ for(var sl in S.equip){var ok=false;(EL.ITEMS[sl]||[]).forEach(function(it){if(i
 function save(){
 S.lastSeen=Date.now();
 var raw=JSON.stringify(S);
-try{localStorage.setItem(CONFIG.saveKey,raw);}catch(e){memStore=raw;}
+SV.write(raw);
 }
+function bkCode(){var raw=JSON.stringify(S);try{return'BLOKPOP1:'+btoa(unescape(encodeURIComponent(SV.wrap(raw))));}catch(e){return'';}}
+function bkParse(code){try{code=String(code||'').replace(/\s+/g,'');var m=/^BLOKPOP1:(.+)$/.exec(code);if(!m)return null;var o=SV.unwrap(decodeURIComponent(escape(atob(m[1]))));return o?o.d:null;}catch(e){return null;}}
 var gameMem=null,lastGameSave=0;
 function gameRaw(){var r=null;try{r=localStorage.getItem(CONFIG.gameKey);}catch(e){r=gameMem;}return r;}
 function clearGame(){gameMem=null;try{localStorage.removeItem(CONFIG.gameKey);}catch(e){}}
@@ -5423,7 +5470,7 @@ $(id).className='modal';
 modalUnder=modalUnder.filter(function(p){if(p[0]!==id)return true;var e=$(p[1]);if(e.className.indexOf('on')>=0)e.className='modal on';return false;});
 syncPause();
 }
-function closeAll(){try{$('evoVid').pause();}catch(e){}['mEvent','mWQ','mWin','mLose','mSuper','mEvoVid','mSettings','mShop','mInfo','mDebug','mChest','mEvolve','mExit','mQuest','mProfile'].forEach(function(m){$(m).className='modal';});syncPause();}
+function closeAll(){try{$('evoVid').pause();}catch(e){}['mEvent','mWQ','mWin','mLose','mSuper','mEvoVid','mSettings','mBackup','mShop','mInfo','mDebug','mChest','mEvolve','mExit','mQuest','mProfile'].forEach(function(m){$(m).className='modal';});syncPause();}
 function syncPause(){
 paused=false;
 ['mSettings','mShop','mInfo','mDebug','mSuper','mExit'].forEach(function(m){if($(m).className.indexOf('on')>=0)paused=true;});
@@ -6146,6 +6193,10 @@ case'bst':if(el.classList){el.classList.remove('fx');void el.offsetWidth;el.clas
 case'spSnd':{S.set.sound=!S.set.sound;save();try{refreshSettings();}catch(e){}spSndIcon();if(S.set.sound){ensureAudio();SFX.coinDone();}break;}
 case'settings':refreshSettings();openModal('mSettings');break;
 case'info':closeModal('mSettings');openModal('mInfo');break;
+case'bkOpen':save();$('bkTxt').value=bkCode();closeModal('mSettings');openModal('mBackup');break;
+case'bkCopy':{var bt=$('bkTxt');bt.value=bkCode();var cp=function(){try{bt.select();document.execCommand('copy');}catch(e){}toast(t('bkCopied'));};try{navigator.clipboard.writeText(bt.value).then(function(){toast(t('bkCopied'));},cp);}catch(e){cp();}break;}
+case'bkFile':{try{var blob=new Blob([bkCode()],{type:'text/plain'}),a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='blokpop-yedek-'+new Date().toISOString().slice(0,10)+'.txt';document.body.appendChild(a);a.click();setTimeout(function(){URL.revokeObjectURL(a.href);a.remove();},1500);}catch(e){}break;}
+case'bkImport':{var raw=bkParse($('bkTxt').value);if(!raw){toast(t('bkBad'));break;}if(!confirm(t('bkAsk')))break;try{SV.write(raw);SV.flush();}catch(e){}toast(t('bkDone'));setTimeout(function(){location.reload();},700);break;}
 case'close':closeAll();break;
 case'tgSound':S.set.sound=!S.set.sound;save();refreshSettings();if(S.set.sound)SFX.slot();break;
 case'tgVib':S.set.vib=!S.set.vib;save();refreshSettings();vib(30);break;
@@ -6260,8 +6311,12 @@ function boot2() {
   setInterval(function () { try { knockCheck(); } catch (e) {} }, 1000);
   window.addEventListener('resize', resize);
   window.addEventListener('orientationchange', function () { setTimeout(resize, 200); });
-  document.addEventListener('visibilitychange', function () { syncPause(); if (document.hidden) saveGame(); });
-  window.addEventListener('pagehide', saveGame);
+  document.addEventListener('visibilitychange', function () { syncPause(); if (document.hidden) { saveGame(); try { SV.flush(); } catch (e) {} } });
+  window.addEventListener('pagehide', function () { saveGame(); try { SV.flush(); } catch (e) {} });
+  setInterval(function () { try { SV.flush(); } catch (e) {} }, 60000);
+  try { if (navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(function () {}); } catch (e) {}
+  try { SV.idbRecover(function () { var n = 0; for (var k in S.stars) n += S.stars[k] | 0; return S.unlocked <= 1 && n === 0; }); } catch (e) {}
+  try { if (!(location.protocol.indexOf('http') === 0 && 'serviceWorker' in navigator)) throw 0; navigator.serviceWorker.register('sw.js').catch(function () {}); } catch (e) {}
   setInterval(function () { if (cur === 'game' && !paused) saveGame(); }, 2000);
   document.addEventListener('pointerup', function () { if (cur === 'game') setTimeout(saveGame, 60); });
   document.addEventListener('contextmenu', function (e) { e.preventDefault(); });
