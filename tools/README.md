@@ -47,6 +47,17 @@ Her seviye için dikkatli oyuncunun her denemede kazandığı (ama rastgele oyun
 
 Haritadaki **Mod** düğmesi üç mod arasında seçim yapar; her modun ilerlemesi ayrı tutulur. Bot: `--mode insa` ya da `--mode hepsi`.
 
+## Buz prototipi (v2.85) — `beta/buz/`
+Ayrı küçük bir oyun: dikey tahta buzla kaplı, altında yatay tek yönlü bant. Fil sütunun altından geçerken o sütundaki **en alttaki** buz kendi rengindeyse kırar, renk ortaya çıkar; önünde başka renk varsa atış yok. Bandın üstündeki renkli noktalar her sütunun en alttaki hedefidir. Mermisi artan fil bekleme yerine döner, yer kalmazsa oyun biter.
+
+Engeller (sırayla tanıtılır): kalın buz (2 atış, sv 3), tahta (her renk kırar, sv 5), zincir (önce zincirin rengi, sv 7), kilit + anahtar (anahtar başka buzun içinde, sv 9). Sonraki seviyeler karışık.
+
+- Oyun: `beta/buz/index.html` (çizim), `beta/buz/motor.js` (kurallar; tarayıcıda ve Node'da aynı), `beta/buz/resimler.js` (resimler).
+- Resimleri yenilemek: `node tools/buz-resim.js` (ana oyunun ilk 100 seviyesinin resimlerini kopyalar).
+- Bot: `node tools/buz-bot.js --from 1 --to 30 --tries 5` → `tools/out/buz-rapor.md`. Ayar denemek için `--plan '{"bench":3}'`.
+- Seviye ayarları `motor.js` içindeki `PLAN` (1–10) ve `planFor` (11+). Oyunda `?sv=12` ile istenen seviye açılır.
+- Kayıt ayrı anahtarda (`blokpop_buz_v1`), ana oyunun kaydına dokunmaz. Beta'da Mod menüsünde "Buz (deneme)" düğmesi var.
+
 ## Galeri için resimlerin aslı (v2.81)
 Boyama galerisinde her resmin aslı (Gemini'den gelen orijinal görsel) gösterilir. Görselleri eklemek için:
 

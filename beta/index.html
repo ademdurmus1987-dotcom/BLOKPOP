@@ -219,6 +219,7 @@ window.addEventListener('load',function(){setTimeout(function(){if(!window.__boo
 <button class="modeOpt" data-act="pickMode" data-m="normal" id="moN"><span>💥</span><b data-i18n="modeNormal"></b><small data-i18n="modeDescN"></small></button>
 <button class="modeOpt" data-act="pickMode" data-m="boya" id="moP"><span>🎨</span><b data-i18n="modePaint"></b><small data-i18n="modeDescP"></small></button>
 <button class="modeOpt" data-act="pickMode" data-m="insa" id="moI"><span>🧊</span><b data-i18n="modeInsa"></b><small data-i18n="modeDescI"></small></button>
+<button class="modeOpt" id="moB" onclick="location.href='buz/'" style="background:#e6f6ff"><span>❄️</span><b>Buz (deneme)</b><small>Filler buzu kırar, resim ortaya çıkar</small></button>
 </div></div>
 <div class="modal" id="mGal"><div class="card galCard">
 <button class="x" data-act="close" aria-label="close">&#10005;</button>
@@ -4539,7 +4540,7 @@ root.Elephant={STAGES:STAGES,ITEMS:ITEMS,SETS:SETS,stageFor:stageFor,svg:svg};
 var BP=window.BP,EL=window.Elephant;
 if(!BP||!EL){if(window.__bpErr)window.__bpErr('Motor/Pofi yuklenemedi: BP='+typeof BP+' EL='+typeof EL);return;}
 var CONFIG={
-version:'2.84.0',
+version:'2.85.0',
 saveKey:'blokpop_save_v1',
 gameKey:'blokpop_game_v1',
 superCost:500,
