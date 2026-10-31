@@ -43,7 +43,7 @@ Her seviye için dikkatli oyuncunun her denemede kazandığı (ama rastgele oyun
 ## Oyun modları (v2.82)
 - **Patlat** (normal): resim küp küp sökülür.
 - **Boya** (`?mod=boya`): gri tonlu numaralı küpler, filler numarasına göre boyar.
-- **İnşa** (`?mod=insa`): sadece karakter (arka fon yok), cam küpler + numara, resim ortadan halka halka kurulur, kuyruk resmin sırasına göre dizilir, filler %45 hızlı. Şimdilik "rahat" prototip: halka kilidi kapalı, kaybetmek neredeyse imkânsız. Ayarlar `BT` nesnesinde (`easyTo/midTo/look`); bot ile denemek için `--tune '{"easyTo":10,"midTo":30}'`.
+- **İnşa** (`?mod=insa`): sadece karakter (arka fon yok), cam küpler + numara, filler %45 hızlı. Kural (v2.83): resim ortadan büyür; bir küp ancak yapılmış küplere komşuysa açılır (açık küplerin numarası koyu). Fil her hatta **merkeze en yakın açık boşluğa** küp koyar; o boşluk başka numaraysa o hatta koyamaz. Yanlış fil gönderilirse turu boşa geçer ve tezgâha döner, tezgâh dolarsa kaybedilir. 1. seviye serbest ve birebir sıralı (öğretici), 1–3 kaybedilemez. Tohumlar `BSEEDS` listesinde (`--mode insa --ara`). Ayarlar `BT` nesnesinde (`amin/amax`: fil mermisi, grid boyuna göre).
 
 Haritadaki **Mod** düğmesi üç mod arasında seçim yapar; her modun ilerlemesi ayrı tutulur. Bot: `--mode insa` ya da `--mode hepsi`.
 

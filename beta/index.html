@@ -1502,12 +1502,35 @@ let PAINT=(()=>{try{return typeof location!=='undefined'&&/[?&]mod=(boya|insa)/.
 // v2.82: INSA modu = boyama motorunun bir cesidi. Sadece karakter (arka fon yok), cam kupler + numara,
 // resim ortadan halka halka tamamlanir, kuyruk resmin sirasina gore dizilir, filler daha hizli kosar.
 let BUILD=(()=>{try{return typeof location!=='undefined'&&/[?&]mod=insa/.test(location.search);}catch(e){return false;}})();
-const BUILD_SPEED=1.45,buildCache={},BT={rw:1.5,amin:0.6,amax:1.2,easyTo:1000,midTo:1000,lookMid:3,lookHard:2};// BT: halka genisligi, fil mermisi (grid boyuna gore). Halka kilidi (easyTo/midTo/look) simdilik kapali: prototip rahat mod
+const BUILD_SPEED=1.45,buildCache={},BT={rw:1.5,qmin:0.15,qmax:0.9,free:1,look2To:15,wMax:4,amin:0.45,amax:0.9};// BT: halka genisligi, fil mermisi (grid boyuna gore). Halka kilidi (easyTo/midTo/look) simdilik kapali: prototip rahat mod
 function ringIdx(n){const cx=(n-1)/2,a=new Uint8Array(n*n);for(let r=0;r<n;r++)for(let c=0;c<n;c++)a[r*n+c]=Math.min(255,Math.floor(Math.hypot(r-cx,c-cx)/BT.rw));return a;}
-function buildGate(L){return L<=BT.easyTo?-1:L<=BT.midTo?BT.lookMid:BT.lookHard;}
+// v2.83 INSA KURALI: sadece en icteki bitmemis halka ve bir sonraki halka acik (ilk seviyelerde iki sonraki).
+// Kuyruk: her halkadaki her renk icin TAM o kadar mermili fil. Fazla gonderilen fil isini bitiremez, tezgaha doner.
+// Seviye ilerledikce filler kuyrukta karisir: siradaki fil baska bir filin arkasinda kalir.
+function buildGate(L){return L<=BT.free?-1:L<=BT.look2To?2:1;}
+function buildW(L){return Math.min(BT.wMax,L<=BT.free?0:L<=3?1:L<=15?2:L<=40?3:4);}
+function buildQueueB(grid,L,rng){
+const n=grid.length,rg=ringIdx(n),cnt={};let mx=0;
+for(let r=0;r<n;r++)for(let c=0;c<n;c++){const v=grid[r][c];if(v<0)continue;const k=rg[r*n+c];if(k>mx)mx=k;const o=cnt[k]||(cnt[k]={});o[v]=(o[v]||0)+1;}
+const mn=Math.max(3,Math.round(n*BT.qmin)),mxA=Math.max(mn+4,Math.round(n*BT.qmax)),list=[];let carry={};
+for(let k=0;k<=mx;k++){const o=cnt[k]||{},nx=cnt[k+1]||{},cs={};
+Object.keys(o).forEach((c)=>{cs[c]=1;});Object.keys(carry).forEach((c)=>{cs[c]=1;});
+const arr=Object.keys(cs).map(Number).map((c)=>({c,a:(o[c]||0)+(carry[c]||0)})).sort((a,b)=>b.a-a.a);carry={};
+arr.forEach(({c,a})=>{if(a<=0)return;if(a<mn&&nx[c]){carry[c]=a;return;}
+while(a>mxA){const s=Math.min(a-mn,Math.round(mxA*0.55+rng()*mxA*0.45));list.push({c,a:s});a-=s;}list.push({c,a});});}
+for(const c in carry)if(carry[c]>0)list.push({c:+c,a:carry[c]});
+const W=buildW(L);
+for(let i=0;i<list.length-1;i++){const j=Math.min(list.length-1,i+Math.floor(rng()*(W+1)));const t=list[i];list[i]=list[j];list[j]=t;}
+return list;
+}
 function buildMin(g){const v=(g.remPx|0)+':'+(g.cl|0);if(g._mrv===v)return g._mr;let m=255;const n=g.grid.length;
 for(let r=0;r<n;r++)for(let c=0;c<n;c++)if(g.grid[r][c]>=0&&!g.res[r][c]){const k=g.ring[r*n+c];if(k<m)m=k;}
 g._mr=m;g._mrv=v;return m;}
+function buildExposed(g){const n=g.grid.length,dd=g.rdist||ringDist(n),out=[],seen={};
+const take=(r,c)=>{const k=r*n+c;if(!seen[k]){seen[k]=1;out.push({r,c,col:g.grid[r][c]});}};
+for(let r=0;r<n;r++){let b=-1,bd=1e9;for(let c=0;c<n;c++)if(g.grid[r][c]>=0&&paintLive(g,r,c)){const d=dd[r*n+c];if(d<bd-1e-6){bd=d;b=c;}}if(b>=0)take(r,b);}
+for(let c=0;c<n;c++){let b=-1,bd=1e9;for(let r=0;r<n;r++)if(g.grid[r][c]>=0&&paintLive(g,r,c)){const d=dd[r*n+c];if(d<bd-1e-6){bd=d;b=r;}}if(b>=0)take(b,c);}
+return out;}
 function ringDist(n){const cx=(n-1)/2,a=new Float32Array(n*n);for(let r=0;r<n;r++)for(let c=0;c<n;c++)a[r*n+c]=Math.hypot(r-cx,c-cx);return a;}
 // insa kuyrugu: resim ortadan disa halka halka; her halkadaki renkler sirayla
 function ringPeel(grid){const n=grid.length,rg=ringIdx(n),by={};let mx=0;
@@ -1516,7 +1539,8 @@ const out=[];for(let k=0;k<=mx;k++){const o=by[k];if(!o)continue;Object.keys(o).
 return out;}
 let PSEED_MODE=(()=>{try{const q=/[?&]ps=(\w+)/.exec(location.search);return q?q[1]:'bolge';}catch(e){return'bolge';}})();
 // v2.80: 1-100 boyama tohumlari, seviye botuyla secildi (tools/level-bot.js --mode boya --ara)
-const BSEEDS={};
+// v2.83: 1-100 insa tohumlari, seviye botuyla secildi (tools/level-bot.js --mode insa --ara)
+const BSEEDS={1:7920,2:7556327,3:1594693,4:6420146,5:6846981,6:2351553,7:1835827,8:1739017,9:5517180,10:6781847,11:281003,12:9216359,13:8376539,14:4718943,15:3679572,16:4630052,17:1705559,18:6007367,19:2349771,20:8327243,21:585216,22:6039043,23:2905092,24:3541385,25:2606743,26:205895,27:6602283,28:535920,29:7037037,30:237571,31:7480626,32:2138531,33:1518076,34:1525995,35:1429185,36:2379665,37:1863939,38:2919148,39:4246272,40:3772818,41:5246943,42:3893385,43:1178350,44:1395727,45:4964432,46:1097378,47:7284308,48:5197647,49:2273154,50:2281073,51:403870,52:5445921,53:5656158,54:4058963,55:749733,56:5202120,57:5969566,58:2134967,59:2897711,60:8736175,61:6388482,62:6146345,63:6597940,64:6702669,65:3744262,66:4607086,67:6444966,68:4308737,69:8190044,70:7338962,71:4486455,72:1046713,73:942662,74:2222708,75:9095504,76:2902845,77:819222,78:3215223,79:625602,80:1023617,81:1912361,82:8817251,83:1180923,84:1084113,85:2992307,86:5472518,87:8908877,88:1109470,89:2977869,90:7430500,91:4618354,92:5854391,93:736468,94:5038276,95:1590138,96:3846282,97:7207808,98:5160133,99:7980852,100:555964};
 const PSEEDS={1:531565,2:6072413,3:6589881,4:2754631,5:5276046,6:3922488,7:4768239,8:586998,9:8240134,10:1440668,11:191839,12:3236899,13:8376539,14:4718943,15:3679572,16:4630052,17:1705559,18:6007367,19:2349771,20:8327243,21:585216,22:6039043,23:2905092,24:3541385,25:2606743,26:205895,27:6602283,28:535920,29:7037037,30:237571,31:454948,32:2138531,33:1518076,34:1525995,35:1429185,36:2379665,37:1863939,38:2919148,39:3136525,40:3772818,41:5246943,42:3893385,43:1178350,44:1395727,45:4964432,46:1097378,47:7284308,48:5197647,49:2273154,50:717927,51:403870,52:5445921,53:6109742,54:1160730,55:749733,56:5880675,57:5969566,58:2134967,59:5771785,60:3576090,61:6388482,62:6146345,63:6597940,64:6702669,65:8573724,66:4607086,67:6081211,68:4308737,69:651141,70:5489654,71:2342643,72:884356,73:942662,74:6555560,75:1006354,76:7959417,77:819222,78:8184713,79:625602,80:633521,81:3154936,82:7603811,83:6604708,84:1084113,85:1196761,86:1204680,87:9111436,88:5723865,89:8429599,90:9691844,91:1034817,92:5546083,93:736468,94:5038276,95:1590138,96:760225,97:2443808,98:1090250,99:10376103,100:791901};
 function paintSeeds(grid){
 const n=grid.length,cx=(n-1)/2,m=new Uint8Array(n*n),seen=new Uint8Array(n*n),st=[];
@@ -1527,7 +1551,7 @@ for(let i=0;i<n*n;i++)if(m[i]&&!seen[i])flood(i);
 for(;;){let best=-1,bd=1e9;for(let r=0;r<n;r++)for(let c=0;c<n;c++){const i=r*n+c,d=Math.hypot(r-cx,c-cx);if(grid[r][c]>=0&&!seen[i]&&d<bd){bd=d;best=i;}}
 if(best<0)break;m[best]=1;flood(best);}
 // v2.80: ek baslangic noktalari. 'renk' = her rengin en buyuk bolgesine bir tohum, 'bolge' = 8+ hucreli her bolgeye bir tohum
-if(PSEED_MODE==='renk'||PSEED_MODE==='bolge'){
+if(!BUILD&&(PSEED_MODE==='renk'||PSEED_MODE==='bolge')){
 const labs=paintLabels(grid).labs,big={};
 labs.forEach((lb)=>{if(PSEED_MODE==='bolge'){if(lb.cells.length>=8)m[lb.r*n+lb.c]=1;}else if(!big[lb.col]||lb.cells.length>big[lb.col].cells.length)big[lb.col]=lb;});
 for(const k in big)m[big[k].r*n+big[k].c]=1;
@@ -1557,16 +1581,16 @@ return{labs:out,num};
 function paintDone(g,r,c){return g.orig[r][c]>=0&&(g.grid[r][c]<0||g.res[r][c]);}
 function paintLive(g,r,c){
 if(g.grid[r][c]<0||g.res[r][c])return false;
-if(g.ring)return g.gate<0||g.ring[r*N+c]<=buildMin(g)+g.gate;
+if(g.ring&&g.gate<0)return true;
 if(g.pseed[r*N+c])return true;
 return(r>0&&paintDone(g,r-1,c))||(r<N-1&&paintDone(g,r+1,c))||(c>0&&paintDone(g,r,c-1))||(c<N-1&&paintDone(g,r,c+1));
 }
 function liveFn(g){return g.paint?(r,c)=>paintLive(g,r,c):g.um?(r,c)=>cellLive(g,r,c):null;}
 function paintOrder(grid){
-const g={grid:grid.map((r)=>r.slice()),orig:grid,res:grid.map((r)=>r.map(()=>false)),pseed:paintSeeds(grid),ring:BUILD?ringIdx(grid.length):null,cl:0,remPx:0},out=[];
+const g={grid:grid.map((r)=>r.slice()),orig:grid,res:grid.map((r)=>r.map(()=>false)),pseed:paintSeeds(grid),ring:BUILD?ringIdx(grid.length):null,gate:BUILD?1:-1,cl:0,remPx:0},out=[];
 let left=0;grid.forEach((r)=>r.forEach((v)=>{if(v>=0)left++;}));
 while(left>0){
-const ex=exposedCells(g.grid,null,(r,c)=>paintLive(g,r,c));if(!ex.length)break;
+const ex=BUILD?buildExposed(g):exposedCells(g.grid,null,(r,c)=>paintLive(g,r,c));if(!ex.length)break;
 const by={};ex.forEach((e)=>{(by[e.col]=by[e.col]||[]).push(e);});
 let best=-1,bc=-1;Object.keys(by).map(Number).sort((a,b)=>a-b).forEach((k)=>{if(by[k].length>bc){bc=by[k].length;best=k;}});
 out.push({col:best,count:bc});by[best].forEach((e)=>{g.grid[e.r][e.c]=-1;left--;});g.remPx=left;g.cl++;
@@ -1586,8 +1610,9 @@ return out;
 }
 function buildQueue(lvl,L,seed){
 const rng=mulberry32((seed^0x9e3779b9)>>>0);
-const pr=BUILD?Object.assign({},params(L),{minA:Math.max(5,Math.round(N*BT.amin)),maxA:Math.max(10,Math.round(N*BT.amax))}):params(L);
-const gq=rowsToGrid(lvl.rows),peel=BUILD?ringPeel(gq):PAINT?paintOrder(gq):peelOrder(gq,specialUnits(L,gq,seed));
+const pr=BUILD&&BT.amin?Object.assign({},params(L),{minA:Math.max(5,Math.round(N*BT.amin)),maxA:Math.max(9,Math.round(N*BT.amax))}):params(L);
+const gq=rowsToGrid(lvl.rows);if(BUILD&&buildGate(L)<0)return buildQueueB(gq,L,rng);
+const peel=PAINT?paintOrder(gq):peelOrder(gq,specialUnits(L,gq,seed));
 const list=[],pend={};
 const emit=(col,a)=>list.push({c:col,a});
 peel.forEach((p)=>{
@@ -1606,7 +1631,7 @@ let k=-1;
 for(let i=list.length-1;i>=0;i--)if(list[i].c===col){k=i;break;}
 if(k>=0&&list[k].a+pend[col]<=pr.maxA+4)list[k].a+=pend[col];else emit(col,pend[col]);
 });
-const W=BUILD?(L<=10?0:L<=30?1:pr.win):pr.win,EXACT=BUILD&&L<=10;
+const W=pr.win,EXACT=false;
 for(let i=0;i<list.length-1;i++){
 const j=Math.min(list.length-1,i+Math.floor(rng()*(W+1)));
 const t=list[i];list[i]=list[j];list[j]=t;
@@ -1870,10 +1895,10 @@ return{x:BX0+R+d,y:BY1,side:'b',ang:0};
 }
 function findTarget(g,side,x,y,col){
 if(side==='x')return null;
-if(g.ring&&col!=null){const gd=g.grid,rs=g.res,dd=g.rdist,lim=g.gate<0?999:buildMin(g)+g.gate,rg=g.ring;let best=null,bd=1e9;
-if(side==='b'||side==='t'){const c=Math.floor((x-GX)/CS);if(c<0||c>=N)return null;for(let r=0;r<N;r++)if(gd[r][c]===col&&!rs[r][c]&&rg[r*N+c]<=lim){const d=dd[r*N+c];if(d<bd-1e-6){bd=d;best={r,c};}}}
-else{const r=Math.floor((y-GY)/CS);if(r<0||r>=N)return null;for(let c=0;c<N;c++)if(gd[r][c]===col&&!rs[r][c]&&rg[r*N+c]<=lim){const d=dd[r*N+c];if(d<bd-1e-6){bd=d;best={r,c};}}}
-return best;}
+if(g.ring&&col!=null){const gd=g.grid,rs=g.res,dd=g.rdist,gt=g.gate>=0;let best=null,bd=1e9,bc=-1;
+if(side==='b'||side==='t'){const c=Math.floor((x-GX)/CS);if(c<0||c>=N)return null;for(let r=0;r<N;r++)if(gd[r][c]>=0&&(gt?paintLive(g,r,c):(gd[r][c]===col&&!rs[r][c]))){const d=dd[r*N+c];if(d<bd-1e-6){bd=d;best={r,c};bc=gd[r][c];}}}
+else{const r=Math.floor((y-GY)/CS);if(r<0||r>=N)return null;for(let c=0;c<N;c++)if(gd[r][c]>=0&&(gt?paintLive(g,r,c):(gd[r][c]===col&&!rs[r][c]))){const d=dd[r*N+c];if(d<bd-1e-6){bd=d;best={r,c};bc=gd[r][c];}}}
+return best&&bc===col?best:null;}
 const grid=g.grid,res=g.res,ok=g.paint?(r,c)=>paintLive(g,r,c):(r,c)=>grid[r][c]>=0&&(g.um?cellLive(g,r,c):!res[r][c]);
 let r,c;
 if(side==='b'||side==='t'){
@@ -4201,7 +4226,7 @@ get BY0(){return BY0;},get CW(){return CW;},get CH(){return CH;},setComboWords(a
 vivid,hooks:H,setIntro,skipIntro(){return skipIntro(G);},start,snapshot,restore,update,render,tap,launchFromQueue,launchFromBench,booster,reviveSlot,superPofi,
 getLevel,styleOf,specialPlan,isEvent,EVENT,EVENTS,eventOf,spTune(L,v){if(v===undefined)delete SP_TUNE[L];else SP_TUNE[L]=v;},LKINDS,setQueue,drawShooter,setLang,pofiPortrait,onP3Ready,use3D(){return USE_3D_POFI;},set3D(v){USE_3D_POFI=!!v;},p3ready(){return P3.ready;},setSeed,seedFor,params,exposed,peelOrder,rowsToGrid,SEEDS,
 blockTop(ctx,x,y,sz,col){cubeDrawThick(ctx,x,y,sz,col);},blockFace(ctx,x,y,sz,col){cubeFaceDraw(ctx,x,y,sz,col);},
-get G(){return G;},get paint(){return PAINT;},setPaint(v){PAINT=!!v;},PSEEDS,setPaintSeedMode(v){PSEED_MODE=String(v||'merkez');},get paintSeedMode(){return PSEED_MODE;},setBuild(v){BUILD=!!v;if(BUILD)PAINT=true;},setBuildTune(o){Object.assign(BT,o||{});},buildOpen(){const g=G,o={};if(!g||!g.ring)return o;const lim=g.gate<0?999:buildMin(g)+g.gate;for(let r=0;r<N;r++)for(let c=0;c<N;c++){const v=g.grid[r][c];if(v>=0&&!g.res[r][c]&&g.ring[r*N+c]<=lim)o[v]=(o[v]||0)+1;}return o;},get buildTune(){return Object.assign({},BT);},get build(){return BUILD;},BSEEDS
+get G(){return G;},get paint(){return PAINT;},setPaint(v){PAINT=!!v;},PSEEDS,setPaintSeedMode(v){PSEED_MODE=String(v||'merkez');},get paintSeedMode(){return PSEED_MODE;},setBuild(v){BUILD=!!v;if(BUILD)PAINT=true;},setBuildTune(o){Object.assign(BT,o||{});},buildOpen(){const g=G,o={};if(!g||!g.ring)return o;if(g.gate<0){for(let r=0;r<N;r++)for(let c=0;c<N;c++){const v=g.grid[r][c];if(v>=0&&!g.res[r][c])o[v]=(o[v]||0)+1;}return o;}buildExposed(g).forEach((e)=>{o[e.col]=(o[e.col]||0)+1;});return o;},get buildTune(){return Object.assign({},BT);},get build(){return BUILD;},BSEEDS
 };
 })(typeof window!=='undefined'?window:this);
 </script>
@@ -4481,7 +4506,7 @@ root.Elephant={STAGES:STAGES,ITEMS:ITEMS,SETS:SETS,stageFor:stageFor,svg:svg};
 var BP=window.BP,EL=window.Elephant;
 if(!BP||!EL){if(window.__bpErr)window.__bpErr('Motor/Pofi yuklenemedi: BP='+typeof BP+' EL='+typeof EL);return;}
 var CONFIG={
-version:'2.82.0',
+version:'2.83.0',
 saveKey:'blokpop_save_v1',
 gameKey:'blokpop_game_v1',
 superCost:500,

@@ -82,7 +82,7 @@ function serve() {
 
 // ------------------------------------------------------------------ sayfa icinde calisan oyuncu
 // Bir seviyeyi bastan sona oynar. Zamani BP.update ile hizli ilerletir (ekrana cizim yok).
-const PLAY = ([L, style, seed, maxT]) => {
+const PLAY = ([L, style, seed, maxT, useNeed]) => {
   let rs = seed >>> 0;
   const rnd = () => { rs = (rs + 0x6D2B79F5) >>> 0; let t = rs; t = Math.imul(t ^ (t >>> 15), t | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61); return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
   BP.start(L);
@@ -97,7 +97,29 @@ const PLAY = ([L, style, seed, maxT]) => {
   const activeAmmo = () => { let n = 0; g.active.forEach((s) => { if (s.a > 0) n++; }); return n; };
   while (t < maxT && g.state === 'play') {
     let did = false;
-    if (style === 'dikkatli') {
+    if (style === 'dikkatli' && BP.build && useNeed) {
+      // insa: dusunen oyuncu. Acik halkalarda her renkten kac kup bos (bantta yolda olan mermiler dusulur);
+      // mermisi bu ihtiyaca sigan fili gonderir. Sigan yoksa ve bant bossa, rengi en erken acilacak fili (kazarak) gonderir.
+      const open = BP.buildOpen(), need = {};
+      for (const c in open) need[c] = open[c];
+      g.active.forEach((s) => { if (s.a > 0) need[s.c] = (need[s.c] || 0) - s.a; });
+      const fits = (s) => s && (need[s.c] || 0) >= s.a;
+      for (let i = 0; i < g.bench.length && !did; i++) { const s = g.bench[i]; if (s && s.st !== 'exit' && fits(s) && BP.launchFromBench(i)) did = true; }
+      if (!did) {
+        let best = -1, bv = -1;
+        for (let c = 0; c < 4; c++) { const s = g.q[c][0]; if (fits(s) && s.a + rnd() * 0.1 > bv) { bv = s.a; best = c; } }
+        if (best >= 0 && BP.launchFromQueue(best)) did = true;
+      }
+      if (!did && activeAmmo() === 0) {
+        // sigan fil yok: bir fili feda etmek gerekiyor (kazma). Rengi en ice yakin halkada bekleyeni sec.
+        const minRing = {};
+        for (let r = 0; r < N; r++) for (let c = 0; c < N; c++) { const v = g.grid[r][c]; if (v >= 0 && !g.res[r][c]) { const k = g.ring[r * N + c]; if (minRing[v] == null || k < minRing[v]) minRing[v] = k; } }
+        let pick = null, pv = 1e9;
+        for (let c = 0; c < 4; c++) { const s = g.q[c][0]; if (s) { const v = (minRing[s.c] == null ? 999 : minRing[s.c]) * 100 - s.a + rnd(); if (v < pv) { pv = v; pick = ['q', c]; } } }
+        if (pick && BP.launchFromQueue(pick[1])) { did = true; forced++; }
+        else for (let i = 0; i < g.bench.length && !did; i++) if (g.bench[i] && g.bench[i].st !== 'exit' && BP.launchFromBench(i)) { did = true; forced++; }
+      }
+    } else if (style === 'dikkatli') {
       const ex = BP.build ? BP.buildOpen() : BP.exposed(); // renk -> su an vurulabilir hucre sayisi (oyunun kendi kurali; insada acik halkalar)
       for (let i = 0; i < g.bench.length && !did; i++) {
         const s = g.bench[i];
@@ -171,7 +193,7 @@ async function worker(id, base, jobs, results, progress) {
     pages[mode] = pg;
     return pg;
   }
-  const play = async (pg, L, style, seed) => { try { return await pg.evaluate(PLAY, [L, style, seed, 900]); } catch (e) { return { L, style, err: String(e.message || e).slice(0, 200) }; } };
+  const play = async (pg, L, style, seed) => { try { return await pg.evaluate(PLAY, [L, style, seed, 900, A.ihtiyac === 'true']); } catch (e) { return { L, style, err: String(e.message || e).slice(0, 200) }; } };
   while (jobs.length) {
     const j = jobs.shift();
     const pg = await pageFor(j.mode);

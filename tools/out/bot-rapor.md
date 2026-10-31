@@ -1,6 +1,6 @@
 # Blokpop seviye botu raporu
 
-Tarih: 2026-10-31 10:05 (UTC) | Sürüm klasörü: beta | Seviyeler: 1–100 | Deneme: 3 | Süre: 4 dk
+Tarih: 2026-10-31 10:47 (UTC) | Sürüm klasörü: beta | Seviyeler: 1–100 | Deneme: 3 | Süre: 5 dk
 
 **Tarzlar:** *dikkatli* = sadece şu an isabet edecek fili gönderir (önce tezgâhtakiler). *rastgele* = düşünmeden, ortalama 0,8 saniyede bir rastgele dokunur (acemi oyuncunun en kötü hali). Bot iyi bir oyuncu değil, kaba bir ölçüm aracıdır: "dikkatli bot kazanamadı" seviyenin imkânsız olduğunu değil, zor olduğunu gösterir.
 
@@ -94,19 +94,19 @@ _Hücredeki değer: kazanma oranı (resmin ortalama biten yüzdesi)._
 
 ## İNŞA modu
 
-- **dikkatli**: kazanma 100% | resmin ortalama biten kısmı: %100
-- **rastgele**: kazanma 100% | resmin ortalama biten kısmı: %100
+- **dikkatli**: kazanma 99% | resmin ortalama biten kısmı: %100
+- **rastgele**: kazanma 12% | resmin ortalama biten kısmı: %32
 
 **Dikkatli botun hiç kazanamadığı seviyeler (0):** yok
 
 **Ani zorlaşan seviyeler** (dikkatli kazanma oranı bir öncekine göre 50 puan veya daha fazla düşüyor): yok
 
-**İlk 10 seviyede rastgele dokunan oyuncunun hiç kazanamadığı seviyeler:** yok
+**İlk 10 seviyede rastgele dokunan oyuncunun hiç kazanamadığı seviyeler:** 4 (%26 bitti), 5 (%7 bitti), 7 (%49 bitti), 8 (%54 bitti), 9 (%13 bitti), 10 (%12 bitti)
 
 | Dünya | dikkatli kazanma | rastgele kazanma | ort. süre (sn, dikkatli) |
 |---|---|---|---|
-| 1 | 100% | 100% | 29 |
-| 2 | 100% | 100% | 25 |
+| 1 | 99% | 22% | 60 |
+| 2 | 100% | 1% | 62 |
 
 **İlk seviyeler (1–20):**
 
@@ -115,22 +115,22 @@ _Hücredeki değer: kazanma oranı (resmin ortalama biten yüzdesi)._
 | 1 | 24 | 4 | 0 | 100% (%100) | 100% (%100) | 0.0 |
 | 2 | 27 | 4 | 0 | 100% (%100) | 100% (%100) | 0.0 |
 | 3 | 29 | 5 | 0 | 100% (%100) | 100% (%100) | 0.0 |
-| 4 | 27 | 5 | 0 | 100% (%100) | 100% (%100) | 0.0 |
-| 5 | 27 | 5 | 0 | 100% (%100) | 100% (%100) | 0.0 |
-| 6 | 26 | 6 | 0 | 100% (%100) | 100% (%100) | 0.0 |
-| 7 | 30 | 5 | 0 | 100% (%100) | 100% (%100) | 0.0 |
-| 8 | 29 | 6 | 0 | 100% (%100) | 100% (%100) | 0.0 |
-| 9 | 27 | 5 | 0 | 100% (%100) | 100% (%100) | 0.0 |
-| 10 | 30 | 6 | 0 | 100% (%100) | 100% (%100) | 0.0 |
-| 11 | 23 | 5 | 0 | 100% (%100) | 100% (%100) | 0.0 |
-| 12 | 28 | 4 | 0 | 100% (%100) | 100% (%100) | 0.0 |
-| 13 | 30 | 5 | 0 | 100% (%100) | 100% (%100) | 0.0 |
-| 14 | 30 | 4 | 0 | 100% (%100) | 100% (%100) | 0.0 |
-| 15 | 32 | 7 | 0 | 100% (%100) | 100% (%100) | 0.0 |
-| 16 | 30 | 5 | 0 | 100% (%100) | 100% (%100) | 0.0 |
-| 17 | 31 | 5 | 0 | 100% (%100) | 100% (%100) | 0.0 |
-| 18 | 33 | 5 | 0 | 100% (%100) | 100% (%100) | 0.0 |
-| 19 | 32 | 5 | 0 | 100% (%100) | 100% (%100) | 0.0 |
-| 20 | 34 | 8 | 0 | 100% (%100) | 100% (%100) | 0.0 |
+| 4 | 27 | 5 | 0 | 100% (%100) | 0% (%26) | 0.0 |
+| 5 | 27 | 5 | 0 | 100% (%100) | 0% (%7) | 0.0 |
+| 6 | 26 | 6 | 0 | 100% (%100) | 67% (%90) | 0.3 |
+| 7 | 30 | 5 | 0 | 100% (%100) | 0% (%49) | 0.0 |
+| 8 | 29 | 6 | 0 | 100% (%100) | 0% (%54) | 0.0 |
+| 9 | 27 | 5 | 0 | 100% (%100) | 0% (%13) | 0.0 |
+| 10 | 30 | 6 | 0 | 100% (%100) | 0% (%12) | 0.3 |
+| 11 | 23 | 5 | 0 | 100% (%100) | 67% (%85) | 0.0 |
+| 12 | 28 | 4 | 0 | 100% (%100) | 33% (%62) | 0.0 |
+| 13 | 30 | 5 | 0 | 100% (%100) | 0% (%49) | 0.0 |
+| 14 | 30 | 4 | 0 | 100% (%100) | 0% (%38) | 0.0 |
+| 15 | 32 | 7 | 0 | 100% (%100) | 0% (%42) | 1.3 |
+| 16 | 30 | 5 | 0 | 100% (%100) | 0% (%8) | 0.0 |
+| 17 | 31 | 5 | 0 | 100% (%100) | 67% (%94) | 0.0 |
+| 18 | 33 | 5 | 0 | 100% (%100) | 0% (%39) | 0.0 |
+| 19 | 32 | 5 | 0 | 100% (%100) | 67% (%71) | 0.0 |
+| 20 | 34 | 8 | 0 | 100% (%100) | 0% (%33) | 2.0 |
 
 _Hücredeki değer: kazanma oranı (resmin ortalama biten yüzdesi)._
