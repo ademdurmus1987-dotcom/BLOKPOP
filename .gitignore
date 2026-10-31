@@ -1,0 +1,4 @@
+# Testcilerden gelen raporlar kisisel; GitHub'a yuklenmesin
+tools/test-raporlari/
+tools/out/test-ozet.md
+node_modules/
