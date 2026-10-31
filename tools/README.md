@@ -40,6 +40,13 @@ Her seviye için dikkatli oyuncunun her denemede kazandığı (ama rastgele oyun
 
 - Boyama başlangıç kuralı: `--seedmode merkez|renk|bolge` (oyunda `?ps=` ile denenebilir). Varsayılan `bolge`: her renk bölgesinin ortasından boyama başlar.
 
+## Oyun modları (v2.82)
+- **Patlat** (normal): resim küp küp sökülür.
+- **Boya** (`?mod=boya`): gri tonlu numaralı küpler, filler numarasına göre boyar.
+- **İnşa** (`?mod=insa`): sadece karakter (arka fon yok), cam küpler + numara, resim ortadan halka halka kurulur, kuyruk resmin sırasına göre dizilir, filler %45 hızlı. Şimdilik "rahat" prototip: halka kilidi kapalı, kaybetmek neredeyse imkânsız. Ayarlar `BT` nesnesinde (`easyTo/midTo/look`); bot ile denemek için `--tune '{"easyTo":10,"midTo":30}'`.
+
+Haritadaki **Mod** düğmesi üç mod arasında seçim yapar; her modun ilerlemesi ayrı tutulur. Bot: `--mode insa` ya da `--mode hepsi`.
+
 ## Galeri için resimlerin aslı (v2.81)
 Boyama galerisinde her resmin aslı (Gemini'den gelen orijinal görsel) gösterilir. Görselleri eklemek için:
 

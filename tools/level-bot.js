@@ -8,7 +8,7 @@
 //   node tools/level-bot.js --mode boya --from 1 --to 10 --tries 5
 //   node tools/level-bot.js --mode normal --from 101 --to 200 --dir .   (ana surumu test et)
 // Secenekler:
-//   --mode boya|normal|ikisi   hangi mod (varsayilan: ikisi)
+//   --mode boya|insa|normal|ikisi|hepsi   hangi mod (varsayilan: ikisi = normal+boya, hepsi = uc mod)
 //   --from N --to M            seviye araligi (varsayilan 1-100)
 //   --tries N                  her seviye ve her tarz icin deneme sayisi (varsayilan 3)
 //   --styles dikkatli,rastgele hangi oyun tarzlari (varsayilan ikisi)
@@ -19,6 +19,7 @@
 //   --seedmode merkez|renk|bolge  boyama baslangic noktasi kurali (oyundaki ?ps= ile ayni)
 //   --ara                      TOHUM ARAMA: her seviye icin dikkatli oyuncunun hep kazandigi bir tohum arar,
 //                              sonucu tools/out/tohumlar-<mod>.json dosyasina yazar (oyundaki PSEEDS/SEEDS'e kopyalanir)
+//   --tune '{"look":2}'        insa modu ayarlarini dene (rw: halka genisligi, look: acik halka sayisi, amin/amax: mermi)
 //   --aday N                   tohum aramada seviye basina denenecek en fazla aday (varsayilan 16)
 // Gerekli: Playwright  (npm i -g playwright && npx playwright install chromium)
 'use strict';
@@ -43,7 +44,7 @@ function argv() {
 }
 const A = argv();
 const ROOT = path.resolve(__dirname, '..');
-const MODES = (A.mode || 'ikisi') === 'ikisi' ? ['normal', 'boya'] : [A.mode];
+const MODES = (A.mode || 'ikisi') === 'ikisi' ? ['normal', 'boya'] : A.mode === 'hepsi' ? ['normal', 'boya', 'insa'] : [A.mode];
 const FROM = Math.max(1, parseInt(A.from || '1', 10));
 const TO = Math.max(FROM, parseInt(A.to || '100', 10));
 const TRIES = Math.max(1, parseInt(A.tries || '3', 10));
@@ -55,7 +56,7 @@ const CHROME = A.chrome || process.env.BLOKPOP_CHROME || '';
 const SEEDMODE = A.seedmode || '';
 const ARA = A.ara === 'true';
 const ADAY = Math.max(1, parseInt(A.aday || '16', 10));
-for (const m of MODES) if (m !== 'boya' && m !== 'normal') { console.error('Gecersiz --mode: ' + m); process.exit(1); }
+for (const m of MODES) if (m !== 'boya' && m !== 'normal' && m !== 'insa') { console.error('Gecersiz --mode: ' + m); process.exit(1); }
 for (const s of STYLES) if (s !== 'dikkatli' && s !== 'rastgele') { console.error('Gecersiz tarz: ' + s); process.exit(1); }
 
 // ------------------------------------------------------------------ kucuk web sunucusu (ek kurulum gerekmesin)
@@ -97,7 +98,7 @@ const PLAY = ([L, style, seed, maxT]) => {
   while (t < maxT && g.state === 'play') {
     let did = false;
     if (style === 'dikkatli') {
-      const ex = BP.exposed(); // renk -> su an vurulabilir hucre sayisi (oyunun kendi kurali)
+      const ex = BP.build ? BP.buildOpen() : BP.exposed(); // renk -> su an vurulabilir hucre sayisi (oyunun kendi kurali; insada acik halkalar)
       for (let i = 0; i < g.bench.length && !did; i++) {
         const s = g.bench[i];
         if (s && s.st !== 'exit' && ex[s.c] > 0 && BP.launchFromBench(i)) did = true;
@@ -154,18 +155,19 @@ async function worker(id, base, jobs, results, progress) {
     const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true, locale: 'tr-TR', serviceWorkers: 'block' });
     const pg = await ctx.newPage();
     pg.on('pageerror', (e) => console.log('  [sayfa hatasi] ' + e.message));
-    await pg.goto(base + '/' + (DIR ? DIR + '/' : '') + 'index.html' + (mode === 'boya' ? '?mod=boya' : ''), { waitUntil: 'load' });
+    await pg.goto(base + '/' + (DIR ? DIR + '/' : '') + 'index.html' + (mode !== 'normal' ? '?mod=' + mode : ''), { waitUntil: 'load' });
     await pg.waitForFunction(() => window.BP && window.BlokpopUI && document.querySelector('#btnPlay') && !document.querySelector('#btnPlay').classList.contains('hidden'), null, { timeout: 60000 });
     await pg.click('#btnPlay', { force: true });
     await pg.waitForSelector('[data-act="playCur"]', { state: 'visible', timeout: 30000 });
     await pg.waitForTimeout(800);
     await pg.click('[data-act="playCur"]', { force: true });
     await pg.waitForFunction(() => window.BP && BP.G && BP.G.state, null, { timeout: 30000 });
-    const pm = await pg.evaluate(() => !!BP.paint);
-    if ((mode === 'boya') !== pm) throw new Error('mod acilamadi: ' + mode);
+    const pm = await pg.evaluate(() => (BP.build ? 'insa' : BP.paint ? 'boya' : 'normal'));
+    if (pm !== mode) throw new Error('mod acilamadi: ' + mode + ' (oyun: ' + pm + ')');
     // ekrana cizimi durdur: bot zamani kendisi ilerletir, tarayici bosuna cizim yapmasin
     await pg.evaluate(() => { window.requestAnimationFrame = function () { return 0; }; });
     if (SEEDMODE) await pg.evaluate((m) => BP.setPaintSeedMode(m), SEEDMODE);
+    if (A.tune) await pg.evaluate((t) => BP.setBuildTune(JSON.parse(t)), A.tune);
     pages[mode] = pg;
     return pg;
   }
@@ -238,7 +240,7 @@ function report(by, secs) {
   L.push('Tarih: ' + new Date().toISOString().slice(0, 16).replace('T', ' ') + ' (UTC) | Sürüm klasörü: ' + (DIR || '.') + (SEEDMODE ? ' | Boyama başlangıcı: ' + SEEDMODE : '') + ' | Seviyeler: ' + FROM + '–' + TO + ' | Deneme: ' + TRIES + ' | Süre: ' + Math.round(secs / 60) + ' dk', '');
   L.push('**Tarzlar:** *dikkatli* = sadece şu an isabet edecek fili gönderir (önce tezgâhtakiler). *rastgele* = düşünmeden, ortalama 0,8 saniyede bir rastgele dokunur (acemi oyuncunun en kötü hali). Bot iyi bir oyuncu değil, kaba bir ölçüm aracıdır: "dikkatli bot kazanamadı" seviyenin imkânsız olduğunu değil, zor olduğunu gösterir.', '');
   for (const m of MODES) {
-    const name = m === 'boya' ? 'BOYAMA' : 'NORMAL';
+    const name = m === 'boya' ? 'BOYAMA' : m === 'insa' ? 'İNŞA' : 'NORMAL';
     const lv = []; for (let i = FROM; i <= TO; i++) lv.push(i);
     L.push('## ' + name + ' modu', '');
     if (m === 'boya') L.push('> Not: Boyama modunda sadece 1–10. seviyeler için özel ayar (PSEEDS) var; 11. seviye ve sonrası normal modun ayarını kullanıyor, yani henüz boyama için ayarlanmadı.', '');

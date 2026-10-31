@@ -34,7 +34,7 @@ function analyse(d) {
     firstT = Math.min(firstT, e.t); lastT = Math.max(lastT, e.t);
     const q = ses[e.s] || (ses[e.s] = { a: e.t, b: e.t });
     q.a = Math.min(q.a, e.t); q.b = Math.max(q.b, e.t);
-    if (e.L == null || (e.m !== 'boya' && e.m !== 'normal')) continue;
+    if (e.L == null || (e.m !== 'boya' && e.m !== 'normal' && e.m !== 'insa')) continue;
     const k = e.m + ':' + e.L;
     const o = per[k] || (per[k] = { m: e.m, L: e.L, st: 0, w: 0, l: 0, q: 0, best: 0, tw: 0, boost: 0, rev: 0 });
     if (e.n === 'level_start') o.st++;
@@ -73,10 +73,10 @@ const pct = (a, b) => (b ? Math.round((100 * a) / b) + '%' : '-');
   if (!P.length) { fs.mkdirSync(OUT, { recursive: true }); fs.writeFileSync(path.join(OUT, 'test-ozet.md'), L.join('\n') + '\nHenüz rapor yok.\n'); console.log('Rapor bulunamadi: ' + DIR); return; }
 
   // kisi tablosu
-  L.push('## Kişiler', '', '| Kişi | Gün | Oturum | Süre (dk) | Boyama: oynanan / biten | Normal: oynanan / biten |', '|---|---|---|---|---|---|');
+  L.push('## Kişiler', '', '| Kişi | Gün | Oturum | Süre (dk) | Boyama: oynanan / biten | İnşa: oynanan / biten | Normal: oynanan / biten |', '|---|---|---|---|---|---|---|');
   for (const p of P) {
     const c = (m) => { const v = Object.values(p.per).filter((o) => o.m === m); return v.length ? v.length + ' / ' + v.filter((o) => o.w).length : '-'; };
-    L.push('| ' + p.name + ' | ' + p.days + ' | ' + p.sessions + ' | ' + Math.round(p.minutes) + ' | ' + c('boya') + ' | ' + c('normal') + ' |');
+    L.push('| ' + p.name + ' | ' + p.days + ' | ' + p.sessions + ' | ' + Math.round(p.minutes) + ' | ' + c('boya') + ' | ' + c('insa') + ' | ' + c('normal') + ' |');
   }
   const avgMin = P.reduce((s, p) => s + p.minutes / Math.max(1, p.sessions), 0) / P.length;
   const back = P.filter((p) => p.days >= 2).length;
@@ -84,9 +84,9 @@ const pct = (a, b) => (b ? Math.round((100 * a) / b) + '%' : '-');
   L.push('- Birden fazla gün oynayan: **' + back + '/' + P.length + '** (' + pct(back, P.length) + ')', '');
 
   // mod karsilastirmasi
-  L.push('## Boyama ve normal karşılaştırması', '', '| | Boyama | Normal |', '|---|---|---|');
+  L.push('## Modların karşılaştırması', '', '| | Boyama | İnşa | Normal |', '|---|---|---|---|');
   const M = {};
-  for (const m of ['boya', 'normal']) {
+  for (const m of ['boya', 'insa', 'normal']) {
     const who = P.filter((p) => Object.values(p.per).some((o) => o.m === m));
     const f10all = who.filter((p) => { for (let i = 1; i <= 10; i++) { const o = p.per[m + ':' + i]; if (!o || !o.w) return false; } return true; }).length;
     const f10avg = who.reduce((s, p) => { let n = 0; for (let i = 1; i <= 10; i++) { const o = p.per[m + ':' + i]; if (o && o.w) n++; } return s + n; }, 0) / Math.max(1, who.length);
@@ -94,7 +94,7 @@ const pct = (a, b) => (b ? Math.round((100 * a) / b) + '%' : '-');
     for (const p of who) for (const o of Object.values(p.per)) if (o.m === m) { w += o.w; l += o.l; q += o.q; nl++; b += o.boost; r += o.rev; }
     M[m] = { who: who.length, f10all, f10avg, w, l, q, nl, b, r };
   }
-  const row = (t, f) => L.push('| ' + t + ' | ' + f(M.boya) + ' | ' + f(M.normal) + ' |');
+  const row = (t, f) => L.push('| ' + t + ' | ' + f(M.boya) + ' | ' + f(M.insa) + ' | ' + f(M.normal) + ' |');
   row('Oynayan kişi', (o) => String(o.who));
   row('İlk 10 seviyenin hepsini bitiren', (o) => (o.who ? o.f10all + '/' + o.who + ' (' + pct(o.f10all, o.who) + ')' : '-'));
   row('İlk 10 seviyeden ortalama biten', (o) => (o.who ? o.f10avg.toFixed(1) + '/10' : '-'));
@@ -105,7 +105,7 @@ const pct = (a, b) => (b ? Math.round((100 * a) / b) + '%' : '-');
   L.push('');
 
   // seviye tablosu
-  for (const m of ['boya', 'normal']) {
+  for (const m of ['boya', 'insa', 'normal']) {
     const lv = {};
     for (const p of P) for (const o of Object.values(p.per)) if (o.m === m) {
       const z = lv[o.L] || (lv[o.L] = { L: o.L, people: 0, done: 0, w: 0, l: 0, q: 0, best: 0, tw: 0, nw: 0 });
@@ -113,7 +113,7 @@ const pct = (a, b) => (b ? Math.round((100 * a) / b) + '%' : '-');
     }
     const list = Object.values(lv).sort((a, b) => a.L - b.L);
     if (!list.length) continue;
-    L.push('## ' + (m === 'boya' ? 'Boyama' : 'Normal') + ' — seviye seviye', '');
+    L.push('## ' + (m === 'boya' ? 'Boyama' : m === 'insa' ? 'İnşa' : 'Normal') + ' — seviye seviye', '');
     L.push('| Sv | Oynayan | Bitiren | Kayıp oranı | Vazgeçme | Ort. bitirme süresi (sn) |', '|---|---|---|---|---|---|');
     for (const z of list) L.push('| ' + z.L + ' | ' + z.people + ' | ' + z.done + ' (' + pct(z.done, z.people) + ') | ' + pct(z.l, z.w + z.l) + ' | ' + z.q + ' | ' + (z.nw ? Math.round(z.tw / z.nw) : '-') + ' |');
     const stuck = list.filter((z) => z.people >= 2).sort((a, b) => (b.l + b.q) / b.people - (a.l + a.q) / a.people).slice(0, 5);
