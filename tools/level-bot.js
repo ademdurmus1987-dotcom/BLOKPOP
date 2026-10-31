@@ -16,6 +16,10 @@
 //   --workers N                ayni anda kac tarayici (varsayilan: islemci sayisi, en fazla 4)
 //   --out tools/out            cikti klasoru
 //   --chrome /yol/chrome       Playwright'in kendi Chromium'u yerine baska bir Chrome (ya da BLOKPOP_CHROME ortam degiskeni)
+//   --seedmode merkez|renk|bolge  boyama baslangic noktasi kurali (oyundaki ?ps= ile ayni)
+//   --ara                      TOHUM ARAMA: her seviye icin dikkatli oyuncunun hep kazandigi bir tohum arar,
+//                              sonucu tools/out/tohumlar-<mod>.json dosyasina yazar (oyundaki PSEEDS/SEEDS'e kopyalanir)
+//   --aday N                   tohum aramada seviye basina denenecek en fazla aday (varsayilan 16)
 // Gerekli: Playwright  (npm i -g playwright && npx playwright install chromium)
 'use strict';
 const http = require('http');
@@ -48,6 +52,9 @@ const DIR = (A.dir || 'beta').replace(/^\/+|\/+$/g, '');
 const WORKERS = Math.max(1, Math.min(parseInt(A.workers || String(Math.min(4, os.cpus().length || 1)), 10), 8));
 const OUT = path.resolve(ROOT, A.out || 'tools/out');
 const CHROME = A.chrome || process.env.BLOKPOP_CHROME || '';
+const SEEDMODE = A.seedmode || '';
+const ARA = A.ara === 'true';
+const ADAY = Math.max(1, parseInt(A.aday || '16', 10));
 for (const m of MODES) if (m !== 'boya' && m !== 'normal') { console.error('Gecersiz --mode: ' + m); process.exit(1); }
 for (const s of STYLES) if (s !== 'dikkatli' && s !== 'rastgele') { console.error('Gecersiz tarz: ' + s); process.exit(1); }
 
@@ -158,19 +165,47 @@ async function worker(id, base, jobs, results, progress) {
     if ((mode === 'boya') !== pm) throw new Error('mod acilamadi: ' + mode);
     // ekrana cizimi durdur: bot zamani kendisi ilerletir, tarayici bosuna cizim yapmasin
     await pg.evaluate(() => { window.requestAnimationFrame = function () { return 0; }; });
+    if (SEEDMODE) await pg.evaluate((m) => BP.setPaintSeedMode(m), SEEDMODE);
     pages[mode] = pg;
     return pg;
   }
+  const play = async (pg, L, style, seed) => { try { return await pg.evaluate(PLAY, [L, style, seed, 900]); } catch (e) { return { L, style, err: String(e.message || e).slice(0, 200) }; } };
   while (jobs.length) {
     const j = jobs.shift();
     const pg = await pageFor(j.mode);
-    let r;
-    try { r = await pg.evaluate(PLAY, [j.L, j.style, j.seed, 900]); } catch (e) { r = { L: j.L, style: j.style, err: String(e.message || e).slice(0, 200) }; }
+    if (j.search) { results.push(await searchLevel(pg, j.mode, j.L, play)); progress(); continue; }
+    const r = await play(pg, j.L, j.style, j.seed);
     r.mode = j.mode; r.L = j.L; r.style = j.style; r.try = j.k;
     results.push(r);
     progress();
   }
   await browser.close();
+}
+
+// ------------------------------------------------------------------ tohum arama
+// Bir seviye icin: once mevcut tohum, sonra yeni adaylar. Kabul: dikkatli oyuncu TRIES denemenin hepsini kazanir.
+// Ilk 3 seviyede ayrica rastgele oyuncunun en cok ilerledigi aday, sonrakilerde rastgele oyuncunun hep kazanmadigi (cok kolay olmayan) aday tercih edilir.
+async function searchLevel(pg, mode, L, play) {
+  const cur = await pg.evaluate((L) => BP.seedFor(L), L);
+  const cands = [cur];
+  for (let k = 1; k < ADAY; k++) cands.push(((((L * 1000003) ^ (k * 2654435761)) >>> 0) % 9999991) + 1);
+  let best = null;
+  for (let ci = 0; ci < cands.length; ci++) {
+    const sd = cands[ci];
+    await pg.evaluate(([L, s]) => BP.setSeed(L, s), [L, sd]);
+    let dw = 0, dp = 0, rw = 0, rp = 0;
+    for (let k = 0; k < TRIES; k++) { const r = await play(pg, L, 'dikkatli', (L * 7919 + k * 104729) >>> 0); if (r.win) dw++; dp += r.pct || 0; }
+    if (dw === TRIES) for (let k = 0; k < TRIES; k++) { const r = await play(pg, L, 'rastgele', (L * 7919 + k * 104729 + 17) >>> 0); if (r.win) rw++; rp += r.pct || 0; }
+    const ok = dw === TRIES;
+    const score = dw * 1000 + dp / TRIES + (ok ? (L <= 3 ? rp / TRIES * 2 : (rw < TRIES ? 50 : 0)) : 0);
+    const c = { L, mode, seed: sd, old: cur, dw, dp: Math.round(dp / TRIES), rw, rp: Math.round(rp / TRIES), ok, score, tried: ci + 1 };
+    if (!best || c.score > best.score) best = c;
+    const good = ok && (L <= 3 ? rp / TRIES >= 60 || ci >= 5 : rw < TRIES);
+    if (good) break;
+  }
+  await pg.evaluate(([L, s]) => BP.setSeed(L, s), [L, best.seed]);
+  best.search = true; best.tried = best.tried;
+  return best;
 }
 
 // ------------------------------------------------------------------ raporlar
@@ -200,7 +235,7 @@ function report(by, secs) {
   const L = [];
   const has = (s) => STYLES.includes(s);
   L.push('# Blokpop seviye botu raporu', '');
-  L.push('Tarih: ' + new Date().toISOString().slice(0, 16).replace('T', ' ') + ' (UTC) | Sürüm klasörü: ' + (DIR || '.') + ' | Seviyeler: ' + FROM + '–' + TO + ' | Deneme: ' + TRIES + ' | Süre: ' + Math.round(secs / 60) + ' dk', '');
+  L.push('Tarih: ' + new Date().toISOString().slice(0, 16).replace('T', ' ') + ' (UTC) | Sürüm klasörü: ' + (DIR || '.') + (SEEDMODE ? ' | Boyama başlangıcı: ' + SEEDMODE : '') + ' | Seviyeler: ' + FROM + '–' + TO + ' | Deneme: ' + TRIES + ' | Süre: ' + Math.round(secs / 60) + ' dk', '');
   L.push('**Tarzlar:** *dikkatli* = sadece şu an isabet edecek fili gönderir (önce tezgâhtakiler). *rastgele* = düşünmeden, ortalama 0,8 saniyede bir rastgele dokunur (acemi oyuncunun en kötü hali). Bot iyi bir oyuncu değil, kaba bir ölçüm aracıdır: "dikkatli bot kazanamadı" seviyenin imkânsız olduğunu değil, zor olduğunu gösterir.', '');
   for (const m of MODES) {
     const name = m === 'boya' ? 'BOYAMA' : 'NORMAL';
@@ -276,7 +311,8 @@ function report(by, secs) {
   const srv = await serve();
   const base = 'http://127.0.0.1:' + srv.address().port;
   const jobs = [];
-  for (const mode of MODES) for (let L = FROM; L <= TO; L++) for (const style of STYLES) for (let k = 0; k < TRIES; k++) jobs.push({ mode, L, style, k, seed: (L * 7919 + k * 104729 + (style === 'rastgele' ? 17 : 0)) >>> 0 });
+  if (ARA) { for (const mode of MODES) for (let L = FROM; L <= TO; L++) jobs.push({ mode, L, search: true }); }
+  else for (const mode of MODES) for (let L = FROM; L <= TO; L++) for (const style of STYLES) for (let k = 0; k < TRIES; k++) jobs.push({ mode, L, style, k, seed: (L * 7919 + k * 104729 + (style === 'rastgele' ? 17 : 0)) >>> 0 });
   // ayni modu ayni tarayicida toplamak icin sirala
   const total = jobs.length, results = [];
   const t0 = Date.now(); let done = 0, lastPrint = 0;
@@ -288,6 +324,17 @@ function report(by, secs) {
   lanes.forEach((l) => l.sort((a, b) => a.mode.localeCompare(b.mode)));
   await Promise.all(lanes.map((l, i) => worker(i, base, l, results, progress)));
   srv.close();
+  if (ARA) {
+    for (const mode of MODES) {
+      const list = results.filter((r) => r.mode === mode).sort((a, b) => a.L - b.L);
+      const map = {}; list.forEach((r) => { map[r.L] = r.seed; });
+      const f = path.join(OUT, 'tohumlar-' + mode + '.json');
+      fs.writeFileSync(f, JSON.stringify({ mode, seedmode: SEEDMODE || 'oyundaki', from: FROM, to: TO, tries: TRIES, seeds: map, detay: list.map((r) => ({ L: r.L, seed: r.seed, eski: r.old, dikkatli: r.dw + '/' + TRIES, dikkatli_biten: r.dp, rastgele: r.dw === TRIES ? r.rw + '/' + TRIES : '-', rastgele_biten: r.rp, kabul: r.ok, denenen: r.tried })) }, null, 1));
+      const bad = list.filter((r) => !r.ok).map((r) => r.L + ' (' + r.dw + '/' + TRIES + ')');
+      console.log(mode + ': ' + list.length + ' seviye, degisen tohum: ' + list.filter((r) => r.seed !== r.old).length + ', uygun tohum bulunamayan: ' + (bad.length ? bad.join(', ') : 'yok') + '\n  -> ' + path.relative(ROOT, f));
+    }
+    return;
+  }
   const by = aggregate(results);
   const files = MODES.map((m) => writeCsv(by, m));
   files.push(report(by, (Date.now() - t0) / 1000));
