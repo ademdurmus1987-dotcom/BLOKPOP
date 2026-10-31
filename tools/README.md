@@ -47,13 +47,13 @@ Her seviye için dikkatli oyuncunun her denemede kazandığı (ama rastgele oyun
 
 Haritadaki **Mod** düğmesi üç mod arasında seçim yapar; her modun ilerlemesi ayrı tutulur. Bot: `--mode insa` ya da `--mode hepsi`.
 
-## Buz prototipi (v2.85) — `beta/buz/`
-Ayrı küçük bir oyun: dikey tahta buzla kaplı, altında yatay tek yönlü bant. Fil sütunun altından geçerken o sütundaki **en alttaki** buz kendi rengindeyse kırar, renk ortaya çıkar; önünde başka renk varsa atış yok. Bandın üstündeki renkli noktalar her sütunun en alttaki hedefidir. Mermisi artan fil bekleme yerine döner, yer kalmazsa oyun biter.
+## Buz prototipi (v2.86) — `beta/buz/`
+Ayrı küçük bir oyun. Ekranı kaplayan dev tahta: 7 sütun × 9 sıra kalın buz bloğu, arkasında bir resim (`beta/bg` dünya resimleri). Altında yatay tek yönlü bant, onun altında bekleme rafı ve perspektifli 4 oluk; filler arkadan görünür, tahtaya bakar. Fil sütunun altından geçerken o sütundaki **en alttaki** buz kendi rengindeyse kırar ve resmin o parçası açılır; önünde başka renk varsa atış yok. Mermisi artan fil bekleme yerine döner, yer kalmazsa oyun biter.
 
-Engeller (sırayla tanıtılır): kalın buz (2 atış, sv 3), tahta (her renk kırar, sv 5), zincir (önce zincirin rengi, sv 7), kilit + anahtar (anahtar başka buzun içinde, sv 9). Sonraki seviyeler karışık.
+Engeller (sırayla tanıtılır): kalın buz (2 atış, sv 3), çivili tahta (her renk kırar, sv 5), zincir (önce zincirin rengi, sv 7), kilit + anahtar (anahtar başka buzun içinde, sv 9). Sonraki seviyeler karışık.
 
-- Oyun: `beta/buz/index.html` (çizim), `beta/buz/motor.js` (kurallar; tarayıcıda ve Node'da aynı), `beta/buz/resimler.js` (resimler).
-- Resimleri yenilemek: `node tools/buz-resim.js` (ana oyunun ilk 100 seviyesinin resimlerini kopyalar).
+- Oyun: `beta/buz/index.html` (çizim), `beta/buz/motor.js` (kurallar; tarayıcıda ve Node'da aynı), `beta/buz/izgara.js` (resim başına blok renkleri).
+- Blok renklerini yeniden üretmek: `python3 tools/buz-izgara.py` → kontrol için `tools/out/buz-izgara.png`. Her blok altındaki resmin rengine göre canlı bir oyun rengi alır (gökyüzü mavi, çimen yeşil gibi).
 - Bot: `node tools/buz-bot.js --from 1 --to 30 --tries 5` → `tools/out/buz-rapor.md`. Ayar denemek için `--plan '{"bench":3}'`.
 - Seviye ayarları `motor.js` içindeki `PLAN` (1–10) ve `planFor` (11+). Oyunda `?sv=12` ile istenen seviye açılır.
 - Kayıt ayrı anahtarda (`blokpop_buz_v1`), ana oyunun kaydına dokunmaz. Beta'da Mod menüsünde "Buz (deneme)" düğmesi var.

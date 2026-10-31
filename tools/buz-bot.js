@@ -14,7 +14,7 @@ const fs = require('fs');
 const path = require('path');
 const ROOT = path.resolve(__dirname, '..');
 const M = require(path.join(ROOT, 'beta', 'buz', 'motor.js'));
-M.setLib(require(path.join(ROOT, 'beta', 'buz', 'resimler.js')));
+M.setLib(require(path.join(ROOT, 'beta', 'buz', 'izgara.js')));
 const A = { from: 1, to: 30, tries: 5, plan: '{}' };
 for (let i = 2; i < process.argv.length; i++) { const k = process.argv[i].replace(/^--/, ''); A[k] = process.argv[++i]; }
 const from = +A.from, to = +A.to, T = +A.tries, over = JSON.parse(A.plan);
@@ -32,7 +32,7 @@ for (let L = from; L <= to; L++) {
   }
   n += T;
   const c = lv.counts, eng = [c.thick && 'kalın ' + c.thick, c.wood && 'tahta ' + c.wood, c.chain && 'zincir ' + c.chain, c.lock && 'kilit ' + c.lock].filter(Boolean).join(', ') || '-';
-  rows.push('| ' + L + ' | ' + lv.name.replace(/^px_|^w\d+_/, '') + ' | ' + lv.N + '×' + lv.N + ' | ' + lv.pal.length + ' | ' + c.total + ' | ' + eng + ' | ' + lv.plan.bench + ' | ' + ST.map((s) => r[s] + '/' + T).join(' | ') + ' | ' + (nw ? Math.round(tw / nw) : '-') + ' |');
+  rows.push('| ' + L + ' | ' + lv.pic + ' | ' + lv.W + '×' + lv.H + ' | ' + lv.pal.length + ' | ' + c.total + ' | ' + eng + ' | ' + lv.plan.bench + ' | ' + ST.map((s) => r[s] + '/' + T).join(' | ') + ' | ' + (nw ? Math.round(tw / nw) : '-') + ' |');
   process.stdout.write('.');
 }
 const pct = (v) => Math.round((100 * v) / n) + '%';
