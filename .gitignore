@@ -2,3 +2,4 @@
 tools/test-raporlari/
 tools/out/test-ozet.md
 node_modules/
+__pycache__/
