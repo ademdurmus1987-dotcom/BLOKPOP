@@ -55,7 +55,7 @@
     12: { size: 21, c: 4, K: 4, am: [0.5, 1.0], mix: 1, drone: 1, thick: 0.06, tip: 'drone' },
     13: { size: 21, c: 4, K: 4, am: [0.5, 1.0], mix: 1, bomb: 3, wood: 0.06, tip: 'bomb' },
     14: { size: 21, c: 4, K: 4, am: [0.5, 1.0], mix: 1, rock: 1, chain: 0.06, drone: 1 },
-    15: { size: 21, c: 5, K: 4, am: [0.5, 1.0], mix: 1, frozen: 1, bomb: 2, tip: 'frozen' }
+    15: { size: 21, c: 4, K: 4, am: [0.5, 1.0], mix: 1, frozen: 1, bomb: 2, tip: 'frozen' }
   };
   const COMBOS = [['rock', 'thick'], ['drone', 'wood', 'bomb'], ['frozen', 'chain'], ['lock', 'rock'], ['bomb', 'thick', 'frozen'],
     ['drone', 'lock'], ['rock', 'chain', 'bomb'], ['frozen', 'wood', 'drone'], ['thick', 'lock', 'bomb'], ['rock', 'frozen', 'drone', 'chain']];
@@ -69,7 +69,7 @@
     for (const b of combo) {
       if (b === 'lock') p.lock = L >= 25 && combo.length <= 3 ? 2 : 1;
       else if (b === 'rock') p.rock = L >= 30 ? 2 : 1;
-      else if (b === 'bomb') p.bomb = 2 + (round > 0 ? 1 : 0);
+      else if (b === 'bomb') p.bomb = 3 + (round > 0 ? 1 : 0);
       else if (b === 'drone') p.drone = 1;
       else if (b === 'frozen') p.frozen = L >= 30 ? 2 : 1;
       else p[b] = dens * (combo.length >= 3 ? 0.75 : 1) * (easy ? 0.7 : 1);
@@ -88,7 +88,8 @@
     const pal = kk.pal.slice();
     const rnd = rng((seed == null ? L * 7919 + 13 : seed) >>> 0);
     const cells = [];
-    for (let i = 0; i < W * H; i++) { const v = +kk.g[i]; cells.push({ c: v, layers: [{ t: 'ice', c: v }], obj: -1, done: false, pend: 0 }); }
+    const gs = kk.g || kk.r.replace(/([a-f])(\d*)/g, (m, ch, n) => String(ch.charCodeAt(0) - 97).repeat(n ? +n : 1));
+    for (let i = 0; i < W * H; i++) { const v = +gs[i]; cells.push({ c: v, layers: [{ t: 'ice', c: v }], obj: -1, done: false, pend: 0 }); }
     const blockCells = (br, bc, bw, bh) => { const a = []; for (let r = br * B; r < (br + bh) * B; r++) for (let c = bc * B; c < (bc + bw) * B; c++) a.push(r * W + c); return a; };
     const used = new Set(); // dolu bloklar "r,c"
     const free = (br, bc, bw, bh) => { if (br < 0 || bc < 0 || br + bh > BH || bc + bw > BW) return false; for (let r = br; r < br + bh; r++) for (let c = bc; c < bc + bw; c++) if (used.has(r + ',' + c)) return false; return true; };

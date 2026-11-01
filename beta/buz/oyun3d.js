@@ -278,7 +278,7 @@ function buildBoard() {
   S = BW / g.W; BH = S * g.H;
   // resim
   const tex = picTex(g.lv.pic, g.lv.crop, g.lv.src, g.lv.dim);
-  picMesh = new THREE.Mesh(new THREE.PlaneGeometry(BW, BH), new THREE.MeshStandardMaterial({ map: tex, roughness: 0.9 }));
+  picMesh = new THREE.Mesh(new THREE.PlaneGeometry(BW, BH), new THREE.MeshStandardMaterial({ map: tex, roughness: 0.9, emissive: '#ffffff', emissiveMap: tex, emissiveIntensity: cqn('picglow', 0), toneMapped: false }));   // acilan resim canli gorunsun
   picMesh.position.set(0, BH / 2, 0); picMesh.receiveShadow = true; boardG.add(picMesh);
   // cerceve
   frameG = new THREE.Group(); const fw = 0.55, fd = 1.0;

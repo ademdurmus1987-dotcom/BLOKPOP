@@ -102,6 +102,18 @@ def sources():
     return out
 
 
+def rle(g):
+    # '0001112' -> 'a3b3c' (renk harfi + tekrar sayisi; motor.js acar)
+    out, i = [], 0
+    while i < len(g):
+        j = i
+        while j < len(g) and g[j] == g[i]:
+            j += 1
+        out.append('abcdef'[int(g[i])] + (str(j - i) if j - i > 1 else ''))
+        i = j
+    return ''.join(out)
+
+
 def main():
     files = sources()
     pics = []
@@ -134,7 +146,7 @@ def main():
                     pal[j] = g
                 order = list(pal.keys())
                 ks[str(k)] = {'pal': [pal[j] for j in order], 'g': ''.join(str(order.index(l)) for l in lab)}
-            entry['s'][str(W)] = ks
+            entry['s'][str(W)] = {k: {'pal': v['pal'], 'r': rle(v['g'])} for k, v in ks.items()}
             # kontrol: 4 renkli izgara
             d = ImageDraw.Draw(sheet)
             e = ks['4']
@@ -146,7 +158,7 @@ def main():
                 d.rectangle([x, y, x + cs - 1, y + cs - 1], fill=rgb(e['pal'][int(ch_)]))
         pics.append(entry)
         print('.', end='', flush=True)
-    data = {'v': 3, 'sizes': [list(s) for s in SIZES], 'pics': pics}
+    data = {'v': 4, 'sizes': [list(s) for s in SIZES], 'pics': pics}
     out = '// Otomatik uretildi: python3 tools/buz-izgara.py (elle duzenleme)\nvar BZ_IZGARA=' + json.dumps(data, separators=(',', ':')) + ';\nif(typeof module==="object"&&module.exports)module.exports=BZ_IZGARA;\n'
     open(os.path.join(ROOT, 'beta', 'buz', 'izgara.js'), 'w').write(out)
     os.makedirs(os.path.join(ROOT, 'tools', 'out'), exist_ok=True)

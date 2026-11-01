@@ -47,7 +47,7 @@ Her seviye için dikkatli oyuncunun her denemede kazandığı (ama rastgele oyun
 
 Haritadaki **Mod** düğmesi üç mod arasında seçim yapar; her modun ilerlemesi ayrı tutulur. Bot: `--mode insa` ya da `--mode hepsi`.
 
-## Buz prototipi (v2.90, 3B) — `beta/buz/`
+## Buz prototipi (v2.91, 3B) — `beta/buz/`
 Ayrı küçük bir oyun, three.js ile gerçek 3B. Ekran ikiye bölünür: üstte arkaya yaslanmış dev tahta karşıdan (3B buz küpleri, arkasında resim `beta/bg`, ahşap çerçeve), altta tahtadan bir boşlukla ayrılmış atıcı alanı tepeden (mavi-gri taş zemin, düz bant, yuvalar, sol altta 4 gri kare tabla, 4 kuyruk oluğu). İki kamera ayrı katman görür (0 tahta, 1 atıcı alanı); alt kameranın x ölçeği tahtanın sütunlarıyla eşlenir, atış dik gider. Küpler: sv 1–10 14×18, sv 11–30 21×27, sv 31+ 28×36.
 
 Akış: oluğa dokun → yığından tabla banda fırlar (mantar patlaması sesi), Pofi tablaya biner. Bantta başını ve hortumunu kaldırıp sütunun en alttaki kendi renk küpüne **bir** atış yapar (tok vuruş sesi). Bantta en fazla 4 Pofi. Tur bitince mermisi kalan Pofi yuvaya iner, tabla yığına döner. Yuva kalmazsa oyun biter.
@@ -63,7 +63,14 @@ Yeni deneyimler (v2.90), her biri ilk geldiği seviyede ipucuyla tanıtılır:
 
 Derinlik: tahta ahşap bir kaidenin üstünde durur; altta bandın arkasında karanlık bir hendek ve platform kenarı görünür (`?sill=0.45&ftop=0.16` ile denenebilir).
 
-Resimler: `beta/buz/resim/` (Buz'a özel, 7:9). Gemini görsellerini eklemek için `python3 tools/buz-resim-ekle.py resimler.zip` (ortadan 7:9 keser, 720×926 webp yapar, aynısını iki kez eklemez, küp renklerini yeniden üretir; kontrol `tools/out/buz-resim.png`). Sıra: iki özel resim, bir dünya arka planı.
+Resimler (v2.91): `beta/buz/resim/` altında 107 piksel resim (hayvanlar, tatlılar) + 20 dünya arka planı. Sıra: iki özel resim, bir arka plan (60. seviyeden sonra sadece özel resimler).
+
+Yeni resim eklemek: `python3 tools/buz-resim-ekle.py a.zip b.zip klasor/ resim.png` (birden çok zip olur). Araç iki türü ayırır:
+- **Düz zeminli** (beyaz ya da tek renk zemin üstünde karakter): özneyi keser, tahtayı dolduracak kadar büyütür (piksel resimde keskin kalır), zemini pastel renkli kareli desenle değiştirir; öznenin içindeki beyazlar (panda yüzü gibi) korunur. Pastel renk öznenin rengine en uzak olandan seçilir, böylece zemin küpleri farklı renk olur. Alttan kesik özne tahtanın altına oturur, kenardaki renk şeritleri atılır.
+- **Tam sahne**: ortadan 7:9 kesilir.
+Benzer resim ikinci kez eklenmez (`beta/buz/resim/liste.json`). Kontrol: `tools/out/buz-resim.png`. Çok parçalı eklemede `--izgarasiz` verip en sonda `python3 tools/buz-izgara.py` çalıştır (~1 dk).
+
+Küp renkleri `izgara.js` içinde sıkıştırılmış (renk harfi + tekrar sayısı); motor açarken çözer. Açılan resim ton eşlemesiz çizilir (canlı renk; `?picglow=0.2` ile parlaklık denenebilir).
 
 - Dosyalar: `beta/buz/index.html`, `beta/buz/oyun3d.js` (3B çizim, ses, dokunma), `beta/buz/motor.js` (kurallar; Node'da da çalışır), `beta/buz/izgara.js` (küp renkleri).
 - Test: `?test=1` döngüyü durdurur; `BZ.run(sn, true, sessiz)` zamanı ilerletir (sessiz=true çizmeden), `BZ.snap()` kareyi PNG verir. Kamera denemesi: `?tilt=9&fpitch=64&ffov=30&gap=0.035`.
