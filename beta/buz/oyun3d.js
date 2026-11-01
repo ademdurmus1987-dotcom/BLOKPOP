@@ -25,7 +25,7 @@ const COMBO_AT = [15, 40, 80, 150], COMBO_W = ['Harika!', 'Süper!', 'Muhteşem!
 const MAX_TRAY = 4;
 
 // ---------- kayit ----------
-const SKEY = 'blokpop_buz_v1';
+const SKEY = 'blokpop_buz_v1', BZV = '2.99';
 let SV = { L: 1, max: 1, tips: {}, mute: false, vib: 2, best: {} };
 try { const d = JSON.parse(localStorage.getItem(SKEY) || 'null'); if (d && typeof d === 'object') SV = Object.assign(SV, d); } catch (e) {}
 if (SV.vib == null) SV.vib = 2;
@@ -858,7 +858,7 @@ function showLose() {
 }
 function showSettings() {
   const vb = ['Kapalı', 'Hafif', 'Orta', 'Güçlü'].map((t, i) => '<button class="btn' + (SV.vib === i ? ' on' : '') + '" data-v="' + i + '">' + t + '</button>').join('');
-  modal('<div class="tag">Ayarlar</div><h2>Ses ve titreşim</h2><div class="lbl">Ses</div><div class="row"><button class="btn' + (!SV.mute ? ' on' : '') + '" data-s="1">Açık</button><button class="btn' + (SV.mute ? ' on' : '') + '" data-s="0">Kapalı</button></div><div class="lbl">Titreşim</div><div class="row">' + vb + '</div><div class="lbl">Kamera</div><div class="row"><button class="btn' + (DERIN ? ' on' : '') + '" data-k="derin">Derin</button><button class="btn' + (!DERIN ? ' on' : '') + '" data-k="tepe">Tepeden</button></div><div class="note">iPhone\'da tarayıcı titreşimi desteklemiyor; Android\'de çalışır.</div><button class="btn g" id="ok">Tamam</button>', (c) => {
+  modal('<div class="tag">Ayarlar • sürüm ' + BZV + '</div><h2>Ses ve titreşim</h2><div class="lbl">Ses</div><div class="row"><button class="btn' + (!SV.mute ? ' on' : '') + '" data-s="1">Açık</button><button class="btn' + (SV.mute ? ' on' : '') + '" data-s="0">Kapalı</button></div><div class="lbl">Titreşim</div><div class="row">' + vb + '</div><div class="lbl">Kamera</div><div class="row"><button class="btn' + (DERIN ? ' on' : '') + '" data-k="derin">Derin</button><button class="btn' + (!DERIN ? ' on' : '') + '" data-k="tepe">Tepeden</button></div><div class="note">iPhone\'da tarayıcı titreşimi desteklemiyor; Android\'de çalışır.</div><button class="btn g" id="ok">Tamam</button>', (c) => {
     c.querySelectorAll('[data-s]').forEach((b) => b.onclick = () => { SV.mute = b.dataset.s === '0'; save(); c.querySelectorAll('[data-s]').forEach((x) => x.classList.toggle('on', x === b)); if (!SV.mute) { ensureAudio(); SFX.pop(2); } });
     c.querySelectorAll('[data-v]').forEach((b) => b.onclick = () => { SV.vib = +b.dataset.v; save(); c.querySelectorAll('[data-v]').forEach((x) => x.classList.toggle('on', x === b)); lastVib = 0; vib([20, 40, 20]); });
     c.querySelectorAll('[data-k]').forEach((b) => b.onclick = () => { if ((b.dataset.k === 'derin') === DERIN) return; SV.kam = b.dataset.k; save(); location.replace(location.pathname + '?sv=' + LV); });
