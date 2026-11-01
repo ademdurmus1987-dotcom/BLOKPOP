@@ -108,3 +108,27 @@ node tools/test-ozet.js
 - Açılışta ana kayıt bozuksa en yeni geçerli yedek otomatik yüklenir; bozuk veri `_corrupt` anahtarında saklanır.
 - İlk açılışta eski kaydın ham kopyası `_legacy_backup` anahtarına alınır.
 - Ayarlar → Kayıt yedeği: kodu kopyala, dosya olarak indir, içe aktar.
+
+## Kamyon modu (v3.00, 3B) — `beta/kamyon/`
+Ayrı küçük bir oyun, Buz gibi three.js ile gerçek 3B. Ana oyunun **Mod** menüsünde "Kamyon (deneme)".
+
+Oyun: ortada resim küpleri, etrafında kare bant (saat yönü), altta park yerleri ve kamyon kuyrukları. Kuyruktaki kamyona dokun → giriş kapısına zıplar → banda çıkar, tahtaya dönük ilerler. Önünden geçtiği sıranın **kenardaki ilk küpü** kendi rengindeyse hortumu uzanır, küpü kapar, küp kasaya düşer (dıştan içe, Patlat moduyla aynı engelleme). Kasa dolunca korna + 180° dönüş + gidiş, coin. Dolmadan turu biten kamyon park yerine iner (yükü kasasında kalır); park yeri yoksa kaybedilir (60 coin ile +1 park yeri). Bantta aynı anda en fazla `beltMax` kamyon.
+
+Zorluk (`motor.js` → `PLAN`): 1 tanıtım; 2–4 renk/karışıklık artar; 5'ten sonra 3 park + 3 bant; 6 farklı kasalar; 11 **kilitli kamyon** (N kamyon gidince açılır); 13'ten sonra 21×27 tahta; 16 **buzlu küp** (iki yutuş); 21 **XL kamyon**; 23 **çift hortum** (x2); 25 **gökkuşağı/joker** (her rengi yutar); 26+ karışık kombinasyonlar. Yeni özellik ilk geldiği seviyede ipucuyla tanıtılır ve kuyrukta ilk ekranda görünür.
+
+Bot: `node tools/kamyon-bot.js --from 1 --to 30 --tries 4` — "dikkatli" ve "rastgele" oyuncunun kazanma oranı. Hedef: dikkatli hep kazanır, rastgele 5. seviyeden sonra çoğunlukla kaybeder.
+
+Kamyon modeli: `beta/kamyon/kamyon.glb` (0,8 MB, ~16 bin üçgen; gövde + 4 ayrı tekerlek, ön yön −X). Tripo3D çıktısından (65 MB, 2M üçgen) `tools/kamyon-model/` ile üretildi:
+```
+python3 tools/kamyon-model/analyze.py model.glb        # inv.npy (kaynaştırma)
+python3 tools/kamyon-model/prep.py model.glb           # in.bin + doku jpg'leri
+g++ -O3 -o simplify tools/kamyon-model/simplify.cpp && ./simplify in.bin o16.bin 16000 7 30
+python3 tools/kamyon-model/mask2.py tex1.jpg tint2.png  # gövde maskesi (alfa) -> webp'ye çevir
+python3 tools/kamyon-model/buildfinal.py o16.bin tint2.webp kamyon.glb
+```
+Dokunun alfa kanalı gövde maskesidir; oyunda shader gövdeyi kamyonun rengine boyar, tekerlek/göz/cam korunur.
+
+- Dosyalar: `beta/kamyon/index.html`, `oyun.js` (3B çizim, ses, dokunma, arayüz), `motor.js` (kurallar; Node'da da çalışır). Resimler Buz'un kütüphanesinden (`../buz/izgara.js`).
+- Kayıt: `blokpop_kamyon_v1` (seviye, yıldız). Coin'ler ana oyunla ortak (`blokpop_save_v1` içindeki `coins`).
+- Test: `?test=1` (otomasyon kancası `window.KM`), `?sv=12` seviye, `?auto=1` dikkatli oto-oynama, `?auto=r` rastgele.
+- Yavaş telefonda kalite kendiliğinden düşer (piksel oranı 1, kamyon gölgeleri kapanır).

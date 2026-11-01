@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="theme-color" content="#5fb8ff">
+<title>Blokpop Kamyon</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{--font:"Fredoka","Baloo 2","Nunito","Arial Rounded MT Bold",system-ui,sans-serif;--sat:env(safe-area-inset-top,0px);--sab:env(safe-area-inset-bottom,0px);--ink:#22314d}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent;user-select:none;-webkit-user-select:none}
+html,body{margin:0;height:100%;overflow:hidden;font-family:var(--font);color:#1b1030;touch-action:none;overscroll-behavior:none;background:linear-gradient(180deg,#5fb8ff 0%,#9fd8ff 38%,#c9f0ff 60%,#bfeaa0 61%,#8fd16a 100%)}
+#gl{position:fixed;inset:0;width:100%;height:100%;display:block}
+#loading{position:fixed;left:50%;bottom:22%;transform:translateX(-50%);z-index:3;padding:10px 16px;border-radius:14px;background:rgba(20,40,80,.55);color:#fff;font:600 16px/1 var(--font);pointer-events:none}
+#top{position:fixed;left:0;right:0;top:0;margin:0 auto;max-width:520px;padding:calc(var(--sat) + 6px) 8px 0;display:flex;align-items:center;gap:5px;pointer-events:none;z-index:5}
+.ib{pointer-events:auto;flex:none;width:40px;height:40px;border-radius:12px;border:3px solid var(--ink);background:linear-gradient(180deg,#fff,#e4eefc);color:#2b6fd6;font:700 19px/1 var(--font);display:flex;align-items:center;justify-content:center;box-shadow:0 4px 0 var(--ink);cursor:pointer;padding:0;transition:transform .07s,box-shadow .07s}
+.ib.dn,.btn.dn{transform:translateY(3px) scale(.93);box-shadow:0 1px 0 var(--ink)}
+#sign{flex:1;min-width:0;height:42px;border-radius:12px;border:3px solid var(--ink);background:linear-gradient(180deg,#ffb347,#ff7a1a);box-shadow:0 3px 0 var(--ink),inset 0 2px 0 rgba(255,240,200,.55);position:relative;display:flex;align-items:center;justify-content:center;font:700 19px/1 var(--font);color:#fff;text-shadow:0 2px 0 #8a3a00,0 0 3px #8a3a00;overflow:hidden}
+#sign i{position:absolute;left:7px;right:7px;bottom:4px;height:5px;border-radius:3px;background:rgba(120,40,0,.4)}
+#sign i b{display:block;height:100%;width:0;border-radius:3px;background:#fff36b;transition:width .25s}
+#coin{pointer-events:auto;flex:none;height:36px;min-width:64px;padding:0 9px 0 5px;border-radius:99px;border:3px solid var(--ink);background:#fff;box-shadow:0 3px 0 var(--ink);display:flex;align-items:center;gap:4px;font:700 17px/1 var(--font);color:#5a3a00}
+#coin s{display:block;width:22px;height:22px;border-radius:50%;background:radial-gradient(circle at 35% 30%,#fff7b0,#ffc928 45%,#e09000);border:2px solid #a86400;text-decoration:none}
+#chips{position:fixed;left:0;right:0;top:calc(var(--sat) + 56px);margin:0 auto;max-width:520px;padding:0 10px;display:flex;justify-content:space-between;pointer-events:none;z-index:4}
+.chip{padding:4px 10px;border-radius:99px;border:2.5px solid var(--ink);background:rgba(255,255,255,.92);font:700 14px/1.1 var(--font);color:var(--ink);box-shadow:0 2px 0 var(--ink)}
+.chip b{color:#ff6a00}
+.modal{position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:rgba(10,25,50,.55);z-index:20;padding:20px}
+.modal.on{display:flex}
+.card{width:100%;max-width:360px;max-height:88vh;overflow:auto;touch-action:pan-y;background:#fffaf0;border:4px solid var(--ink);border-radius:24px;box-shadow:0 6px 0 var(--ink),0 18px 30px rgba(0,0,0,.35);padding:18px 18px 16px;text-align:center;animation:pop .28s cubic-bezier(.2,1.6,.4,1)}
+@keyframes pop{from{transform:scale(.7);opacity:0}to{transform:scale(1);opacity:1}}
+.card h2{margin:2px 0 8px;font:700 26px/1.1 var(--font);color:var(--ink)}
+.card p{margin:6px 0 12px;font:500 17px/1.35 var(--font)}
+.card img.pic{display:block;width:62%;margin:6px auto 8px;border-radius:14px;border:3px solid var(--ink);box-shadow:0 4px 0 var(--ink)}
+.btn{display:flex;align-items:center;justify-content:center;gap:6px;width:100%;height:54px;margin-top:10px;border:3px solid var(--ink);border-radius:17px;background:linear-gradient(180deg,rgba(255,255,255,.35),rgba(255,255,255,0) 55%),var(--c,#3d9bff);color:#fff;font:700 21px/1 var(--font);text-shadow:0 2px 0 rgba(0,0,0,.28);box-shadow:0 5px 0 var(--ink);cursor:pointer;transition:transform .07s,box-shadow .07s}
+.btn.g{--c:#43c94f}.btn.o{--c:#ff8c2e}.btn.w{--c:#fff;color:#22314d;text-shadow:none;height:46px;font-size:18px}.btn.off{filter:grayscale(1);opacity:.6}
+.tag{display:inline-block;margin-bottom:6px;padding:3px 12px;border-radius:99px;border:2.5px solid var(--ink);background:#ff8c2e;color:#fff;font:700 14px/1.2 var(--font);text-shadow:0 1px 0 rgba(0,0,0,.3)}
+.stars{font-size:40px;letter-spacing:4px;margin:2px 0 4px;filter:drop-shadow(0 3px 0 rgba(34,49,77,.5))}
+.stars span{display:inline-block;animation:st .5s cubic-bezier(.2,1.8,.4,1) both}
+.stars span.no{filter:grayscale(1) brightness(1.4);opacity:.45}
+@keyframes st{from{transform:scale(0) rotate(-40deg)}to{transform:scale(1)}}
+.row{display:flex;gap:6px;margin:6px 0 4px}.row .btn{height:44px;font-size:16px;margin-top:0;--c:#fff;color:#22314d;text-shadow:none}.row .btn.on{--c:#ffc93d}
+.lbl{font:700 16px/1 var(--font);text-align:left;margin-top:12px;color:var(--ink)}
+.note{font:500 13px/1.3 var(--font);color:#5a6a8a;margin-top:8px}
+.map{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin:8px 0}
+.lvb{aspect-ratio:1;border-radius:16px;border:3px solid var(--ink);background:linear-gradient(180deg,#fff,#dbe9ff);box-shadow:0 3px 0 var(--ink);font:700 18px/1 var(--font);color:var(--ink);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;cursor:pointer;padding:0}
+.lvb small{font-size:10px;letter-spacing:-1px;color:#ffb000;text-shadow:0 1px 0 #7a4a00}
+.lvb.cur{background:linear-gradient(180deg,#ffe27a,#ffb000);color:#fff;text-shadow:0 2px 0 #8a5a00}
+.lvb.lock{background:#c9d2de;color:#8a96a8;box-shadow:0 3px 0 #7a889c;border-color:#7a889c}
+#toast{position:fixed;left:50%;top:42%;transform:translate(-50%,-50%) scale(.9);padding:9px 18px;border-radius:16px;border:3px solid var(--ink);background:#fffaf0;font:700 19px/1 var(--font);color:var(--ink);opacity:0;transition:opacity .18s,transform .18s;pointer-events:none;z-index:15}
+#toast.on{opacity:1;transform:translate(-50%,-50%) scale(1)}
+.fx{position:fixed;left:0;top:0;pointer-events:none;z-index:12}
+.coinfly{width:24px;height:24px;border-radius:50%;background:radial-gradient(circle at 35% 30%,#fff7b0,#ffc928 45%,#e09000);border:2px solid #a86400;box-shadow:0 2px 0 rgba(0,0,0,.25)}
+.combo{font:700 34px/1 var(--font);color:#fff;-webkit-text-stroke:2px #22314d;text-shadow:0 4px 0 #22314d;white-space:nowrap}
+.conf{width:10px;height:14px;border-radius:2px}
+</style>
+</head>
+<body>
+<canvas id="gl"></canvas>
+<div id="loading">Kamyonlar yükleniyor…</div>
+<div id="top">
+  <button class="ib" id="bHome" aria-label="Ana oyun">⌂</button>
+  <button class="ib" id="bMap" aria-label="Bölümler">▦</button>
+  <div id="sign"><span id="signT">Kamyon 1</span><i><b id="signP"></b></i></div>
+  <div id="coin"><s></s><span id="coinN">0</span></div>
+  <button class="ib" id="bRe" aria-label="Yeniden başla">↻</button>
+  <button class="ib" id="bSet" aria-label="Ayarlar">⚙</button>
+</div>
+<div id="chips"><div class="chip" id="chipBelt">Bant <b>0/3</b></div><div class="chip" id="chipPark">Park <b>0/3</b></div></div>
+<div class="modal" id="modal"><div class="card" id="card"></div></div>
+<div id="toast"></div>
+<script src="../buz/izgara.js?v=300"></script>
+<script src="motor.js?v=300"></script>
+<script type="module" src="oyun.js?v=300"></script>
+</body>
+</html>
