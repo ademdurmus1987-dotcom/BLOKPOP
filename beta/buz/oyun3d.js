@@ -198,7 +198,7 @@ const metal = (col, r) => new THREE.MeshStandardMaterial({ color: col, metalness
 
 // ---------- yerlesim (dunya birimleri) ----------
 // tahta 10 birim genis; alt kenari y=0,z=0'da, THETA kadar arkaya yaslanir
-const BW = 10, THETA = (DERIN ? qn('kt', 16) : 30) * Math.PI / 180, BELT_Z = DERIN ? qn('kb', 2.6) : 1.4;
+const BW = 10, THETA = (DERIN ? qn('kt', 28) : 30) * Math.PI / 180, BELT_Z = DERIN ? qn('kb', 5) : 1.4;
 // zemindeki yerler ekrana gore hesaplanir (layout)
 let PAD_Z = 4.0, PAD_X0 = -2.75, PAD_X1 = 4.55, PAD_R = 0.82, LANE_Z0 = 6.3, LANE_DZ = 1.9, LANE_DX = 2.25, STACK = new THREE.Vector3(-4.55, 0, 4.0);
 const boardG = new THREE.Group(); boardG.rotation.x = -THETA; scene.add(boardG);
@@ -212,10 +212,17 @@ const _m = new THREE.Matrix4(), _q = new THREE.Quaternion(), _v = new THREE.Vect
 // derinlik: tahta bir kaidenin ustunde durur; atici alani ile kaide arasinda karanlik bir hendek var
 const EDGE_Z = BELT_Z - 1.4;
 const DEPTHTX = canvasTex(8, 256, (x, w, h) => { const gr = x.createLinearGradient(0, 0, 0, h); gr.addColorStop(0, '#3a2a1e'); gr.addColorStop(0.18, '#1d150f'); gr.addColorStop(0.6, '#07080b'); gr.addColorStop(1, '#020203'); x.fillStyle = gr; x.fillRect(0, 0, w, h); });
+const AOTX = canvasTex(8, 128, (x, w, h) => { const gr = x.createLinearGradient(0, 0, 0, h); gr.addColorStop(0, 'rgba(8,10,16,.82)'); gr.addColorStop(0.3, 'rgba(8,10,16,.4)'); gr.addColorStop(1, 'rgba(8,10,16,0)'); x.fillStyle = gr; x.fillRect(0, 0, w, h); });
 const PITTX = canvasTex(8, 256, (x, w, h) => { const gr = x.createLinearGradient(0, 0, 0, h); gr.addColorStop(0, '#05060a'); gr.addColorStop(0.7, '#10141c'); gr.addColorStop(1, '#1d2430'); x.fillStyle = gr; x.fillRect(0, 0, w, h); });
 (function buildStatic() {
   const floor = new THREE.Mesh(new THREE.PlaneGeometry(40, DERIN ? 44 : 36), MAT.floor); floor.rotation.x = -Math.PI / 2; floor.position.set(0, 0, EDGE_Z + 18 - (DERIN ? 4 : 0)); floor.receiveShadow = true; staticG.add(floor);
-  if (DERIN) return;   // tek kamerada zemin tahtanin dibine kadar uzanir, hendek yok
+  // bant: zeminle ayni duzlemde; carksiz
+  const belt = new THREE.Mesh(new THREE.BoxGeometry(16, 0.1, 2.0), [MAT.rail, MAT.rail, MAT.belt, MAT.rail, MAT.rail, MAT.rail]); belt.position.set(0, 0.05, BELT_Z); belt.receiveShadow = true; staticG.add(belt);
+  [-1, 1].forEach((d) => { const r = new THREE.Mesh(new THREE.BoxGeometry(16, 0.16, 0.12), MAT.rail); r.position.set(0, 0.08, BELT_Z + d * 1.06); r.castShadow = true; staticG.add(r); });
+  if (DERIN) {   // tek kamerada zemin tahtanin dibine kadar uzanir; dipte golge (tahta zemine oturur, dip derin gorunur)
+    const ao = new THREE.Mesh(new THREE.PlaneGeometry(18, 2.6), new THREE.MeshBasicMaterial({ map: AOTX, transparent: true, depthWrite: false })); ao.rotation.x = -Math.PI / 2; ao.position.set(0, 0.012, 1.1); ao.renderOrder = 1; staticG.add(ao);
+    return;
+  }
   // platform kenari: parlak metal dudak + koyu on yuz
   const lip = new THREE.Mesh(new THREE.BoxGeometry(40, 0.2, 0.34), MAT.laneWall); lip.position.set(0, 0.0, EDGE_Z + 0.17); lip.receiveShadow = true; staticG.add(lip);
   const face = new THREE.Mesh(new THREE.PlaneGeometry(40, 9), new THREE.MeshBasicMaterial({ map: PITTX })); face.position.set(0, -4.6, EDGE_Z); face.rotation.y = Math.PI; staticG.add(face);
@@ -225,9 +232,6 @@ const PITTX = canvasTex(8, 256, (x, w, h) => { const gr = x.createLinearGradient
   const far = new THREE.Mesh(new THREE.BoxGeometry(40, 0.3, 1.4), MAT.wood); far.position.set(0, -0.15, EDGE_Z - 1.8); far.receiveShadow = true; staticG.add(far);
   const farEdge = new THREE.Mesh(new THREE.BoxGeometry(40, 0.08, 0.1), MAT.trayRim); farEdge.position.set(0, 0.0, EDGE_Z - 1.12); staticG.add(farEdge);
   const pit = new THREE.Mesh(new THREE.PlaneGeometry(40, 3), new THREE.MeshBasicMaterial({ color: '#020203' })); pit.rotation.x = -Math.PI / 2; pit.position.set(0, -9.6, EDGE_Z - 0.55); staticG.add(pit);
-  // bant: zeminle ayni duzlemde, tahtanin dibinde; carksiz
-  const belt = new THREE.Mesh(new THREE.BoxGeometry(16, 0.1, 2.0), [MAT.rail, MAT.rail, MAT.belt, MAT.rail, MAT.rail, MAT.rail]); belt.position.set(0, 0.05, BELT_Z); belt.receiveShadow = true; staticG.add(belt);
-  [-1, 1].forEach((d) => { const r = new THREE.Mesh(new THREE.BoxGeometry(16, 0.16, 0.12), MAT.rail); r.position.set(0, 0.08, BELT_Z + d * 1.06); r.castShadow = true; staticG.add(r); });
 })();
 toFloor(staticG);
 const sillG = new THREE.Group(); scene.add(sillG);
@@ -247,6 +251,11 @@ function buildLanes() {
     const x = laneX(k);
     const fl = new THREE.Mesh(new THREE.BoxGeometry(LANE_DX - 0.25, 0.05, laneLen), MAT.lane); fl.position.set(x, 0.025, LANE_Z0 - 0.9 + laneLen / 2); fl.receiveShadow = true; staticG.add(fl);
     [-1, 1].forEach((d) => { const w = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.26, laneLen), MAT.laneWall); w.position.set(x + d * (LANE_DX - 0.25) / 2, 0.16, LANE_Z0 - 0.9 + laneLen / 2); w.castShadow = true; w.receiveShadow = true; staticG.add(w); });
+  }
+  if (DERIN && CAM.kside && CAM.krail) {   // iki oluk grubunun arasinda tahtaya uzanan ray ve traversler
+    const len = LANE_Z0 + 14, zc = len / 2 - 0.2, gw = CAM.kgap * 0.36;
+    [-1, 1].forEach((d) => { const r = new THREE.Mesh(new THREE.BoxGeometry(0.09, 0.08, len), MAT.rail); r.position.set(d * gw, 0.04, zc); r.receiveShadow = true; laneG.add(r); });
+    for (let z = 0.3; z < len; z += 0.62) { const t = new THREE.Mesh(new THREE.BoxGeometry(gw * 2 + 0.32, 0.035, 0.16), MAT.laneWall); t.position.set(0, 0.018, z); t.receiveShadow = true; laneG.add(t); }
   }
   toFloor(laneG);
 }
@@ -565,7 +574,7 @@ function freeTray() { let t = trays.find((q) => q.st === 'stack'); if (!t) t = t
 let paused = false, fx = [], idleT = 0, winShown = false, loseShown = false, shake = 0, combo = 0, lastHit = -9, toastT = 0, VW = 1, VH = 1, DPR = 1;
 const jumps = new Map();   // shooter -> {from, t0, dur, kind}
 const CQ = new URLSearchParams(location.search), cqn = (k, d) => (CQ.has(k) ? +CQ.get(k) : d);
-const CAM = { kd: cqn('kd', 22), kh: cqn('kh', 0.1), kmax: cqn('kmax', 0.6), kfit: cqn('kfit', 1), fov: cqn('fov', 34), fit: cqn('fit', 10.9), tilt: cqn('tilt', 9), fpitch: cqn('fpitch', 64), ffov: cqn('ffov', 30), gap: cqn('gap', 0), ftop: cqn('ftop', 0.16), kpad: cqn('kpad', 0.16), klane: cqn('klane', DERIN ? 0.28 : 0.4), kside: cqn('kside', 1), kgap: cqn('kgap', 1.2), klw: cqn('klw', 1.25) };
+const CAM = { kd: cqn('kd', 22), kh: cqn('kh', 0.28), kmax: cqn('kmax', 0.6), kfit: cqn('kfit', 1), fov: cqn('fov', 34), fit: cqn('fit', 10.9), tilt: cqn('tilt', 9), fpitch: cqn('fpitch', 64), ffov: cqn('ffov', 30), gap: cqn('gap', 0), ftop: cqn('ftop', 0.16), kpad: cqn('kpad', 0.16), klane: cqn('klane', DERIN ? 0.28 : 0.4), kside: cqn('kside', 1), krail: cqn('krail', 1), kgap: cqn('kgap', 1.2), klw: cqn('klw', 1.25) };
 function projWith(c, vp, v) { const p = v.clone().project(c); return { x: vp.x + (p.x * 0.5 + 0.5) * vp.w, y: vp.y + (-p.y * 0.5 + 0.5) * vp.h, z: p.z }; }
 function project(v) { return projWith(cam, VPB, v); }    // tahta
 function projectF(v) { return projWith(camF, VPF, v); }  // atici alani
@@ -585,7 +594,7 @@ function layout() {
   STACK.set(floorAt(VW * 0.1, syPad).x, 0, PAD_Z);
   LANE_Z0 = floorAt(VW / 2, syLane).z + 0.4;
   const zEnd = floorAt(VW / 2, bot - 6).z;
-  LANE_DZ = Math.max(1.2, (zEnd - LANE_Z0) / 3.1);
+  LANE_DZ = Math.max(DERIN ? 0.9 : 1.2, (zEnd - LANE_Z0) / (DERIN ? 3.2 : 3.1));
   LANE_DX = DERIN && CAM.kside ? CAM.klw : Math.abs(floorAt(VW, syLane).x) * 2 * 0.96 / 4;
   buildLanes(); if (g) buildPads(g.bench.length);
 }
@@ -793,7 +802,7 @@ ov.addEventListener('pointerdown', (e) => { e.preventDefault(); hit(e.clientX, e
 const ease = (k) => (k < 0.5 ? 2 * k * k : 1 - Math.pow(-2 * k + 2, 2) / 2);
 const arc = (a, b, k, h, out) => out.lerpVectors(a, b, ease(k)).setY(a.y + (b.y - a.y) * ease(k) + Math.sin(k * Math.PI) * h);
 const tmpV = new THREE.Vector3(), tmpV2 = new THREE.Vector3();
-const LOOK_UP = cqn('look', 0.7), TRUNK_UP = cqn('trunk', 1.7), QSC = DERIN ? cqn('kq', 0.66) : null;   // derin kamerada yakindaki kuyruk Pofileri kucuk
+const LOOK_UP = cqn('look', 0.7), TRUNK_UP = cqn('trunk', 1.7), QSC = DERIN ? cqn('kq', 0.74) : null;   // derin kamerada yakindaki kuyruk Pofileri kucuk
 function placeShooters(dt) {
   const want = new Map();   // s -> {pos, look, trunk, bob, vis}
   // kuyruk
