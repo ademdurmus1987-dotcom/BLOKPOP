@@ -132,3 +132,31 @@ Dokunun alfa kanalı gövde maskesidir; oyunda shader gövdeyi kamyonun rengine 
 - Kayıt: `blokpop_kamyon_v1` (seviye, yıldız). Coin'ler ana oyunla ortak (`blokpop_save_v1` içindeki `coins`).
 - Test: `?test=1` (otomasyon kancası `window.KM`), `?sv=12` seviye, `?auto=1` dikkatli oto-oynama, `?auto=r` rastgele.
 - Yavaş telefonda kalite kendiliğinden düşer (piksel oranı 1, kamyon gölgeleri kapanır).
+
+## Engel ve strateji sistemi (v3.10, Patlat modu)
+Ana oyunun (Patlat) 1000 seviyesinin hepsine engel katmanı eklendi; seviyelerin resimleri, sırası ve sayısı aynı. 1–11 tanıtım bölümleri sade kalır, 12'den itibaren her seviyede en az bir engel vardır. Kod `beta/index.html` içinde `v3.10 ENGEL VE STRATEJI SISTEMI` bloğundadır.
+
+**Boyut:** Engeller tek hücre değil, blok halindedir: 24'lük tahtada 2×2, 30'lukta 3×3, 44'lükte 4×4 (taş duvar 1×2 blok uzunluğunda, cam bir boy büyük).
+
+**Tahta engelleri (kabuk):** küplerin üstünü örter, kırılmadan alttakilere ulaşılamaz.
+- Nötr (her renk Pofi vurur, mermi harcamaz): Buz Kaplama, Metal Kafes, Cam Muhafaza, Taş Duvar, Patlayıcı Sandık (kırılınca çevresini patlatır, sandıklar zincirleme), Gizemli Küp (bomba / +40 coin / bütün buzları eritir), Gökkuşağı Küpü (kırılınca altındaki küpleri de yer, yol açar).
+- Renkli: Zincirli Küp — zinciri sadece zincir rengindeki Pofi kırar, mermi harcar (kuyruğa eklenir).
+- Katmanlı: buz+kafes, buz+zincir (dış katman bitince iç katman görünür, sağ üstte küçük rozet).
+
+**Dev özel küpler (unit):** Zırhlı (kendi rengi, çok vuruş), Mıknatıs (kırılınca kendi rengindeki en yakın küpleri çeker), Mühür anahtarı (kırılınca mühürlü yuva açılır), Hareketli (her N atışta yana kayar, ok ve sayaç gösterir).
+
+**Döner Kalkan:** bir grubu tek yönden korur, sayaç (atış sayısı) bitince saat yönünde döner. Gerçek zamanlı değildir, oyuncu sırayı planlar.
+
+**Kuyruk / tezgâh:** Kilitli yuva (N küp patlayınca açılır), Mühürlü yuva (anahtar küp kırılınca), Donmuş Pofi (N küp patlayınca çözülür; hiç hamle kalmazsa kendiliğinden çözülür), Sınırlı Pofi (turda en fazla rozetteki kadar atış), Ağır Pofi (yavaş, engellere x2 hasar).
+
+**Mermi denkliği:** Kuyruktaki toplam mermi = renkli küp + zincir + dev küp canı. Nötr vuruşlar bedava olduğu için mermi asla eksik/fazla kalmaz; patlama ve mıknatısla kırılan küplerin mermisi kuyruktan düşülür.
+
+**Dağılım (`obPlanAll`)**: tanıtım sırası buz 12, kafes 16, sandık 21, zırh 27, taş 33, cam 40, zincir 48, kilitli yuva 56, gökkuşağı 65, donmuş 75, gizemli 86, kalkan 98, sınırlı 112, mıknatıs 128, mühür 146, ağır 166, hareketli 190. Yeni gelen engel sonraki 9 seviyede pekişir; seviye zorluğuna (`diffClass`) ve sırasına göre 1→4 engel türü birlikte kullanılır; 10'un katı+1 nefes bölümü, 50'nin katları çok zor. Aynı kombinasyon art arda gelmez, 20 seviyede en fazla 2 kez.
+
+**Test:**
+```
+node tools/tests/ob-check.js                       # 1000 seviye: mermi denkliği + engel dağılımı
+node tools/tests/ob-check.js --shots ekran --levels 12,16,21 --wait 3200   # ekran görüntüsü
+node tools/ob-ayar.js --from 12 --to 1000 --tries 3 --yaz   # bot doğrulaması + gerekirse hafifletme (OB_TUNE)
+```
+Oyunda deneme: `?obk=ice,cage,crate,frozen` (bu türleri zorla), `?ob=0` (engelleri kapat).

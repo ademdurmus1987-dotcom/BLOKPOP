@@ -47,6 +47,8 @@ const ROOT = path.resolve(__dirname, '..');
 const MODES = (A.mode || 'ikisi') === 'ikisi' ? ['normal', 'boya'] : A.mode === 'hepsi' ? ['normal', 'boya', 'insa'] : [A.mode];
 const FROM = Math.max(1, parseInt(A.from || '1', 10));
 const TO = Math.max(FROM, parseInt(A.to || '100', 10));
+const LIST = A.list ? (A.list.endsWith('.json') ? JSON.parse(fs.readFileSync(path.resolve(ROOT, A.list), 'utf8')) : A.list.split(',').map(Number)) : null;
+const OBTUNE = A.obtune ? JSON.parse(fs.readFileSync(path.resolve(ROOT, A.obtune), 'utf8')) : null;
 const TRIES = Math.max(1, parseInt(A.tries || '3', 10));
 const STYLES = (A.styles || 'dikkatli,rastgele').split(',').map((s) => s.trim()).filter(Boolean);
 const DIR = (A.dir || 'beta').replace(/^\/+|\/+$/g, '');
@@ -129,17 +131,24 @@ const PLAY = ([L, style, seed, maxT, useNeed]) => {
         let best = -1, bv = -1;
         for (let c = 0; c < 4; c++) {
           const s = g.q[c][0];
-          if (!s || !(ex[s.c] > 0)) continue;
+          if (!s || !(ex[s.c] > 0) || s.frz > 0) continue;
           const v = ex[s.c] + rnd() * 0.5;
           if (v > bv) { bv = v; best = c; }
         }
+        if (best >= 0 && BP.launchFromQueue(best)) did = true;
+      }
+      // v3.10: sadece notr engel (buz, tas, kafes, gokkusagi...) aciksa her renk vurabilir: bir Pofi gonder
+      if (!did && ex.any > 0 && activeAmmo() < 2) {
+        for (let i = 0; i < g.bench.length && !did; i++) if (g.bench[i] && g.bench[i].st !== 'exit' && BP.launchFromBench(i)) did = true;
+        let best = -1, bv = -1;
+        if (!did) for (let c = 0; c < 4; c++) { const s = g.q[c][0]; if (s && !(s.frz > 0) && s.a + rnd() > bv) { bv = s.a; best = c; } }
         if (best >= 0 && BP.launchFromQueue(best)) did = true;
       }
       if (!did && activeAmmo() === 0) {
         // bantta kimse yok ve isabet edecek fil yok: oyuncu mecburen bir fil gonderir
         const ok = [];
         for (let i = 0; i < g.bench.length; i++) if (g.bench[i] && g.bench[i].st !== 'exit') ok.push(['b', i]);
-        for (let c = 0; c < 4; c++) if (g.q[c][0]) ok.push(['q', c]);
+        for (let c = 0; c < 4; c++) if (g.q[c][0] && !(g.q[c][0].frz > 0)) ok.push(['q', c]);
         if (ok.length) {
           const p = ok[Math.floor(rnd() * ok.length)];
           if (p[0] === 'b' ? BP.launchFromBench(p[1]) : BP.launchFromQueue(p[1])) { did = true; forced++; }
@@ -148,7 +157,7 @@ const PLAY = ([L, style, seed, maxT, useNeed]) => {
     } else if (rnd() < 0.5) {
       // rastgele: dusunmeden dokunan oyuncu (ortalama ~0.8 sn'de bir dokunus)
       const ok = [];
-      for (let c = 0; c < 4; c++) if (g.q[c][0]) ok.push(['q', c]);
+      for (let c = 0; c < 4; c++) if (g.q[c][0] && !(g.q[c][0].frz > 0)) ok.push(['q', c]);
       for (let i = 0; i < g.bench.length; i++) if (g.bench[i] && g.bench[i].st !== 'exit') ok.push(['b', i]);
       if (ok.length) {
         const p = ok[Math.floor(rnd() * ok.length)];
@@ -190,6 +199,7 @@ async function worker(id, base, jobs, results, progress) {
     await pg.evaluate(() => { window.requestAnimationFrame = function () { return 0; }; });
     if (SEEDMODE) await pg.evaluate((m) => BP.setPaintSeedMode(m), SEEDMODE);
     if (A.tune) await pg.evaluate((t) => BP.setBuildTune(JSON.parse(t)), A.tune);
+    if (OBTUNE) await pg.evaluate((t) => { for (const k in t) BP.obTune(+k, t[k]); }, OBTUNE);
     pages[mode] = pg;
     return pg;
   }
@@ -263,7 +273,7 @@ function report(by, secs) {
   L.push('**Tarzlar:** *dikkatli* = sadece şu an isabet edecek fili gönderir (önce tezgâhtakiler). *rastgele* = düşünmeden, ortalama 0,8 saniyede bir rastgele dokunur (acemi oyuncunun en kötü hali). Bot iyi bir oyuncu değil, kaba bir ölçüm aracıdır: "dikkatli bot kazanamadı" seviyenin imkânsız olduğunu değil, zor olduğunu gösterir.', '');
   for (const m of MODES) {
     const name = m === 'boya' ? 'BOYAMA' : m === 'insa' ? 'İNŞA' : 'NORMAL';
-    const lv = []; for (let i = FROM; i <= TO; i++) lv.push(i);
+    const lv = LIST ? LIST.slice() : []; if (!LIST) for (let i = FROM; i <= TO; i++) lv.push(i);
     L.push('## ' + name + ' modu', '');
     if (m === 'boya') L.push('> Not: Boyama modunda sadece 1–10. seviyeler için özel ayar (PSEEDS) var; 11. seviye ve sonrası normal modun ayarını kullanıyor, yani henüz boyama için ayarlanmadı.', '');
     const sum = { dikkatli: [0, 0, 0], rastgele: [0, 0, 0] };
@@ -336,7 +346,7 @@ function report(by, secs) {
   const base = 'http://127.0.0.1:' + srv.address().port;
   const jobs = [];
   if (ARA) { for (const mode of MODES) for (let L = FROM; L <= TO; L++) jobs.push({ mode, L, search: true }); }
-  else for (const mode of MODES) for (let L = FROM; L <= TO; L++) for (const style of STYLES) for (let k = 0; k < TRIES; k++) jobs.push({ mode, L, style, k, seed: (L * 7919 + k * 104729 + (style === 'rastgele' ? 17 : 0)) >>> 0 });
+  else for (const mode of MODES) for (const L of (LIST || Array.from({ length: TO - FROM + 1 }, (_, i) => FROM + i))) for (const style of STYLES) for (let k = 0; k < TRIES; k++) jobs.push({ mode, L, style, k, seed: (L * 7919 + k * 104729 + (style === 'rastgele' ? 17 : 0)) >>> 0 });
   // ayni modu ayni tarayicida toplamak icin sirala
   const total = jobs.length, results = [];
   const t0 = Date.now(); let done = 0, lastPrint = 0;
