@@ -34,7 +34,7 @@ const qL = /[?&]sv=(\d+)/.exec(location.search);
 // kamera: 'derin' = tek kamera, atici arkasindan tahtaya bakar (yer cizgileri tahtaya dogru daralir);
 // 'tepe' = bolunmus gorunum (tahta karsidan, atici alani tepeden). Ayarlar'dan secilir, ?kam= ile denenir.
 const Q0 = new URLSearchParams(location.search), qn = (k, d) => (Q0.has(k) ? +Q0.get(k) : d);
-const KAM = Q0.get('kam') || SV.kam || 'derin', DERIN = KAM !== 'tepe';
+const KAM = Q0.get('kam') || SV.kam || 'derin', DERIN = KAM !== 'tepe', TEK = KAM === 'tek';   // derin: tahta karsidan + zemin alcak kameradan (bolunmus); tek: tek kamera
 
 // ---------- ses (ana oyunun ses motoru) ----------
 let AC = null, master = null, wet = null, noiseBuf = null, lastPop = 0, lastShoot = 0, lastVib = 0, lastTap = 0;
@@ -106,7 +106,10 @@ const scene = new THREE.Scene();
 scene.background = new THREE.Color('#1c1008');
 const cam = new THREE.PerspectiveCamera(40, 1, 0.5, 300);   // tahta kamerasi
 const camF = new THREE.PerspectiveCamera(30, 1, 0.5, 300);  // atici alani kamerasi (tepeden)
-const VPB = { x: 0, y: 0, w: 1, h: 1 }, VPF = { x: 0, y: 0, w: 1, h: 1 };
+const VPB = { x: 0, y: 0, w: 1, h: 1 }, VPF = { x: 0, y: 0, w: 1, h: 1 }, VPQ = { x: 0, y: 0, w: 1, h: 0 };
+// derin: ekran uce bolunur - tahta (karsidan), bant bolgesi (alcak yakin kamera), yuva+kuyruk (tepeden kamera, dunyada z>QZ'de)
+const QM = DERIN && !TEK, QZ = 40;
+const camQ = new THREE.PerspectiveCamera(30, 1, 0.5, 300); camQ.layers.set(1);
 cam.layers.set(0); camF.layers.set(1);
 const toFloor = (o) => { o.traverse((x) => x.layers.set(1)); return o; };
 
@@ -199,7 +202,7 @@ const metal = (col, r) => new THREE.MeshStandardMaterial({ color: col, metalness
 
 // ---------- yerlesim (dunya birimleri) ----------
 // tahta 10 birim genis; alt kenari y=0,z=0'da, THETA kadar arkaya yaslanir
-const BW = 10, THETA = (DERIN ? qn('kt', 14) : 30) * Math.PI / 180, BELT_Z = DERIN ? qn('kb', 1.4) : 1.4;
+const BW = 10, THETA = (TEK ? qn('kt', 14) : 30) * Math.PI / 180, BELT_Z = qn('kb', 1.4);
 // zemindeki yerler ekrana gore hesaplanir (layout)
 let PAD_Z = 4.0, PAD_X0 = -2.75, PAD_X1 = 4.55, PAD_R = 0.82, LANE_Z0 = 6.3, LANE_DZ = 1.9, LANE_DX = 2.25, STACK = new THREE.Vector3(-4.55, 0, 4.0);
 const boardG = new THREE.Group(); boardG.rotation.x = -THETA; scene.add(boardG);
@@ -217,8 +220,10 @@ const AOTX = canvasTex(8, 128, (x, w, h) => { const gr = x.createLinearGradient(
 const PITTX = canvasTex(8, 256, (x, w, h) => { const gr = x.createLinearGradient(0, 0, 0, h); gr.addColorStop(0, '#05060a'); gr.addColorStop(0.7, '#10141c'); gr.addColorStop(1, '#1d2430'); x.fillStyle = gr; x.fillRect(0, 0, w, h); });
 // n seklinde bant (derin kamera): Pofi soldan tahtaya dogru cikar, tahtanin onunden gecip atis yapar, sagdan iner
 const NB = { XC: BW / 2 + qn('nx', -1.0), LEG: qn('nleg', 2.8), W: qn('nw', 1.1) };
-const BELT_TX = [];
+const BELT_TX = [], nbG = new THREE.Group(); scene.add(nbG); let BK = 1;
 function buildNBelt() {
+  while (nbG.children.length) { const m = nbG.children[0]; nbG.remove(m); if (m.geometry) m.geometry.dispose(); }
+  BELT_TX.length = 0; const staticG = nbG;
   const w = NB.W, L = NB.XC * 2 + w, beltTex = (rot, rep) => { const t = TX.belt.clone(); t.needsUpdate = true; t.wrapS = t.wrapT = THREE.RepeatWrapping; t.center.set(0.5, 0.5); t.rotation = rot; t.repeat.set(rep, 1); BELT_TX.push({ t, dir: rot ? Math.sign(rot) : 1 }); return t; };
   const top = (tex) => [MAT.rail, MAT.rail, new THREE.MeshStandardMaterial({ map: tex, roughness: 0.6 }), MAT.rail, MAT.rail, MAT.rail];
   const h = new THREE.Mesh(new THREE.BoxGeometry(L, 0.1, w), top(beltTex(0, L / 2.6))); h.position.set(0, 0.05, BELT_Z); h.receiveShadow = true; staticG.add(h);
@@ -229,6 +234,7 @@ function buildNBelt() {
     const r2 = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.16, NB.LEG), MAT.rail); r2.position.set(sd * (NB.XC - w / 2 - 0.05), 0.08, BELT_Z + w / 2 + NB.LEG / 2); staticG.add(r2);
   });
   const ri = new THREE.Mesh(new THREE.BoxGeometry(NB.XC * 2 - w - 0.1, 0.16, 0.1), MAT.rail); ri.position.set(0, 0.08, BELT_Z + w / 2 + 0.05); staticG.add(ri);
+  toFloor(nbG);
 }
 // motordaki bant konumu -> dunya (n bant: x<CM sol ayak, x>W+CM sag ayak)
 function beltPos(x, y, out) {
@@ -237,12 +243,12 @@ function beltPos(x, y, out) {
   const xa = -g.CM, xb = g.W + g.CM;
   if (x < xa) return out.set(-NB.XC, y, BELT_Z + Math.min(NB.LEG + NB.W / 2, (xa - x) * S));
   if (x > xb) return out.set(NB.XC, y, BELT_Z + Math.min(NB.LEG + NB.W / 2, (x - xb) * S));
-  return out.set(colX(x), y, BELT_Z);
+  return out.set(colX(x) * BK, y, BELT_Z);
 }
 (function buildStatic() {
   const floor = new THREE.Mesh(new THREE.PlaneGeometry(40, DERIN ? 44 : 36), MAT.floor); floor.rotation.x = -Math.PI / 2; floor.position.set(0, 0, EDGE_Z + 18 - (DERIN ? 4 : 0)); floor.receiveShadow = true; staticG.add(floor);
   // bant: zeminle ayni duzlemde; carksiz
-  if (DERIN) buildNBelt(); else {
+  if (TEK) buildNBelt(); else if (!DERIN) {
   const belt = new THREE.Mesh(new THREE.BoxGeometry(16, 0.1, 2.0), [MAT.rail, MAT.rail, MAT.belt, MAT.rail, MAT.rail, MAT.rail]); belt.position.set(0, 0.05, BELT_Z); belt.receiveShadow = true; staticG.add(belt);
   }
   [-1, 1].forEach((d) => { if (DERIN) return; const r = new THREE.Mesh(new THREE.BoxGeometry(16, 0.16, 0.12), MAT.rail); r.position.set(0, 0.08, BELT_Z + d * 1.06); r.castShadow = true; staticG.add(r); });
@@ -293,13 +299,15 @@ function buildPads(n) {
   for (let k = 0; k < BZM.MAX_BENCH; k++) {
     const p = padPos(k), on = k < n;
     const d = new THREE.Mesh(new THREE.CircleGeometry(PAD_R, 32), MAT.pad); d.rotation.x = -Math.PI / 2; d.position.set(p.x, 0.012, p.z); padG.add(d);
-    const r = new THREE.Mesh(new THREE.TorusGeometry(PAD_R, on ? 0.05 : 0.03, 8, 40), on ? MAT.padRing : PADLOCK); r.rotation.x = -Math.PI / 2; r.position.set(p.x, 0.02, p.z); padG.add(r);
+    const nc = new THREE.Color().setHSL(0.6 + 0.16 * k / (BZM.MAX_BENCH - 1), 0.95, 0.62);
+    const neon = QM ? new THREE.MeshBasicMaterial({ color: nc.clone().multiplyScalar(1.25), toneMapped: false }) : MAT.padRing;
+    const r = new THREE.Mesh(new THREE.TorusGeometry(PAD_R, on ? (QM ? 0.07 : 0.05) : 0.03, 8, 40), on ? neon : PADLOCK); r.rotation.x = -Math.PI / 2; r.position.set(p.x, 0.02, p.z); padG.add(r);
   }
   toFloor(padG);
 }
 function padPos(k, n) { n = BZM.MAX_BENCH; const x = n > 1 ? PAD_X0 + (PAD_X1 - PAD_X0) * k / (n - 1) : (PAD_X0 + PAD_X1) / 2; return { x, z: PAD_Z }; }
 // derin kamerada oluklar iki yanda (ikisi solda, ikisi sagda), ortada tahtaya uzanan bos zemin kalir
-function laneX(k) { if (!DERIN || !CAM.kside) return (k - 1.5) * LANE_DX; const sd = k < 2 ? -1 : 1, i = k < 2 ? 1 - k : k - 2; return sd * (CAM.kgap / 2 + LANE_DX * (i + 0.5)); }
+function laneX(k) { if (!TEK || !CAM.kside) return (k - 1.5) * LANE_DX; const sd = k < 2 ? -1 : 1, i = k < 2 ? 1 - k : k - 2; return sd * (CAM.kgap / 2 + LANE_DX * (i + 0.5)); }
 function lanePos(k, j) { return { x: laneX(k), z: LANE_Z0 + j * LANE_DZ }; }
 const colX = (xc) => -BW / 2 + xc * S;   // motordaki sutun konumu -> dunya x
 
@@ -702,28 +710,29 @@ function freeTray() { let t = trays.find((q) => q.st === 'stack'); if (!t) t = t
 let paused = false, fx = [], idleT = 0, winShown = false, loseShown = false, shake = 0, combo = 0, lastHit = -9, toastT = 0, VW = 1, VH = 1, DPR = 1;
 const jumps = new Map();   // shooter -> {from, t0, dur, kind}
 const CQ = new URLSearchParams(location.search), cqn = (k, d) => (CQ.has(k) ? +CQ.get(k) : d);
-const CAM = { kd: cqn('kd', 10), kh: cqn('kh', 0.04), kmax: cqn('kmax', 0.6), ktrap: cqn('ktrap', 13), kfit: cqn('kfit', 1), fov: cqn('fov', 34), fit: cqn('fit', 10.9), tilt: cqn('tilt', 9), fpitch: cqn('fpitch', 64), ffov: cqn('ffov', 30), gap: cqn('gap', 0), ftop: cqn('ftop', 0.16), kpad: cqn('kpad', DERIN ? 0.28 : 0.16), klane: cqn('klane', DERIN ? 0.56 : 0.4), kside: cqn('kside', 1), krail: cqn('krail', 0), kgap: cqn('kgap', 1.2), klw: cqn('klw', 0.95) };
+const CAM = { kd: cqn('kd', 10), kh: cqn('kh', 0.04), kmax: cqn('kmax', 0.6), ktrap: cqn('ktrap', 13), kfit: cqn('kfit', 1), fov: cqn('fov', 34), fit: cqn('fit', 10.9), tilt: cqn('tilt', 9), fd: cqn('fd', 9), nfit: cqn('nfit', 0.55), fleg: cqn('fleg', 0.98), fz: cqn('fz', 0.5), qfov: cqn('qfov', 30), qpitch: cqn('qpitch', 58), qw: cqn('qw', 12.5), fpitch: cqn('fpitch', DERIN ? 30 : 64), ffov: cqn('ffov', DERIN ? 50 : 30), gap: cqn('gap', 0), ftop: cqn('ftop', DERIN ? 0.42 : 0.16), kpad: cqn('kpad', DERIN ? 0.28 : 0.16), klane: cqn('klane', DERIN ? 0.56 : 0.4), kside: cqn('kside', 1), krail: cqn('krail', 0), kgap: cqn('kgap', 1.2), klw: cqn('klw', 0.95) };
 function projWith(c, vp, v) { const p = v.clone().project(c); return { x: vp.x + (p.x * 0.5 + 0.5) * vp.w, y: vp.y + (-p.y * 0.5 + 0.5) * vp.h, z: p.z }; }
 function project(v) { return projWith(cam, VPB, v); }    // tahta
-function projectF(v) { return projWith(camF, VPF, v); }  // atici alani
-function floorAt(sx, sy, y0) { const v = new THREE.Vector3(((sx - VPF.x) / VPF.w) * 2 - 1, -((sy - VPF.y) / VPF.h) * 2 + 1, 0.5).unproject(camF), dir = v.sub(camF.position).normalize(), t = ((y0 || 0) - camF.position.y) / dir.y; return camF.position.clone().addScaledVector(dir, t); }
+function projectF(v) { return QM && v.z > QZ - 6 ? projWith(camQ, VPQ, v) : projWith(camF, VPF, v); }  // atici alani (derinde: kuyruk bolgesi ayri kamera)
+function floorAt(sx, sy, y0) { const q = QM && sy >= VPQ.y, cF = q ? camQ : camF, vp = q ? VPQ : VPF; const v = new THREE.Vector3(((sx - vp.x) / vp.w) * 2 - 1, -((sy - vp.y) / vp.h) * 2 + 1, 0.5).unproject(cF), dir = v.sub(cF.position).normalize(), t = ((y0 || 0) - cF.position.y) / dir.y; return cF.position.clone().addScaledVector(dir, t); }
 function layout() {
   VW = innerWidth; VH = innerHeight; DPR = Math.min(QL >= 2 ? 1 : QL === 1 ? 1.25 : 2, devicePixelRatio || 1);
   ren.setPixelRatio(DPR); ren.setSize(VW, VH, false);
   ov.width = Math.round(VW * DPR); ov.height = Math.round(VH * DPR);
   const css = getComputedStyle(document.documentElement), sat = parseFloat(css.getPropertyValue('--sat')) || 0, sab = parseFloat(css.getPropertyValue('--sab')) || 0;
-  if (DERIN) layoutDeep(sat); else layoutSplit(sat);
+  if (TEK) layoutDeep(sat); else layoutSplit(sat);
   // zemindeki yerleri ekrana gore yerlestir
-  const yBelt = projectF(new THREE.Vector3(0, 0, BELT_Z + 1.0)).y, bot = VH - sab, room = bot - yBelt;
-  const syPad = yBelt + room * (DERIN ? CAM.kpad : 0.17), syLane = yBelt + room * (DERIN ? CAM.klane : 0.42);
+  let yBelt = projectF(new THREE.Vector3(0, 0, BELT_Z + 1.0)).y, bot = VH - sab, room = bot - yBelt;
+  let syPad = yBelt + room * (DERIN ? CAM.kpad : 0.17), syLane = yBelt + room * (DERIN ? CAM.klane : 0.42);
+  if (QM) { yBelt = VPQ.y; room = bot - yBelt; syPad = yBelt + room * 0.13; syLane = yBelt + room * 0.36; }
   PAD_Z = floorAt(VW / 2, syPad).z;
   PAD_X0 = floorAt(VW * 0.28, syPad).x; PAD_X1 = floorAt(VW * 0.94, syPad).x;
   const n = BZM.MAX_BENCH; PAD_R = Math.min(0.8, (PAD_X1 - PAD_X0) / Math.max(1, n - 1) * 0.44);
   STACK.set(floorAt(VW * 0.1, syPad).x, 0, PAD_Z);
   LANE_Z0 = floorAt(VW / 2, syLane).z + 0.4;
   const zEnd = floorAt(VW / 2, bot - 6).z;
-  LANE_DZ = Math.max(DERIN ? 0.9 : 1.2, (zEnd - LANE_Z0) / (DERIN ? 3.2 : 3.1));
-  LANE_DX = DERIN && CAM.kside ? CAM.klw : Math.abs(floorAt(VW, syLane).x) * 2 * 0.96 / 4;
+  LANE_DZ = Math.max(TEK ? 0.9 : 1.2, (zEnd - LANE_Z0) / (TEK ? 3.2 : 3.1));
+  LANE_DX = TEK && CAM.kside ? CAM.klw : Math.abs(floorAt(VW, syLane).x) * 2 * 0.96 / 4;
   buildLanes(); if (g) buildPads(g.bench.length);
 }
 // tek kamera: goruntu duzlemi tahtaya paralel (tahta dikdortgen kalir, kenardan kenara), kamera tahtanin
@@ -753,6 +762,19 @@ function layoutDeep(sat) {
   cam.position.copy(camF.position); cam.quaternion.copy(camF.quaternion); cam.updateMatrixWorld();
   cam.projectionMatrix.copy(camF.projectionMatrix); cam.projectionMatrixInverse.copy(camF.projectionMatrixInverse);
 }
+// kuyruk bolgesi kamerasi: tepeden (eski gorunum gibi), dunyada QZ'nin onunde
+function layoutQ() {
+  camQ.fov = CAM.qfov; camQ.aspect = VPQ.w / Math.max(1, VPQ.h);
+  const pit = CAM.qpitch * Math.PI / 180, dir = new THREE.Vector3(0, Math.sin(pit), Math.cos(pit)), want = CAM.qw / 2;
+  let best = null;
+  for (let d = 6; d <= 60; d += 0.5) for (let zc = QZ; zc <= QZ + 12; zc += 0.25) {
+    camQ.position.set(0, 0, zc).addScaledVector(dir, d); camQ.lookAt(0, 0, zc); camQ.updateProjectionMatrix(); camQ.updateMatrixWorld();
+    const a = projWith(camQ, VPQ, new THREE.Vector3(want, 0, QZ + 0.6)), b = projWith(camQ, VPQ, new THREE.Vector3(0, 0, QZ));
+    const err = Math.abs(a.x - VW) / VW + Math.abs((b.y - VPQ.y) / VPQ.h - 0.02) * 2;
+    if (!best || err < best.err) best = { err, d, zc };
+  }
+  camQ.position.set(0, 0, best.zc).addScaledVector(dir, best.d); camQ.lookAt(0, 0, best.zc); camQ.updateProjectionMatrix(); camQ.updateMatrixWorld();
+}
 function layoutSplit(sat) {
   const SILL = cqn('sill', 0.45), bh = (g ? BH : 12.86) + 1.1 + SILL;
   // --- ust: tahta, karsidan (biraz yukaridan) ---
@@ -775,6 +797,22 @@ function layoutSplit(sat) {
   const pxCol = bwPx / CAM.fit;            // tahtada 1 birim kac piksel
   const want = (VW / 2) / pxCol;            // ekranin yari genisligi kac birim
   let best = null;
+  if (DERIN) {   // alcak, yakin zemin kamerasi (guclu perspektif); bant ekrana sigacak kadar daraltilir (BK)
+    const fh2 = Math.round(fh * CAM.fz); VPF.h = fh2; camF.aspect = VW / fh2;
+    Object.assign(VPQ, { x: 0, y: fy + fh2, w: VW, h: fh - fh2 }); layoutQ();
+    // iki kosul: bandin uzak kenari gorusun ustunde (ftop), bant ayaklarinin dibi gorusun nleg_y kadar asagisinda
+    for (let d = 3; d <= 30; d += 0.25) for (let zc = BELT_Z - 2; zc <= BELT_Z + 10; zc += 0.1) {
+      camF.position.set(0, 0, zc).addScaledVector(dirF, d); camF.lookAt(0, 0, zc); camF.updateProjectionMatrix(); camF.updateMatrixWorld();
+      const b = projectF(new THREE.Vector3(0, 0.1, BELT_Z - NB.W / 2)), c = projectF(new THREE.Vector3(0, 0, BELT_Z + NB.W / 2 + NB.LEG));
+      if (b.z > 1 || c.z > 1) continue;
+      const err = Math.abs((b.y - fy) / VPF.h - CAM.ftop) + Math.abs((c.y - fy) / VPF.h - CAM.fleg);
+      if (!best || err < best.err) best = { err, d, zc };
+    }
+    camF.position.set(0, 0, best.zc).addScaledVector(dirF, best.d); camF.lookAt(0, 0, best.zc); camF.updateProjectionMatrix(); camF.updateMatrixWorld();
+    const hw = Math.abs(floorAt(VW, projectF(new THREE.Vector3(0, 0, BELT_Z)).y).x);
+    NB.XC = hw * CAM.nfit; BK = NB.XC / (BW / 2 + 0.4); buildNBelt();
+    return;
+  }
   for (let d = 10; d <= 60; d += 0.5) for (let zc = BELT_Z; zc <= BELT_Z + 14; zc += 0.25) {
     camF.position.set(0, 0, zc).addScaledVector(dirF, d); camF.lookAt(0, 0, zc); camF.updateProjectionMatrix(); camF.updateMatrixWorld();
     const a = projectF(new THREE.Vector3(want, 0.1, BELT_Z)), b = projectF(new THREE.Vector3(0, 0.1, BELT_Z - 0.9));
@@ -790,7 +828,7 @@ function pxPerUnitF(v) { const a = projectF(v), b = projectF(v.clone().add(new T
 function start(L) {
   LV = Math.max(1, Math.min(200, L)); SV.L = LV; save();
   for (const [s, o] of live) { scene.remove(o.holder); POFI.pool.push(o); } live.clear(); jumps.clear();
-  g = BZM.newGame(LV, DERIN ? { cm: (NB.XC - BW / 2) / (BW / BZM.planFor(LV).size), leg: (NB.LEG + NB.W / 2) / (BW / BZM.planFor(LV).size) } : {}); fx = []; winShown = false; loseShown = false; idleT = 0; combo = 0; lastHit = -9;
+  g = BZM.newGame(LV, DERIN ? { cm: (TEK ? NB.XC - BW / 2 : 0.4) / (BW / BZM.planFor(LV).size), leg: (NB.LEG + NB.W / 2) / (BW / BZM.planFor(LV).size) } : {}); fx = []; winShown = false; loseShown = false; idleT = 0; combo = 0; lastHit = -9;
   for (const k in pops) delete pops[k];
   trays.forEach((t, i) => { t.st = 'stack'; t.s = null; });
   buildBoard(); buildPads(g.bench.length); layout(); drawGoal(); updSign();
@@ -943,24 +981,24 @@ ov.addEventListener('pointerdown', (e) => { e.preventDefault(); hit(e.clientX, e
 const ease = (k) => (k < 0.5 ? 2 * k * k : 1 - Math.pow(-2 * k + 2, 2) / 2);
 const arc = (a, b, k, h, out) => out.lerpVectors(a, b, ease(k)).setY(a.y + (b.y - a.y) * ease(k) + Math.sin(k * Math.PI) * h);
 const tmpV = new THREE.Vector3(), tmpV2 = new THREE.Vector3();
-const LOOK_UP = cqn('look', 0.7), TRUNK_UP = cqn('trunk', 1.7), QSC = DERIN ? cqn('kq', 0.42) : null, BSC = cqn('kbs', DERIN ? 0.6 : 0.75);   // yuvadaki Pofiler kucuk   // derin kamerada yakindaki kuyruk Pofileri kucuk
+const LOOK_UP = cqn('look', 0.7), TRUNK_UP = cqn('trunk', 1.7), QSC = DERIN ? cqn('kq', TEK ? 0.42 : 0.8) : null, BELTSC = QM ? cqn('kbelt', 1.5) : null, BSC = cqn('kbs', TEK ? 0.6 : 0.75);   // yuvadaki Pofiler kucuk   // derin kamerada yakindaki kuyruk Pofileri kucuk
 function placeShooters(dt) {
   const want = new Map();   // s -> {pos, look, trunk, bob, vis}
   // kuyruk
-  g.queue.forEach((col, k) => { const n = Math.min(col.length, DERIN ? 3 : 4); for (let j = 0; j < n; j++) { const s = col[j], p = lanePos(k, j), fz = s.frozen > 0; want.set(s, { pos: new THREE.Vector3(p.x, 0.05, p.z), look: 0, trunk: fz ? 0 : 0.15, bob: fz ? 0 : Math.sin(g.t * 3 + s.id) * 0.5 + 0.5, frozen: fz, drone: s.kind === 'drone', scale: QSC }); } });
+  g.queue.forEach((col, k) => { const n = Math.min(col.length, TEK ? 3 : 4); for (let j = 0; j < n; j++) { const s = col[j], p = lanePos(k, j), fz = s.frozen > 0; want.set(s, { pos: new THREE.Vector3(p.x, 0.05, p.z), look: 0, trunk: fz ? 0 : 0.15, bob: fz ? 0 : Math.sin(g.t * 3 + s.id) * 0.5 + 0.5, frozen: fz, drone: s.kind === 'drone', scale: QSC }); } });
   // yuvalar
   g.bench.forEach((s, k) => { if (!s) return; const p = padPos(k); want.set(s, { pos: new THREE.Vector3(p.x, 0.02, p.z), look: 0.1, trunk: 0.25, bob: Math.sin(g.t * 3.4 + s.id) * 0.5 + 0.5, scale: BSC }); });
   // bant: tabla ustunde, kafa yukarida, hortum kalkik
   for (const s of g.belt) {
     if (s.gone) continue;
     const fire = s.fireT != null && g.t - s.fireT < 0.14 ? 1 - (g.t - s.fireT) / 0.14 : 0;
-    want.set(s, { pos: beltPos(s.x, TRAY_Y), look: LOOK_UP + fire * 0.18, trunk: TRUNK_UP + fire * 0.6, bob: fire * 0.6, belt: true });
+    want.set(s, { pos: beltPos(s.x, TRAY_Y), look: LOOK_UP + fire * 0.18, trunk: TRUNK_UP + fire * 0.6, bob: fire * 0.6, belt: true, scale: beltScale(s.x) });
   }
   // atlayislar (kuyruktan/yuvadan tablaya, tabladan yuvaya)
   for (const [s, j] of jumps) {
     const w = want.get(s), k = (g.t - j.t0) / j.dur;
     if (k >= 1 || !w) { jumps.delete(s); if (w && !j.toPad) SFX.land(); continue; }
-    arc(j.from, w.pos, k, DERIN ? 0.7 : 1.6, tmpV); w.pos = tmpV.clone(); w.bob = Math.sin(k * Math.PI) * -0.4;
+    if (QM && (j.from.z > QZ - 6) !== (w.pos.z > QZ - 6)) { zoneHop(j.from, w.pos, k, tmpV, w); } else arc(j.from, w.pos, k, TEK ? 0.7 : 1.6, tmpV); w.pos = tmpV.clone(); w.bob = Math.sin(k * Math.PI) * -0.4;
   }
   // gidenler (isi bitti): yukari suzulup kaybolur
   // drone Pofi oluktan havalanir (tahtada ucan gorunumu ayri)
@@ -1015,6 +1053,14 @@ function syncDrones(dt) {
   }
   if (any && !paused) { humOn(); humSet(Math.min(1, spd / 6)); } else humOff();
 }
+// bolgeler arasi atlama (kuyruk <-> bant): kaynakta yukari sicrayip kuculur, hedefte buyuyerek iner
+function zoneHop(a, b, k, out, w) {
+  if (k < 0.5) { const u = k * 2; out.copy(a).setY(a.y + Math.sin(u * Math.PI / 2) * 2); if (w) w.scale = Math.max(0.02, 1 - u); }
+  else { const u = (k - 0.5) * 2; out.copy(b).setY(b.y + (1 - Math.sin(u * Math.PI / 2)) * 1.6); if (w) w.scale = Math.max(0.02, u) * (w.scale0 || 1); }
+  return out;
+}
+// bant ayaklari kameraya yaklasir: orada Pofi kuculur (yakin perspektifte dev gorunmesin)
+function beltScale(x) { if (!BELTSC) return null; if (!g.LEG) return BELTSC; const d = x < -g.CM ? -g.CM - x : x > g.W + g.CM ? x - g.W - g.CM : 0; return BELTSC * (1 - 0.55 * Math.min(1, d / g.LEG)); }
 function placeTrays() {
   const stackN = []; let n = 0;
   for (const t of trays) {
@@ -1022,12 +1068,12 @@ function placeTrays() {
     if (t.st === 'out') {   // yigindan banda firlar, Pofi'nin altina
       const s = t.s; if (!s || s.gone) { trayCoast(s || {}); t.st = 'coast'; continue; }
       const to = beltPos(s.x, 0.12), k = (g.t - t.t0) / 0.32;
-      if (k >= 1) { t.st = 'ride'; t.grp.position.copy(to); } else arc(t.from, to, k, 1.4, t.grp.position);
+      if (k >= 1) { t.st = 'ride'; t.grp.position.copy(to); t.grp.scale.setScalar(1); } else if (QM) { const w = {}; zoneHop(t.from, to, k, t.grp.position, w); t.grp.scale.setScalar(w.scale); } else arc(t.from, to, k, 1.4, t.grp.position);
       continue;
     }
     if (t.st === 'ride') { const s = t.s; if (!s || s.gone || !g.belt.includes(s)) { t.from.copy(t.grp.position); t.st = 'back'; t.t0 = g.t; t.s = null; if (s && s._tray === t) s._tray = null; continue; } beltPos(s.x, 0.12, t.grp.position); continue; }
     if (t.st === 'coast') { t.x += g.speed * DT; beltPos(t.x, 0.12, t.grp.position); if (t.x >= g.X1) { t.from.copy(t.grp.position); t.st = 'back'; t.t0 = g.t; } continue; }
-    if (t.st === 'back') { const k = (g.t - t.t0) / 0.5, to = stackSlot(trays.filter((q) => q.st === 'stack').length); if (k >= 1) { t.st = 'stack'; SFX.tray(); } else arc(t.from, to, k, 2.2, t.grp.position); }
+    if (t.st === 'back') { const k = (g.t - t.t0) / 0.5, to = stackSlot(trays.filter((q) => q.st === 'stack').length); if (k >= 1) { t.st = 'stack'; t.grp.scale.setScalar(1); SFX.tray(); } else if (QM) { const w = {}; zoneHop(t.from, to, k, t.grp.position, w); t.grp.scale.setScalar(w.scale); } else arc(t.from, to, k, 2.2, t.grp.position); }
   }
   trays.forEach((t) => { t.grp.rotation.y = t.st === 'back' || t.st === 'out' ? Math.sin(g.t * 20) * 0.3 : 0; });
 }
@@ -1083,11 +1129,11 @@ function drawOverlay(dt, want) {
   // ucan drone'un mermisi
   for (const [s, v] of droneViews) { if (v.endT != null || !v.inst.b.Head) continue; v.inst.b.Head.getWorldPosition(tmpV); const q = project(tmpV); pill(c, q.x, q.y + 4, String(s.ammo), 15); }
   // kuyrukta gorunmeyen fil sayisi
-  const QV = DERIN ? 3 : 4; g.queue.forEach((col, k) => { if (col.length > QV) { let p = projectF(new THREE.Vector3(laneX(k) + 0.5, 0.4, LANE_Z0 + (QV - 0.4) * LANE_DZ)); if (p.y > VH - 14) p = { x: p.x, y: VH - 14 }; c.font = '700 16px ' + FONT; c.textAlign = 'center'; c.textBaseline = 'middle'; c.lineWidth = 4; c.strokeStyle = '#2a1606'; c.fillStyle = '#fff'; c.strokeText('+' + (col.length - QV), p.x, p.y); c.fillText('+' + (col.length - QV), p.x, p.y); } });
+  const QV = TEK ? 3 : 4; g.queue.forEach((col, k) => { if (col.length > QV) { let p = projectF(new THREE.Vector3(laneX(k) + 0.5, 0.4, LANE_Z0 + (QV - 0.4) * LANE_DZ)); if (p.y > VH - 14) p = { x: p.x, y: VH - 14 }; c.font = '700 16px ' + FONT; c.textAlign = 'center'; c.textBaseline = 'middle'; c.lineWidth = 4; c.strokeStyle = '#2a1606'; c.fillStyle = '#fff'; c.strokeText('+' + (col.length - QV), p.x, p.y); c.fillText('+' + (col.length - QV), p.x, p.y); } });
   // kilitli yuvalar: + (devam edince acilir)
   for (let k = g.bench.length; k < BZM.MAX_BENCH; k++) { const p = padPos(k), q = projectF(new THREE.Vector3(p.x, 0.02, p.z)); c.font = '700 ' + Math.round(Math.max(14, pxPerUnitF(new THREE.Vector3(p.x, 0, p.z)) * 0.6)) + 'px ' + FONT; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillStyle = 'rgba(220,232,255,.55)'; c.fillText('+', q.x, q.y); }
   // yuva durumu ve hedef sayilari
-  const free = g.bench.filter((s) => !s).length, py = (projectF(new THREE.Vector3(0, 0, BELT_Z + 1.1)).y + projectF(new THREE.Vector3(0, 0, PAD_Z - PAD_R)).y) / 2 - 2, lx = projectF(new THREE.Vector3(STACK.x + 0.85, 0, PAD_Z)).x + 4;
+  const free = g.bench.filter((s) => !s).length, py = QM ? projectF(new THREE.Vector3(0, 0, PAD_Z - PAD_R * 1.7)).y : (projectF(new THREE.Vector3(0, 0, BELT_Z + 1.1)).y + projectF(new THREE.Vector3(0, 0, PAD_Z - PAD_R)).y) / 2 - 2, lx = projectF(new THREE.Vector3(STACK.x + 0.85, 0, PAD_Z)).x + 4;
   c.font = '600 13px ' + FONT; c.textAlign = 'left'; c.textBaseline = 'middle'; c.fillStyle = free === 0 ? '#ff9a9a' : '#f6dfc0'; c.fillText('Yuva ' + free + '/' + g.bench.length, lx, py);
   const cnt = {}; for (let ci = 0; ci < g.pal.length; ci++) { const h = BZM.hitsNow(g, ci); if (h) cnt[ci] = h; }
   let xr = VW - 10; c.textAlign = 'right'; c.font = '700 13px ' + FONT; const yy = py;
@@ -1123,9 +1169,10 @@ function renderViews() {
   ren.setScissorTest(true);
   ren.setClearColor(0x1c1008, 1); ren.setViewport(0, 0, VW, VH); ren.setScissor(0, 0, VW, VH); ren.clear();
   const vp = (r) => [r.x, VH - r.y - r.h, r.w, r.h];
-  if (DERIN) { ren.render(scene, camF); ren.setScissorTest(false); return; }   // tek kamera, iki katman birden
+  if (TEK) { ren.render(scene, camF); ren.setScissorTest(false); return; }   // tek kamera, iki katman birden
   ren.setViewport(...vp(VPB)); ren.setScissor(...vp(VPB)); ren.render(scene, cam);
   ren.setViewport(...vp(VPF)); ren.setScissor(...vp(VPF)); ren.render(scene, camF);
+  if (QM && VPQ.h > 0) { ren.setViewport(...vp(VPQ)); ren.setScissor(...vp(VPQ)); ren.render(scene, camQ); }
   ren.setScissorTest(false);
 }
 // yavas cihazda kaliteyi kendiliginden dusur (once cozunurluk, sonra golgeler)
@@ -1167,7 +1214,7 @@ $('bRe').onclick = () => { start(LV); };
 $('bSet').onclick = () => { showSettings(); };
 addEventListener('resize', layout);
 // test: ?test=1 ile dongu durur, BZ.run(sn) ile zaman ilerletilir (yavas tarayicida ekran goruntusu icin)
-window.BZ = { get g() { return g; }, start, M: BZM, pf: (x, y, z) => projectF(new THREE.Vector3(x, y, z)), pb: (x, y, z) => project(new THREE.Vector3(x, y, z)), VPF, VPB, laneX, laneZ0: () => LANE_Z0, pause(v) { paused = !!v; }, cam, scene, POFI,
+window.BZ = { get NB() { return NB; }, get BK() { return BK; }, camF, get g() { return g; }, start, M: BZM, pf: (x, y, z) => projectF(new THREE.Vector3(x, y, z)), pb: (x, y, z) => project(new THREE.Vector3(x, y, z)), VPF, VPB, laneX, laneZ0: () => LANE_Z0, pause(v) { paused = !!v; }, cam, scene, POFI,
   snap() { const c = document.createElement('canvas'); c.width = glc.width; c.height = glc.height; const x = c.getContext('2d'); x.drawImage(glc, 0, 0); x.drawImage(ov, 0, 0, c.width, c.height); return c.toDataURL('image/png'); },
   run(sec, bot, quiet) { let t = last || 0; const n = Math.round(sec * 30); for (let i = 0; i < n; i++) { t += 1000 / 30; if (bot && i % 12 === 0 && g.state === 'play') { const b = BZM.bestMove(g); if (b) BZM.launch(g, b.from, b.k); else if (!g.belt.length && !g.shots.length) { const o = g.queue.findIndex((c) => c.length); if (o >= 0) BZM.launch(g, 'q', o); } } frame(t, quiet || i < n - 1); } } };
 start(qL ? +qL[1] : SV.L || 1);
