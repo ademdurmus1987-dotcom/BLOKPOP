@@ -47,7 +47,7 @@ Her seviye için dikkatli oyuncunun her denemede kazandığı (ama rastgele oyun
 
 Haritadaki **Mod** düğmesi üç mod arasında seçim yapar; her modun ilerlemesi ayrı tutulur. Bot: `--mode insa` ya da `--mode hepsi`.
 
-## Buz prototipi (v2.91, 3B) — `beta/buz/`
+## Buz prototipi (v2.92, 3B) — `beta/buz/`
 Ayrı küçük bir oyun, three.js ile gerçek 3B. Ekran ikiye bölünür: üstte arkaya yaslanmış dev tahta karşıdan (3B buz küpleri, arkasında resim `beta/bg`, ahşap çerçeve), altta tahtadan bir boşlukla ayrılmış atıcı alanı tepeden (mavi-gri taş zemin, düz bant, yuvalar, sol altta 4 gri kare tabla, 4 kuyruk oluğu). İki kamera ayrı katman görür (0 tahta, 1 atıcı alanı); alt kameranın x ölçeği tahtanın sütunlarıyla eşlenir, atış dik gider. Küpler: sv 1–10 14×18, sv 11–30 21×27, sv 31+ 28×36.
 
 Akış: oluğa dokun → yığından tabla banda fırlar (mantar patlaması sesi), Pofi tablaya biner. Bantta başını ve hortumunu kaldırıp sütunun en alttaki kendi renk küpüne **bir** atış yapar (tok vuruş sesi). Bantta en fazla 4 Pofi. Tur bitince mermisi kalan Pofi yuvaya iner, tabla yığına döner. Yuva kalmazsa oyun biter.
@@ -61,7 +61,9 @@ Yeni deneyimler (v2.90), her biri ilk geldiği seviyede ipucuyla tanıtılır:
 - **Donmuş Pofi** (sv 15): oluğun başına gelince ❄ sayısı kadar küp kırılana kadar gönderilemez. Hiç hamle kalmazsa kendiliğinden çözülür.
 - Sv 16'dan sonra engeller ve özel Pofiler karışık kombinasyonlarla döner.
 
-Derinlik: tahta ahşap bir kaidenin üstünde durur; altta bandın arkasında karanlık bir hendek ve platform kenarı görünür (`?sill=0.45&ftop=0.16` ile denenebilir).
+Kamera (v2.92, Ayarlar → Kamera): **Derin** (varsayılan) tek kamera; atıcıların arkasından tahtaya bakar. Görüntü düzlemi tahtaya paralel, tahta dikdörtgen ve kenardan kenara kalır (geniş ekranda yükseklik %60 ile sınırlı), zemin ve oluklar perspektifle tahtaya doğru daralır. Oluklar ikisi solda ikisi sağda, ortada tahtaya uzanan boş zemin; kuyrukta 3 Pofi görünür, yakındakiler küçültülür. Deneme: `?kam=derin&kd=22&kh=0.1&kt=16&kb=2.6&kgap=1.2&klw=1.25&klane=0.28&kq=0.66` (kd mesafe, kh bakış yüksekliği, kt tahta eğimi, kb bant uzaklığı). **Tepeden**: eski bölünmüş görünüm (`?kam=tepe`).
+
+Derinlik (Tepeden): tahta ahşap bir kaidenin üstünde durur; altta bandın arkasında karanlık bir hendek ve platform kenarı görünür (`?sill=0.45&ftop=0.16` ile denenebilir).
 
 Resimler (v2.91): `beta/buz/resim/` altında 107 piksel resim (hayvanlar, tatlılar) + 20 dünya arka planı. Sıra: iki özel resim, bir arka plan (60. seviyeden sonra sadece özel resimler).
 
