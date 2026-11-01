@@ -1143,7 +1143,7 @@ $('bRe').onclick = () => { start(LV); };
 $('bSet').onclick = () => { showSettings(); };
 addEventListener('resize', layout);
 // test: ?test=1 ile dongu durur, BZ.run(sn) ile zaman ilerletilir (yavas tarayicida ekran goruntusu icin)
-window.BZ = { get g() { return g; }, start, M: BZM, pf: (x, y, z) => projectF(new THREE.Vector3(x, y, z)), pb: (x, y, z) => project(new THREE.Vector3(x, y, z)), VPF, VPB, pause(v) { paused = !!v; }, cam, scene, POFI,
+window.BZ = { get g() { return g; }, start, M: BZM, pf: (x, y, z) => projectF(new THREE.Vector3(x, y, z)), pb: (x, y, z) => project(new THREE.Vector3(x, y, z)), VPF, VPB, laneX, laneZ0: () => LANE_Z0, pause(v) { paused = !!v; }, cam, scene, POFI,
   snap() { const c = document.createElement('canvas'); c.width = glc.width; c.height = glc.height; const x = c.getContext('2d'); x.drawImage(glc, 0, 0); x.drawImage(ov, 0, 0, c.width, c.height); return c.toDataURL('image/png'); },
   run(sec, bot, quiet) { let t = last || 0; const n = Math.round(sec * 30); for (let i = 0; i < n; i++) { t += 1000 / 30; if (bot && i % 12 === 0 && g.state === 'play') { const b = BZM.bestMove(g); if (b) BZM.launch(g, b.from, b.k); else if (!g.belt.length && !g.shots.length) { const o = g.queue.findIndex((c) => c.length); if (o >= 0) BZM.launch(g, 'q', o); } } frame(t, quiet || i < n - 1); } } };
 start(qL ? +qL[1] : SV.L || 1);
