@@ -40,25 +40,25 @@
   // size: sutun sayisi, c: renk, K: oluk, am: fil mermisi (sutun sayisina oranla), mix: kuyruk karisikligi
   // thick/wood/chain: bloklarin (63 blok) orani; lock: kilit sayisi
   const PLAN = {
-    1: { size: 14, c: 3, K: 3, am: [0.7, 1.4], mix: 0.3, bench: 6 },
-    2: { size: 14, c: 3, K: 3, am: [0.8, 1.6], mix: 0.5, bench: 6 },
-    3: { size: 14, c: 3, K: 3, am: [0.8, 1.6], mix: 0.8, bench: 5, thick: 0.1, tip: 'thick' },
-    4: { size: 14, c: 4, K: 4, am: [0.8, 1.6], mix: 1, bench: 5, thick: 0.12 },
-    5: { size: 14, c: 4, K: 4, am: [0.8, 1.6], mix: 1, bench: 5, wood: 0.1, tip: 'wood' },
-    6: { size: 21, c: 4, K: 4, am: [0.8, 1.6], mix: 1, bench: 5, wood: 0.08, thick: 0.08 },
-    7: { size: 21, c: 4, K: 4, am: [0.8, 1.6], mix: 1, chain: 0.08, tip: 'chain' },
-    8: { size: 21, c: 4, K: 4, am: [0.8, 1.6], mix: 1, chain: 0.08, wood: 0.06 },
-    9: { size: 21, c: 4, K: 4, am: [0.8, 1.6], mix: 1, lock: 1, tip: 'lock' },
-    10: { size: 21, c: 5, K: 4, am: [0.8, 1.6], mix: 1, lock: 1, thick: 0.1 }
+    1: { size: 14, c: 3, K: 3, am: [0.5, 0.9], mix: 0.3, bench: 7 },
+    2: { size: 14, c: 3, K: 3, am: [0.5, 1.0], mix: 0.5, bench: 7 },
+    3: { size: 14, c: 3, K: 3, am: [0.5, 1.0], mix: 0.8, bench: 6, thick: 0.1, tip: 'thick' },
+    4: { size: 14, c: 4, K: 4, am: [0.5, 1.0], mix: 1, bench: 6, thick: 0.12 },
+    5: { size: 14, c: 4, K: 4, am: [0.5, 1.0], mix: 1, bench: 6, wood: 0.1, tip: 'wood' },
+    6: { size: 14, c: 4, K: 4, am: [0.5, 1.0], mix: 1, bench: 6, wood: 0.08, thick: 0.08 },
+    7: { size: 14, c: 4, K: 4, am: [0.5, 1.0], mix: 1, chain: 0.08, tip: 'chain' },
+    8: { size: 14, c: 4, K: 4, am: [0.5, 1.0], mix: 1, chain: 0.08, wood: 0.06 },
+    9: { size: 14, c: 4, K: 4, am: [0.5, 1.0], mix: 1, lock: 1, tip: 'lock' },
+    10: { size: 14, c: 5, K: 4, am: [0.5, 1.0], mix: 1, lock: 1, thick: 0.1 }
   };
   const COMBOS = [['thick', 'wood'], ['chain', 'thick'], ['lock', 'wood'], ['chain', 'lock'], ['thick', 'wood', 'chain'],
     ['thick'], ['lock', 'chain'], ['wood', 'lock'], ['thick', 'chain', 'lock'], ['thick', 'wood', 'chain', 'lock']];
   function planFor(L) {
-    if (PLAN[L]) return Object.assign({ bench: 5, belt: 5 }, PLAN[L]);
+    if (PLAN[L]) return Object.assign({ bench: 6, belt: 4, pierce: 1, tc: 2.2 }, PLAN[L]);
     const k = L - 11, combo = COMBOS[k % COMBOS.length], round = Math.floor(k / COMBOS.length);
     const dens = Math.min(0.16, 0.08 + 0.015 * round);
     const hard = (L % 10 === 0) ? 1 : 0, easy = (L % 10 === 6) ? 1 : 0;
-    const p = { size: L <= 20 ? 21 : 28, c: L <= 25 ? 4 : 5, K: 4, am: [0.8, 1.6], mix: 1 + 0.3 * hard - 0.3 * easy, bench: 5, belt: 5 };
+    const p = { size: L <= 30 ? 21 : 28, c: L <= 25 ? 4 : 5, K: 4, am: [0.5, 1.0], mix: 1 + 0.3 * hard - 0.3 * easy, bench: 6, belt: 4, pierce: 1, tc: 2.2 };
     if (hard && L >= 30) p.c = 6;
     for (const b of combo) {
       if (b === 'lock') p.lock = L >= 25 && combo.length <= 3 ? 2 : 1;
@@ -228,7 +228,7 @@
       bench: new Array(opts.bench || P.bench).fill(null),
       belt: [], shots: [], flying: [], ev: [],
       maxBelt: P.belt, SP, pierce: P.pierce != null ? P.pierce : lv.B, X0: -SP * 0.8, X1: lv.W + SP * 0.8,
-      speed: (lv.W + 1.6 * SP) / (opts.tcross || T_CROSS), shotV: lv.H / 0.42,
+      speed: (lv.W + 1.6 * SP) / (opts.tcross || P.tc || T_CROSS), shotV: lv.H / 0.42,
       t: 0, state: 'play', endT: 0, nid: id, left: 0, launches: 0, topups: 0
     };
     g.cells.forEach((x) => { if (!x.done) g.left++; });

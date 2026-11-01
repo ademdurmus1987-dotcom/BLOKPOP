@@ -47,17 +47,15 @@ Her seviye için dikkatli oyuncunun her denemede kazandığı (ama rastgele oyun
 
 Haritadaki **Mod** düğmesi üç mod arasında seçim yapar; her modun ilerlemesi ayrı tutulur. Bot: `--mode insa` ya da `--mode hepsi`.
 
-## Buz prototipi (v2.88, 3B) — `beta/buz/`
-Ayrı küçük bir oyun, three.js ile gerçek 3B. Arkaya yaslanmış dev tahta ekranı tam genişlikte kaplar: 3B buz küpleri (yuvarlak kenar, parlak), arkasında resim (`beta/bg`), ahşap çerçeve. Küpler seviyeyle küçülür: sv 1–5 14×18, sv 6–20 21×27, sv 21+ 28×36. Tahtanın dibinde zeminle aynı düzlemde düz bant (çarksız), önünde zeminde yuvalar (bekleme), sol altta tabla yığını (en fazla 5 = bant kapasitesi) ve 4 kuyruk oluğu. Filler ana oyunun 3B Pofi modeli (`../live_pofi.glb`, renge boyanır), arkadan görünür.
+## Buz prototipi (v2.89, 3B) — `beta/buz/`
+Ayrı küçük bir oyun, three.js ile gerçek 3B. Ekran ikiye bölünür: üstte arkaya yaslanmış dev tahta karşıdan (3B buz küpleri, arkasında resim `beta/bg`, ahşap çerçeve), altta tahtadan bir boşlukla ayrılmış atıcı alanı tepeden (mavi-gri taş zemin, düz bant, yuvalar, sol altta 4 gri kare tabla, 4 kuyruk oluğu). İki kamera ayrı katman görür (0 tahta, 1 atıcı alanı); alt kameranın x ölçeği tahtanın sütunlarıyla eşlenir, atış dik gider. Küpler: sv 1–10 14×18, sv 11–30 21×27, sv 31+ 28×36.
 
-Akış: oluğa dokun → yığından tabla banda fırlar, Pofi zıplayıp tablaya biner. Bantta başını ve hortumunu kaldırıp sütunun en alttaki kendi renk küpünü vurur; aynı renk küpleri bir blok yüksekliğine kadar delip geçer. Tur bitince mermisi kalan Pofi yuvaya iner, tabla yığına geri uçar. Yuva kalmazsa oyun biter.
+Akış: oluğa dokun → yığından tabla banda fırlar (mantar patlaması sesi), Pofi tablaya biner. Bantta başını ve hortumunu kaldırıp sütunun en alttaki kendi renk küpüne **bir** atış yapar (tok vuruş sesi). Bantta en fazla 4 Pofi. Tur bitince mermisi kalan Pofi yuvaya iner, tabla yığına döner. Yuva kalmazsa oyun biter.
 
-Engeller birkaç küpü tek parça kaplar (blok = sütun/7 küp): 3B çivili tahta (her renk vurur, üstündeki sayı kalan atış), metal zincir (sadece zincirin rengi), asma kilit + anahtar (anahtar bir buz bloğunun içinde). Kalın buz: buzlu beyaz kabuk, 2 atış.
+Engeller birkaç küpü tek parça kaplar: 3B çivili tahta, metal zincir, asma kilit + anahtar; kalın buz beyaz kabuk. Ses/efekt ana oyunun ses motorundan; titreşim ayarı (⚙). Yavaş telefonda kalite kendiliğinden düşer.
 
-Ses/efekt ana oyunun ses motorundan; kombo yazıları, titreşim ayarı (⚙). Yavaş telefonda çözünürlük ve gölgeler kendiliğinden düşer.
-
-- Dosyalar: `beta/buz/index.html` (kabuk), `beta/buz/oyun3d.js` (3B çizim, ses, dokunma), `beta/buz/motor.js` (kurallar; Node'da da çalışır), `beta/buz/izgara.js` (küp renkleri).
-- Test/ekran görüntüsü: `?test=1` döngüyü durdurur; `BZ.run(sn, true)` zamanı ilerletir, `BZ.snap()` kareyi PNG verir. Kamera denemesi: `?fov=36&tilt=9&fit=10.9`.
+- Dosyalar: `beta/buz/index.html`, `beta/buz/oyun3d.js` (3B çizim, ses, dokunma), `beta/buz/motor.js` (kurallar; Node'da da çalışır), `beta/buz/izgara.js` (küp renkleri).
+- Test: `?test=1` döngüyü durdurur; `BZ.run(sn, true)` zamanı ilerletir, `BZ.snap()` kareyi PNG verir. Kamera denemesi: `?tilt=9&fpitch=64&ffov=30&gap=0.035`.
 - Küp renkleri: `python3 tools/buz-izgara.py`. Bot: `node tools/buz-bot.js --from 1 --to 30 --tries 5`.
 - Kayıt ayrı anahtarda (`blokpop_buz_v1`). Beta'da Mod menüsünde "Buz (deneme)".
 

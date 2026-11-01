@@ -11,14 +11,14 @@ const $ = (id) => document.getElementById(id);
 const FONT = 'Fredoka,system-ui,sans-serif';
 const KEYC = ['#ffc83d', '#d6dde8', '#ff7fb5'];
 const TIPS = {
-  intro: { t: 'Nasıl oynanır?', p: 'Oluğa dokun: Pofi bir <b>tablaya</b> biner, tabla banda fırlar. Pofi sütunların önünden geçerken <b>en alttaki buz</b> kendi rengindeyse başını kaldırıp vurur; aynı renk buzları <b>delip geçer</b>.<br>Sırtındaki sayı <b>atış hakkıdır</b>. Hakkı artan Pofi <b>yuvaya</b> iner; yuva kalmazsa kaybedersin. Sol alttaki tablalar bandın kapasitesidir.' },
+  intro: { t: 'Nasıl oynanır?', p: 'Oluğa dokun: Pofi bir <b>tablaya</b> biner, tabla banda fırlar. Pofi sütunların önünden geçerken <b>en alttaki buz</b> kendi rengindeyse başını kaldırıp <b>bir atış</b> yapar.<br>Sırtındaki sayı <b>atış hakkıdır</b>. Hakkı artan Pofi <b>yuvaya</b> iner; yuva kalmazsa kaybedersin. Sol alttaki 4 tabla bandın kapasitesidir: bantta aynı anda en fazla 4 Pofi olur.' },
   thick: { t: 'Yeni: Kalın buz', p: 'Kalın buz <b>2 atışta</b> kırılır. İlk atışta çatlar, ikinci atışta resim açılır.' },
   wood: { t: 'Yeni: Tahta', p: 'Çivili tahtayı <b>her renk Pofi</b> kırabilir. Üstündeki sayı kaç atış daha gerektiğini gösterir.' },
   chain: { t: 'Yeni: Zincir', p: 'Zinciri sadece <b>zincirin rengindeki</b> Pofi kırabilir. Sonra altındaki buzlar kendi rengiyle kırılır.' },
   lock: { t: 'Yeni: Kilit', p: 'Kilitli buz <b>vurulamaz</b>. Anahtarı başka bir buz bloğunun içinde. O bloğu tamamen kırınca anahtar uçar ve kilidi açar.' }
 };
 const COMBO_AT = [15, 40, 80, 150], COMBO_W = ['Harika!', 'Süper!', 'Muhteşem!', 'EFSANE!'], COMBO_COL = [['#fff38a', '#ffb000'], ['#b6fff0', '#18c9a2'], ['#ffd0f2', '#ff3fa0'], ['#ffffff', '#ff6a00']];
-const MAX_TRAY = 5;
+const MAX_TRAY = 4;
 
 // ---------- kayit ----------
 const SKEY = 'blokpop_buz_v1';
@@ -43,11 +43,13 @@ function tone(f, d, type, vol, delay, slide, send) { if (!AC || SV.mute) return;
 function noise(d, vol, delay, type, f0, f1, send) { if (!AC || SV.mute || !noiseBuf) return; try { const t0 = AC.currentTime + (delay || 0), s = AC.createBufferSource(), f = AC.createBiquadFilter(), g = AC.createGain(); s.buffer = noiseBuf; f.type = type || 'bandpass'; f.frequency.setValueAtTime(f0 || 1000, t0); if (f1) f.frequency.exponentialRampToValueAtTime(f1, t0 + d); f.Q.value = 1.2; g.gain.setValueAtTime(0.0001, t0); g.gain.exponentialRampToValueAtTime(vol || 0.1, t0 + 0.01); g.gain.exponentialRampToValueAtTime(0.0001, t0 + d); s.connect(f); f.connect(g); g.connect(master); if (send && wet) g.connect(wet); s.start(t0); s.stop(t0 + d + 0.03); } catch (e) {} }
 const SFX = {
   tap() { const n = Date.now(); if (n - lastTap < 45) return; lastTap = n; tone(780, 0.075, 'sine', 0.1, 0, 520); tone(1250, 0.05, 'sine', 0.035, 0.012, 950); },
-  launch() { tone(380, 0.09, 'sine', 0.3, 0, 760); tone(760, 0.04, 'sine', 0.035, 0, 1200); noise(0.16, 0.12, 0, 'bandpass', 400, 2200); tone(90, 0.12, 'sine', 0.25, 0, 50); },
+  // sarap/sampanya mantari: keskin patlama + asagi kayan 'plop' + hafif kopuk
+  launch() { noise(0.03, 0.55, 0, 'bandpass', 2400, 1200); tone(980, 0.08, 'sine', 0.42, 0, 240); tone(520, 0.06, 'sine', 0.18, 0.006, 190); tone(160, 0.07, 'sine', 0.22, 0, 90); noise(0.4, 0.035, 0.04, 'highpass', 5000, 8500); },
   land() { tone(180, 0.06, 'sine', 0.2, 0, 120); noise(0.04, 0.08, 0, 'lowpass', 800, 300); },
   tray() { tone(1400, 0.05, 'triangle', 0.06, 0, 1100); tone(2100, 0.04, 'sine', 0.03, 0.02); },
   shoot() { const n = Date.now(); if (n - lastShoot < 55) return; lastShoot = n; tone(520, 0.05, 'triangle', 0.09, 0, 240); noise(0.035, 0.06, 0, 'highpass', 2500, 5000); },
-  pop(c) { const n = Date.now(); if (n - lastPop < 40) return; lastPop = n; tone(150, 0.045, 'sine', 0.3, 0, 105); tone(420 + (c % 5) * 40, 0.03, 'triangle', 0.08, 0, 260); noise(0.03, 0.14, 0, 'lowpass', 900, 250); },
+  // tok ve dolgun vurus: derin govde + kisa tik + govdeli gurultu
+  pop(c) { const n = Date.now(); if (n - lastPop < 40) return; lastPop = n; tone(118, 0.11, 'sine', 0.55, 0, 62); tone(236, 0.06, 'triangle', 0.14, 0, 120); tone(340 + (c % 5) * 30, 0.035, 'triangle', 0.07, 0, 200); noise(0.07, 0.26, 0, 'lowpass', 1400, 260); noise(0.012, 0.18, 0, 'bandpass', 2600, 1800); },
   crack(k) { if (k === 'ice') { tone(2400, 0.07, 'triangle', 0.09, 0, 3100); noise(0.08, 0.08, 0, 'highpass', 4000, 6000); } else if (k === 'chain') { tone(1250, 0.06, 'square', 0.04); tone(1800, 0.07, 'square', 0.03, 0.04); noise(0.05, 0.06, 0, 'highpass', 3000, 6000); } else { tone(260, 0.1, 'sine', 0.18, 0, 160); noise(0.08, 0.1, 0, 'bandpass', 800, 400); } },
   smash(k) { noise(0.45 + 0.12 * (k || 1), 0.38, 0, 'lowpass', 2800, 120); tone(120, 0.4, 'sine', 0.38, 0, 40); tone(240, 0.12, 'square', 0.08, 0, 90); [1568, 2093, 2637].forEach((f, i) => tone(f, 0.12, 'triangle', 0.06, 0.03 + i * 0.04, 0, true)); },
   knock() { noise(0.018, 0.4, 0, 'bandpass', 3200, 2400); tone(1650, 0.045, 'sine', 0.2, 0, 1400); tone(3900, 0.03, 'sine', 0.06, 0); tone(240, 0.06, 'sine', 0.22, 0, 150); },
@@ -71,7 +73,11 @@ ren.toneMapping = THREE.ACESFilmicToneMapping; ren.toneMappingExposure = 0.95;
 ren.shadowMap.enabled = true; ren.shadowMap.type = THREE.PCFSoftShadowMap;
 const scene = new THREE.Scene();
 scene.background = new THREE.Color('#1c1008');
-const cam = new THREE.PerspectiveCamera(40, 1, 0.5, 300);
+const cam = new THREE.PerspectiveCamera(40, 1, 0.5, 300);   // tahta kamerasi
+const camF = new THREE.PerspectiveCamera(30, 1, 0.5, 300);  // atici alani kamerasi (tepeden)
+const VPB = { x: 0, y: 0, w: 1, h: 1 }, VPF = { x: 0, y: 0, w: 1, h: 1 };
+cam.layers.set(0); camF.layers.set(1);
+const toFloor = (o) => { o.traverse((x) => x.layers.set(1)); return o; };
 
 // yansima icin basit ortam (gok + parlak paneller)
 (function env() {
@@ -84,11 +90,11 @@ const cam = new THREE.PerspectiveCamera(40, 1, 0.5, 300);
   [[-12, 14, 8], [10, 12, 14], [0, 20, -6]].forEach(([a, b, d]) => { const p = new THREE.Mesh(new THREE.PlaneGeometry(10, 6), pm); p.position.set(a, b, d); p.lookAt(0, 0, 0); es.add(p); });
   const pmrem = new THREE.PMREMGenerator(ren); scene.environment = pmrem.fromScene(es, 0.03).texture; pmrem.dispose();
 })();
-scene.add(new THREE.HemisphereLight(0xfff4e6, 0x5a3a1a, 0.45));
+{ const h = new THREE.HemisphereLight(0xfff4e6, 0x5a3a1a, 0.45); h.layers.enableAll(); scene.add(h); }
 const sun = new THREE.DirectionalLight(0xfff1dc, 1.9); sun.position.set(-7, 18, 14); sun.castShadow = true;
 sun.shadow.mapSize.set(1024, 1024); sun.shadow.camera.left = -11; sun.shadow.camera.right = 11; sun.shadow.camera.top = 16; sun.shadow.camera.bottom = -14; sun.shadow.camera.near = 2; sun.shadow.camera.far = 60; sun.shadow.bias = -0.0008; sun.shadow.normalBias = 0.02;
-scene.add(sun); scene.add(sun.target);
-const fill = new THREE.DirectionalLight(0xd6e6ff, 0.35); fill.position.set(9, 6, 10); scene.add(fill);
+sun.layers.enableAll(); sun.shadow.camera.layers.enableAll(); scene.add(sun); scene.add(sun.target);
+const fill = new THREE.DirectionalLight(0xd6e6ff, 0.35); fill.position.set(9, 6, 10); fill.layers.enableAll(); scene.add(fill);
 
 // ---------- dokular (cizimle uretilir) ----------
 function canvasTex(w, h, draw, rep) { const c = document.createElement('canvas'); c.width = w; c.height = h; draw(c.getContext('2d'), w, h); const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 4; if (rep) { t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(rep[0], rep[1]); } return t; }
@@ -105,7 +111,17 @@ function woodDraw(x, w, h, base, dark, planks) {
 }
 const TX = {
   wood: canvasTex(512, 512, (x, w, h) => woodDraw(x, w, h, '#b9773d', '#5a3214', 4), [1, 1]),
-  floor: canvasTex(512, 512, (x, w, h) => woodDraw(x, w, h, '#8a5428', '#3d200b', 6), [3, 6]),
+  floor: canvasTex(512, 512, (x, w, h) => {
+    // mavi-gri tas karolar (tahtanin ahsabindan ayri dursun)
+    x.fillStyle = '#3d4a5c'; x.fillRect(0, 0, w, h);
+    const n = 4, t = w / n;
+    for (let r = 0; r < n; r++) for (let c = 0; c < n; c++) {
+      const v = Math.random() * 14 - 7; x.fillStyle = `rgb(${92 + v},${108 + v},${128 + v})`; x.fillRect(c * t + 3, r * t + 3, t - 6, t - 6);
+      for (let k = 0; k < 90; k++) { x.fillStyle = `rgba(${Math.random() < 0.5 ? '255,255,255' : '0,0,0'},${Math.random() * 0.06})`; x.fillRect(c * t + 3 + Math.random() * (t - 6), r * t + 3 + Math.random() * (t - 6), 3, 3); }
+      x.fillStyle = 'rgba(255,255,255,.10)'; x.fillRect(c * t + 3, r * t + 3, t - 6, 3);
+    }
+  }, [6, 6]),
+  slate: canvasTex(256, 256, (x, w, h) => { x.fillStyle = '#2b3442'; x.fillRect(0, 0, w, h); for (let k = 0; k < 500; k++) { x.fillStyle = `rgba(255,255,255,${Math.random() * 0.05})`; x.fillRect(Math.random() * w, Math.random() * h, 2, 2); } x.fillStyle = 'rgba(0,0,0,.25)'; for (let y = 0; y < h; y += 64) x.fillRect(0, y, w, 3); }, [1, 4]),
   frost: canvasTex(256, 256, (x, w, h) => {
     x.fillStyle = '#ffffff'; x.fillRect(0, 0, w, h);
     for (let i = 0; i < 1400; i++) { const v = 225 + Math.random() * 30; x.fillStyle = `rgba(${v - 10},${v},255,.35)`; x.fillRect(Math.random() * w, Math.random() * h, 2, 2); }
@@ -130,11 +146,12 @@ const MAT = {
   frost: new THREE.MeshPhysicalMaterial({ color: '#f4fbff', map: TX.frost, roughness: 0.55, transparent: true, opacity: 0.55, depthWrite: false, clearcoat: 0.6 }),
   steel: new THREE.MeshStandardMaterial({ color: '#c7ced9', metalness: 0.9, roughness: 0.28 }),
   nail: new THREE.MeshStandardMaterial({ color: '#8a8f9a', metalness: 0.9, roughness: 0.4 }),
-  tray: new THREE.MeshStandardMaterial({ color: '#dfe5ee', metalness: 0.75, roughness: 0.25 }),
-  trayRim: new THREE.MeshStandardMaterial({ color: '#ffb347', metalness: 0.4, roughness: 0.35 }),
-  pad: new THREE.MeshStandardMaterial({ color: '#2a170a', roughness: 0.9, transparent: true, opacity: 0.55 }),
-  padRing: new THREE.MeshStandardMaterial({ color: '#ffd9a0', roughness: 0.5, emissive: '#5a3a10', emissiveIntensity: 0.4 }),
-  lane: new THREE.MeshStandardMaterial({ map: TX.wood, color: '#8a5a33', roughness: 0.8 })
+  tray: new THREE.MeshStandardMaterial({ color: '#9aa1ab', metalness: 0.7, roughness: 0.38 }),
+  trayRim: new THREE.MeshStandardMaterial({ color: '#c3c9d1', metalness: 0.85, roughness: 0.25 }),
+  pad: new THREE.MeshStandardMaterial({ color: '#1c2430', roughness: 0.9, transparent: true, opacity: 0.6 }),
+  padRing: new THREE.MeshStandardMaterial({ color: '#cfe8ff', roughness: 0.5, emissive: '#2a4a6a', emissiveIntensity: 0.5 }),
+  lane: new THREE.MeshStandardMaterial({ map: TX.slate, roughness: 0.8 }),
+  laneWall: new THREE.MeshStandardMaterial({ color: '#8f9aab', metalness: 0.6, roughness: 0.35 })
 };
 const metal = (col, r) => new THREE.MeshStandardMaterial({ color: col, metalness: 0.75, roughness: r == null ? 0.3 : r });
 
@@ -157,6 +174,7 @@ const _m = new THREE.Matrix4(), _q = new THREE.Quaternion(), _v = new THREE.Vect
   const belt = new THREE.Mesh(new THREE.BoxGeometry(16, 0.1, 2.0), [MAT.rail, MAT.rail, MAT.belt, MAT.rail, MAT.rail, MAT.rail]); belt.position.set(0, 0.05, BELT_Z); belt.receiveShadow = true; staticG.add(belt);
   [-1, 1].forEach((d) => { const r = new THREE.Mesh(new THREE.BoxGeometry(16, 0.16, 0.12), MAT.rail); r.position.set(0, 0.08, BELT_Z + d * 1.06); r.castShadow = true; staticG.add(r); });
 })();
+toFloor(staticG);
 const laneG = new THREE.Group(); scene.add(laneG);
 function buildLanes() {
   while (laneG.children.length) { const m = laneG.children[0]; laneG.remove(m); if (m.geometry) m.geometry.dispose(); }
@@ -164,8 +182,9 @@ function buildLanes() {
   for (let k = 0; k < 4; k++) {
     const x = (k - 1.5) * LANE_DX;
     const fl = new THREE.Mesh(new THREE.BoxGeometry(LANE_DX - 0.25, 0.05, laneLen), MAT.lane); fl.position.set(x, 0.025, LANE_Z0 - 0.9 + laneLen / 2); fl.receiveShadow = true; staticG.add(fl);
-    [-1, 1].forEach((d) => { const w = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.32, laneLen), MAT.wood); w.position.set(x + d * (LANE_DX - 0.25) / 2, 0.16, LANE_Z0 - 0.9 + laneLen / 2); w.castShadow = true; w.receiveShadow = true; staticG.add(w); });
+    [-1, 1].forEach((d) => { const w = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.26, laneLen), MAT.laneWall); w.position.set(x + d * (LANE_DX - 0.25) / 2, 0.16, LANE_Z0 - 0.9 + laneLen / 2); w.castShadow = true; w.receiveShadow = true; staticG.add(w); });
   }
+  toFloor(laneG);
 }
 const padG = new THREE.Group(); scene.add(padG);
 function buildPads(n) {
@@ -175,6 +194,7 @@ function buildPads(n) {
     const d = new THREE.Mesh(new THREE.CircleGeometry(PAD_R, 32), MAT.pad); d.rotation.x = -Math.PI / 2; d.position.set(p.x, 0.012, p.z); padG.add(d);
     const r = new THREE.Mesh(new THREE.TorusGeometry(PAD_R, 0.05, 8, 40), MAT.padRing); r.rotation.x = -Math.PI / 2; r.position.set(p.x, 0.02, p.z); padG.add(r);
   }
+  toFloor(padG);
 }
 function padPos(k, n) { n = n || (g ? g.bench.length : 5); const x = n > 1 ? PAD_X0 + (PAD_X1 - PAD_X0) * k / (n - 1) : (PAD_X0 + PAD_X1) / 2; return { x, z: PAD_Z }; }
 function lanePos(k, j) { return { x: (k - 1.5) * LANE_DX, z: LANE_Z0 + j * LANE_DZ }; }
@@ -296,7 +316,7 @@ function keyMesh(col, s) {
 // ---------- Pofi (ana oyunun 3B modeli) ----------
 const PDEF = { f: '../live_pofi.glb', hue1: 0.585, sat0: 0.22, val0: 0.42, bake: 0.35, hue2: [2, 2] };
 const POFI = { ready: false, scene: null, mesh: null, clip: null, h0: 1, y0: 0, mats: {}, pool: [], mean: null };
-const POFI_H = 2.35;
+const POFI_H = 1.6;
 function bonesOf(root) { const b = {}; root.traverse((o) => { if (o.isBone) b[o.name.replace(/^mixamorig:?/, '')] = o; }); return b; }
 function addTrunk(model, mesh) {
   const bones = bonesOf(model), head = bones.Head; if (!head) return;
@@ -357,6 +377,7 @@ function pofiInst(col) {
     const mixer = new THREE.AnimationMixer(root), act = mixer.clipAction(POFI.clip); act.play();
     const b = bonesOf(root); if (!POFI.mean) POFI.mean = cycleMean(b, mixer, act);
     const k = POFI_H / POFI.h0; root.scale.setScalar(k); root.position.y = -POFI.y0 * k;
+    toFloor(holder);
     return { holder, root, mesh, b, mixer, act };
   })();
   if (o.col !== col) { if (!POFI.mats[col]) POFI.mats[col] = tintMat(POFI.mesh.material, PDEF, col); o.mesh.material = POFI.mats[col]; o.col = col; }
@@ -377,12 +398,12 @@ function poseInst(o, look, trunk, bob) {
 }
 
 // ---------- tablalar ----------
-const trayGeo = new THREE.CylinderGeometry(0.82, 0.86, 0.16, 36), rimGeo = new THREE.TorusGeometry(0.83, 0.05, 8, 40);
+const trayGeo = cubeGeo(1.45, 0.16), rimGeo = new THREE.BoxGeometry(1.45, 0.05, 0.08);
 const trays = [];
 for (let i = 0; i < MAX_TRAY; i++) {
-  const grp = new THREE.Group(); const d = new THREE.Mesh(trayGeo, MAT.tray); d.castShadow = true; d.receiveShadow = true; grp.add(d);
-  const r = new THREE.Mesh(rimGeo, MAT.trayRim); r.rotation.x = Math.PI / 2; r.position.y = 0.07; grp.add(r);
-  scene.add(grp); trays.push({ grp, st: 'stack', s: null, t0: 0, from: new THREE.Vector3(), x: 0 });
+  const grp = new THREE.Group(); const d = new THREE.Mesh(trayGeo, MAT.tray); d.rotation.x = -Math.PI / 2; d.castShadow = true; d.receiveShadow = true; grp.add(d);
+  [[0, 0.68], [0, -0.68], [0.68, 0], [-0.68, 0]].forEach(([x, z], q) => { const r = new THREE.Mesh(rimGeo, MAT.trayRim); r.position.set(x, 0.09, z); if (q > 1) r.rotation.y = Math.PI / 2; grp.add(r); });
+  toFloor(grp); scene.add(grp); trays.push({ grp, st: 'stack', s: null, t0: 0, from: new THREE.Vector3(), x: 0 });
 }
 const TRAY_Y = 0.17;   // bant ustunde tabla kalinligi
 function stackSlot(n) { return new THREE.Vector3(STACK.x, 0.07 + n * 0.16, STACK.z); }
@@ -392,39 +413,59 @@ function freeTray() { let t = trays.find((q) => q.st === 'stack'); if (!t) t = t
 let paused = false, fx = [], idleT = 0, winShown = false, loseShown = false, shake = 0, combo = 0, lastHit = -9, toastT = 0, VW = 1, VH = 1, DPR = 1;
 const jumps = new Map();   // shooter -> {from, t0, dur, kind}
 const CQ = new URLSearchParams(location.search), cqn = (k, d) => (CQ.has(k) ? +CQ.get(k) : d);
-const CAM = { fov: cqn('fov', 36), fit: cqn('fit', 10.9), maxH: cqn('maxh', 0.6), tilt: cqn('tilt', 9) };
-function floorAt(sx, sy, y0) { const v = new THREE.Vector3((sx / VW) * 2 - 1, -(sy / VH) * 2 + 1, 0.5).unproject(cam), dir = v.sub(cam.position).normalize(), t = ((y0 || 0) - cam.position.y) / dir.y; return cam.position.clone().addScaledVector(dir, t); }
+const CAM = { fov: cqn('fov', 34), fit: cqn('fit', 10.9), tilt: cqn('tilt', 9), fpitch: cqn('fpitch', 64), ffov: cqn('ffov', 30), gap: cqn('gap', 0.035) };
+function projWith(c, vp, v) { const p = v.clone().project(c); return { x: vp.x + (p.x * 0.5 + 0.5) * vp.w, y: vp.y + (-p.y * 0.5 + 0.5) * vp.h, z: p.z }; }
+function project(v) { return projWith(cam, VPB, v); }    // tahta
+function projectF(v) { return projWith(camF, VPF, v); }  // atici alani
+function floorAt(sx, sy, y0) { const v = new THREE.Vector3(((sx - VPF.x) / VPF.w) * 2 - 1, -((sy - VPF.y) / VPF.h) * 2 + 1, 0.5).unproject(camF), dir = v.sub(camF.position).normalize(), t = ((y0 || 0) - camF.position.y) / dir.y; return camF.position.clone().addScaledVector(dir, t); }
 function layout() {
   VW = innerWidth; VH = innerHeight; DPR = Math.min(QL >= 2 ? 1 : QL === 1 ? 1.25 : 2, devicePixelRatio || 1);
   ren.setPixelRatio(DPR); ren.setSize(VW, VH, false);
   ov.width = Math.round(VW * DPR); ov.height = Math.round(VH * DPR);
-  const ar = VW / VH, vf = CAM.fov * Math.PI / 180, th = Math.tan(vf / 2), bh = (g ? BH : 12.86) + 1.1;
-  cam.aspect = ar; cam.fov = CAM.fov; cam.clearViewOffset();
-  // kamera tahtaya dik bakar (tahta karsidan, dikdortgen gorunur); tahta ekran genisligini doldurur
-  const dist = Math.max((CAM.fit / 2) / (th * ar), bh / (2 * th * CAM.maxH));
+  const css = getComputedStyle(document.documentElement), sat = parseFloat(css.getPropertyValue('--sat')) || 0, sab = parseFloat(css.getPropertyValue('--sab')) || 0;
+  const bh = (g ? BH : 12.86) + 1.1;
+  // --- ust: tahta, karsidan (biraz yukaridan) ---
+  const topY = sat + 44;
+  let bwPx = VW, bhPx = VW * bh / CAM.fit;
+  const maxBH = (VH - topY) * 0.6; if (bhPx > maxBH) { bhPx = maxBH; bwPx = bhPx * CAM.fit / bh; }
+  Object.assign(VPB, { x: 0, y: topY, w: VW, h: bhPx });
+  const th = Math.tan(CAM.fov * Math.PI / 360);
+  cam.fov = CAM.fov; cam.aspect = VW / bhPx;
+  const dist = (bh / 2) / th * 1.0;
   const ctr = new THREE.Vector3(0, (bh - 1.1) / 2 * Math.cos(THETA), -(bh - 1.1) / 2 * Math.sin(THETA)), nrm = new THREE.Vector3(0, Math.sin(THETA), Math.cos(THETA));
-  // kamera tahtaya dikten biraz yukaridan bakar: kuplerin ust yuzu gorunur, derinlik hissi
   nrm.applyAxisAngle(new THREE.Vector3(1, 0, 0), -CAM.tilt * Math.PI / 180);
-  cam.position.copy(ctr).addScaledVector(nrm, dist); cam.lookAt(ctr);
-  // tahtayi ekranin ustune kaydir (eksen disi izdusum, tahta egilmez)
-  const sat = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--sat')) || 0, sab = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--sab')) || 0;
-  const hbPx = VH * bh / (2 * dist * th), topY = sat + 44, shift = VH / 2 - (topY + hbPx / 2);
-  cam.setViewOffset(VW, VH, 0, Math.max(0, shift), VW, VH); cam.updateProjectionMatrix(); cam.updateMatrixWorld();
+  cam.position.copy(ctr).addScaledVector(nrm, dist); cam.lookAt(ctr); cam.updateProjectionMatrix(); cam.updateMatrixWorld();
+  // --- alt: atici alani, tepeden (tahtayla arasinda bosluk) ---
+  const gap = Math.round(VH * CAM.gap), fy = topY + bhPx + gap, fh = VH - fy;
+  Object.assign(VPF, { x: 0, y: fy, w: VW, h: fh });
+  camF.fov = CAM.ffov; camF.aspect = VW / fh;
+  // bant cizgisi ekranin ustune yakin, x olcegi tahtanin sutunlariyla ayni olsun (atis dik gitsin)
+  const pit = CAM.fpitch * Math.PI / 180, dirF = new THREE.Vector3(0, Math.sin(pit), Math.cos(pit));
+  const pxCol = bwPx / CAM.fit;            // tahtada 1 birim kac piksel
+  const want = (VW / 2) / pxCol;            // ekranin yari genisligi kac birim
+  let best = null;
+  for (let d = 10; d <= 60; d += 0.5) for (let zc = BELT_Z; zc <= BELT_Z + 14; zc += 0.25) {
+    camF.position.set(0, 0, zc).addScaledVector(dirF, d); camF.lookAt(0, 0, zc); camF.updateProjectionMatrix(); camF.updateMatrixWorld();
+    const a = projectF(new THREE.Vector3(want, 0.1, BELT_Z)), b = projectF(new THREE.Vector3(0, 0.1, BELT_Z - 0.9));
+    const err = Math.abs(a.x - VW) / VW + Math.abs((b.y - fy) / fh - 0.04) * 2;
+    if (!best || err < best.err) best = { err, d, zc };
+  }
+  camF.position.set(0, 0, best.zc).addScaledVector(dirF, best.d); camF.lookAt(0, 0, best.zc); camF.updateProjectionMatrix(); camF.updateMatrixWorld();
   // zemindeki yerleri ekrana gore yerlestir
-  const yBelt = project(new THREE.Vector3(0, 0, BELT_Z + 1.0)).y, bot = VH - sab, room = bot - yBelt;
-  const syPad = yBelt + room * 0.2, syLane = yBelt + room * 0.5;
+  const yBelt = projectF(new THREE.Vector3(0, 0, BELT_Z + 1.0)).y, bot = VH - sab, room = bot - yBelt;
+  const syPad = yBelt + room * 0.17, syLane = yBelt + room * 0.42;
   PAD_Z = floorAt(VW / 2, syPad).z;
-  PAD_X0 = floorAt(VW * 0.27, syPad).x; PAD_X1 = floorAt(VW * 0.93, syPad).x;
-  const n = g ? g.bench.length : 5; PAD_R = Math.min(0.85, (PAD_X1 - PAD_X0) / Math.max(1, n - 1) * 0.46);
+  PAD_X0 = floorAt(VW * 0.28, syPad).x; PAD_X1 = floorAt(VW * 0.94, syPad).x;
+  const n = g ? g.bench.length : 6; PAD_R = Math.min(0.8, (PAD_X1 - PAD_X0) / Math.max(1, n - 1) * 0.44);
   STACK.set(floorAt(VW * 0.1, syPad).x, 0, PAD_Z);
-  LANE_Z0 = floorAt(VW / 2, syLane).z + 0.5;
-  const zEnd = floorAt(VW / 2, bot - 8).z;
-  LANE_DZ = Math.max(1.5, (zEnd - LANE_Z0) / 2.7);
+  LANE_Z0 = floorAt(VW / 2, syLane).z + 0.4;
+  const zEnd = floorAt(VW / 2, bot - 6).z;
+  LANE_DZ = Math.max(1.2, (zEnd - LANE_Z0) / 3.1);
   LANE_DX = Math.abs(floorAt(VW, syLane).x) * 2 * 0.96 / 4;
   buildLanes(); if (g) buildPads(g.bench.length);
 }
-function project(v) { const p = v.clone().project(cam); return { x: (p.x * 0.5 + 0.5) * VW, y: (-p.y * 0.5 + 0.5) * VH, z: p.z }; }
 function pxPerUnit(v) { const a = project(v), b = project(v.clone().add(new THREE.Vector3(1, 0, 0))); return Math.hypot(b.x - a.x, b.y - a.y); }
+function pxPerUnitF(v) { const a = projectF(v), b = projectF(v.clone().add(new THREE.Vector3(1, 0, 0))); return Math.hypot(b.x - a.x, b.y - a.y); }
 
 // ---------- seviye ----------
 function start(L) {
@@ -511,7 +552,7 @@ function handleEvents() {
       case 'key': { SFX.chime(); vib([15, 25, 15]); break; }
       case 'unlock': { const c = project(objCenter(e.o)); burst(c.x, c.y, 20, [KEYC[e.o.lid % 3], '#fff'], 260, 5, 0.7, 300, 'dot'); fx.push({ kind: 'ring', x: c.x, y: c.y, s: 30, t: 0, life: 0.5, c: KEYC[e.o.lid % 3] }); SFX.knock(); SFX.chime(); vib([20, 40, 20]); const m = objMeshes[e.o.id]; if (m) m.userData.dieT = g.t; cubesDirty = true; break; }
       case 'bench': { const s = e.s; jumps.set(s, { from: s._pos ? s._pos.clone() : new THREE.Vector3(6, TRAY_Y, BELT_Z), t0: g.t, dur: 0.42, toPad: e.k }); trayBack(s); SFX.bench(); vib(10); break; }
-      case 'empty': { const s = e.s; if (s._pos) { const p = project(s._pos.clone().add(new THREE.Vector3(0, 1.0, 0))); burst(p.x, p.y, 14, [g.pal[s.c], '#fff', '#ffe066'], 200, 4, 0.55, 0, 'star'); } trayCoast(s); break; }
+      case 'empty': { const s = e.s; if (s._pos) { const p = projectF(s._pos.clone().add(new THREE.Vector3(0, 1.0, 0))); burst(p.x, p.y, 14, [g.pal[s.c], '#fff', '#ffe066'], 200, 4, 0.55, 0, 'star'); } trayCoast(s); break; }
       case 'leave': { const s = e.s; if (e.from === 'belt') trayBack(s); fx.push({ kind: 'leave', s, t: 0, life: 0.6 }); break; }
       case 'lose': shake = 0.5; SFX.lose(); vib([40, 60, 40, 60, 120]); break;
     }
@@ -527,10 +568,10 @@ function hit(px, py) {
   if (!g || paused) return;
   ensureAudio();
   let best = null, bd = 1e9;
-  g.bench.forEach((s, k) => { if (!s) return; const p = padPos(k), a = project(new THREE.Vector3(p.x, 0.8, p.z)), r = pxPerUnit(new THREE.Vector3(p.x, 0, p.z)) * 0.95, d = Math.hypot(px - a.x, py - a.y); if (d < r && d < bd) { bd = d; best = { from: 'b', k, s }; } });
+  g.bench.forEach((s, k) => { if (!s) return; const p = padPos(k), a = projectF(new THREE.Vector3(p.x, 0.8, p.z)), r = pxPerUnitF(new THREE.Vector3(p.x, 0, p.z)) * 0.95, d = Math.hypot(px - a.x, py - a.y); if (d < r && d < bd) { bd = d; best = { from: 'b', k, s }; } });
   if (!best) g.queue.forEach((col, k) => {
     if (!col.length) return;
-    const lx = (k - 1.5) * LANE_DX, hw = LANE_DX / 2, a = project(new THREE.Vector3(lx - hw, 0, LANE_Z0 - 1.2)), b = project(new THREE.Vector3(lx + hw, 0, LANE_Z0 - 1.2)), c = project(new THREE.Vector3(lx + hw, 0, LANE_Z0 + 12)), d = project(new THREE.Vector3(lx - hw, 0, LANE_Z0 + 12));
+    const lx = (k - 1.5) * LANE_DX, hw = LANE_DX / 2, a = projectF(new THREE.Vector3(lx - hw, 0, LANE_Z0 - 1.2)), b = projectF(new THREE.Vector3(lx + hw, 0, LANE_Z0 - 1.2)), c = projectF(new THREE.Vector3(lx + hw, 0, LANE_Z0 + 12)), d = projectF(new THREE.Vector3(lx - hw, 0, LANE_Z0 + 12));
     const top = Math.min(a.y, b.y) - 80;
     if (py < top) return;
     const u = Math.max(0, Math.min(1, (py - a.y) / Math.max(1, d.y - a.y))), l = a.x + (d.x - a.x) * u, r = b.x + (c.x - b.x) * u;
@@ -596,7 +637,7 @@ function placeTrays() {
     if (t.st === 'coast') { t.x += g.speed * DT; t.grp.position.set(colX(t.x), 0.12, BELT_Z); if (t.x >= g.X1) { t.from.copy(t.grp.position); t.st = 'back'; t.t0 = g.t; } continue; }
     if (t.st === 'back') { const k = (g.t - t.t0) / 0.5, to = stackSlot(trays.filter((q) => q.st === 'stack').length); if (k >= 1) { t.st = 'stack'; SFX.tray(); } else arc(t.from, to, k, 2.2, t.grp.position); }
   }
-  trays.forEach((t) => { t.grp.rotation.y = t.st === 'back' || t.st === 'out' ? g.t * 12 : 0; });
+  trays.forEach((t) => { t.grp.rotation.y = t.st === 'back' || t.st === 'out' ? Math.sin(g.t * 20) * 0.3 : 0; });
 }
 function animObjs() {
   for (const id in objMeshes) {
@@ -613,13 +654,15 @@ function drawOverlay(dt, want) {
   let sx = 0, sy = 0; if (shake > 0) { shake = Math.max(0, shake - dt); const a = shake * 22; sx = (Math.random() - 0.5) * a; sy = (Math.random() - 0.5) * a; }
   glc.style.transform = shake > 0 ? 'translate(' + sx.toFixed(1) + 'px,' + sy.toFixed(1) + 'px)' : '';
   c.save(); c.translate(sx, sy);
-  // her sutunun hedefi: bant kenarinda isik
+  // tahta ile atici alani arasindaki bosluk: tahta rafinin alt kenari
+  const gy0 = VPB.y + VPB.h, gy1 = VPF.y;
+  if (gy1 > gy0) { const gr = c.createLinearGradient(0, gy0, 0, gy1); gr.addColorStop(0, '#6b3f1c'); gr.addColorStop(0.45, '#3a2210'); gr.addColorStop(1, '#151b24'); c.fillStyle = gr; c.fillRect(0, gy0, VW, gy1 - gy0); c.fillStyle = 'rgba(255,220,170,.35)'; c.fillRect(0, gy0, VW, 2); c.fillStyle = 'rgba(0,0,0,.45)'; c.fillRect(0, gy1 - 3, VW, 3); }
   // atislar
   c.save(); c.globalCompositeOperation = 'lighter';
   for (const sh of g.shots) {
     let from = shotFrom.get(sh);
     if (!from) { const s = g.belt.find((q) => q.id === sh.sid); const o = s && live.get(s); if (o && o.b.Trunk2) { o.b.Trunk2.getWorldPosition(tmpV); o.b.Trunk1.getWorldPosition(tmpV2); from = tmpV.clone().addScaledVector(tmpV.clone().sub(tmpV2), 1.2); } else from = new THREE.Vector3(colX(sh.col + 0.5), 1.9, BELT_Z); shotFrom.set(sh, from); }
-    const to = cellWorld(sh.i), k = Math.min(1, (g.t - sh.t0) / (sh.t1 - sh.t0)), a = project(from), b = project(to), x = a.x + (b.x - a.x) * k, y = a.y + (b.y - a.y) * k, col = g.pal[sh.c], rad = 7;
+    const to = cellWorld(sh.i), k = Math.min(1, (g.t - sh.t0) / (sh.t1 - sh.t0)), a = projectF(from), b = project(to), x = a.x + (b.x - a.x) * k, y = a.y + (b.y - a.y) * k, col = g.pal[sh.c], rad = 7;
     const tx = a.x + (b.x - a.x) * Math.max(0, k - 0.25), ty = a.y + (b.y - a.y) * Math.max(0, k - 0.25);
     const tr = c.createLinearGradient(x, y, tx, ty); tr.addColorStop(0, 'rgba(255,255,255,.85)'); tr.addColorStop(1, 'rgba(255,255,255,0)'); c.strokeStyle = tr; c.lineWidth = rad * 1.1; c.lineCap = 'round'; c.beginPath(); c.moveTo(tx, ty); c.lineTo(x, y); c.stroke();
     c.fillStyle = col2rad(c, x, y, rad * 2.4, col); c.beginPath(); c.arc(x, y, rad * 2.4, 0, 7); c.fill();
@@ -631,19 +674,19 @@ function drawOverlay(dt, want) {
   // sirttaki sayilar
   for (const [s, w] of want) {
     if (!s._pos) continue; const o = live.get(s); let hp;
-    if (o && o.b.Head) { o.b.Head.getWorldPosition(tmpV); tmpV.y -= 0.12; tmpV.z += 0.35; hp = project(tmpV); } else hp = project(s._pos.clone().add(new THREE.Vector3(0, 1.2, 0.3)));
-    const ppu = pxPerUnit(s._pos); pill(c, hp.x, hp.y, String(s.ammo), Math.max(12, ppu * 0.36), w.scale);
+    if (o && o.b.Head) { o.b.Head.getWorldPosition(tmpV); tmpV.y -= 0.12; tmpV.z += 0.35; hp = projectF(tmpV); } else hp = projectF(s._pos.clone().add(new THREE.Vector3(0, 1.2, 0.3)));
+    const ppu = pxPerUnitF(s._pos); pill(c, hp.x, hp.y, String(s.ammo), Math.max(12, ppu * 0.36), w.scale);
   }
   // kuyrukta gorunmeyen fil sayisi
-  g.queue.forEach((col, k) => { if (col.length > 4) { const p = project(new THREE.Vector3((k - 1.5) * LANE_DX + 0.7, 0.4, LANE_Z0 + 3.6 * LANE_DZ)); c.font = '700 16px ' + FONT; c.textAlign = 'center'; c.textBaseline = 'middle'; c.lineWidth = 4; c.strokeStyle = '#2a1606'; c.fillStyle = '#fff'; c.strokeText('+' + (col.length - 4), p.x, p.y); c.fillText('+' + (col.length - 4), p.x, p.y); } });
+  g.queue.forEach((col, k) => { if (col.length > 4) { const p = projectF(new THREE.Vector3((k - 1.5) * LANE_DX + 0.7, 0.4, LANE_Z0 + 3.6 * LANE_DZ)); c.font = '700 16px ' + FONT; c.textAlign = 'center'; c.textBaseline = 'middle'; c.lineWidth = 4; c.strokeStyle = '#2a1606'; c.fillStyle = '#fff'; c.strokeText('+' + (col.length - 4), p.x, p.y); c.fillText('+' + (col.length - 4), p.x, p.y); } });
   // yuva durumu ve hedef sayilari
-  const free = g.bench.filter((s) => !s).length, py = (project(new THREE.Vector3(0, 0, BELT_Z + 1.1)).y + project(new THREE.Vector3(0, 0, PAD_Z - PAD_R)).y) / 2 - 4, lx = 10;
+  const free = g.bench.filter((s) => !s).length, py = (projectF(new THREE.Vector3(0, 0, BELT_Z + 1.1)).y + projectF(new THREE.Vector3(0, 0, PAD_Z - PAD_R)).y) / 2 - 2, lx = projectF(new THREE.Vector3(STACK.x + 0.85, 0, PAD_Z)).x + 4;
   c.font = '600 13px ' + FONT; c.textAlign = 'left'; c.textBaseline = 'middle'; c.fillStyle = free === 0 ? '#ff9a9a' : '#f6dfc0'; c.fillText('Yuva ' + free + '/' + g.bench.length, lx, py);
   const cnt = {}; for (let ci = 0; ci < g.pal.length; ci++) { const h = BZM.hitsNow(g, ci); if (h) cnt[ci] = h; }
   let xr = VW - 10; c.textAlign = 'right'; c.font = '700 13px ' + FONT; const yy = py;
   Object.keys(cnt).map(Number).sort((a, b) => cnt[a] - cnt[b]).forEach((ci) => { c.fillStyle = '#fff'; c.fillText('×' + cnt[ci], xr, yy); xr -= c.measureText('×' + cnt[ci]).width + 9; c.fillStyle = g.pal[ci]; c.strokeStyle = '#2e1806'; c.lineWidth = 1.5; c.beginPath(); c.arc(xr + 5, yy, 6, 0, 7); c.fill(); c.stroke(); xr -= 10; });
   // ipucu halkasi
-  if (LV <= 3 && g.state === 'play' && idleT > 3 && !g.belt.length) { const bm = BZM.bestMove(g); if (bm) { const p = bm.from === 'q' ? lanePos(bm.k, 0) : padPos(bm.k), q = project(new THREE.Vector3(p.x, 0.9, p.z)), r = pxPerUnit(new THREE.Vector3(p.x, 0, p.z)) * 1.0, a = 0.5 + 0.5 * Math.sin(g.t * 6); c.strokeStyle = 'rgba(255,255,255,' + (0.5 + 0.5 * a) + ')'; c.lineWidth = 4; c.beginPath(); c.ellipse(q.x, q.y, r * 0.8 + a * 4, r + a * 4, 0, 0, 7); c.stroke(); } }
+  if (LV <= 3 && g.state === 'play' && idleT > 3 && !g.belt.length) { const bm = BZM.bestMove(g); if (bm) { const p = bm.from === 'q' ? lanePos(bm.k, 0) : padPos(bm.k), q = projectF(new THREE.Vector3(p.x, 0.9, p.z)), r = pxPerUnitF(new THREE.Vector3(p.x, 0, p.z)) * 1.0, a = 0.5 + 0.5 * Math.sin(g.t * 6); c.strokeStyle = 'rgba(255,255,255,' + (0.5 + 0.5 * a) + ')'; c.lineWidth = 4; c.beginPath(); c.ellipse(q.x, q.y, r * 0.8 + a * 4, r + a * 4, 0, 0, 7); c.stroke(); } }
   // parcaciklar
   for (let i = fx.length - 1; i >= 0; i--) {
     const f = fx[i]; f.t += dt; if (f.t >= f.life) { fx.splice(i, 1); continue; } const a = 1 - f.t / f.life;
@@ -669,6 +712,14 @@ function keyIcon2d(c, x, y, s, kc, rot) { c.save(); c.translate(x, y); c.rotate(
 
 // ---------- dongu ----------
 let last = 0, DT = 0.016;
+function renderViews() {
+  ren.setScissorTest(true);
+  ren.setClearColor(0x1c1008, 1); ren.setViewport(0, 0, VW, VH); ren.setScissor(0, 0, VW, VH); ren.clear();
+  const vp = (r) => [r.x, VH - r.y - r.h, r.w, r.h];
+  ren.setViewport(...vp(VPB)); ren.setScissor(...vp(VPB)); ren.render(scene, cam);
+  ren.setViewport(...vp(VPF)); ren.setScissor(...vp(VPF)); ren.render(scene, camF);
+  ren.setScissorTest(false);
+}
 // yavas cihazda kaliteyi kendiliginden dusur (once cozunurluk, sonra golgeler)
 let QL = 0, qAcc = 0, qN = 0;
 function adaptQuality(dt) {
@@ -692,7 +743,7 @@ function frame(ts, noRender) {
     if (cubesDirty) updateCubes();
     animObjs(); placeTrays();
     const want = placeShooters(dt);
-    if (!noRender) { ren.render(scene, cam); drawOverlay(dt, want); }
+    if (!noRender) { renderViews(); drawOverlay(dt, want); }
     else for (let i = fx.length - 1; i >= 0; i--) { fx[i].t += dt; if (fx[i].t >= fx[i].life) fx.splice(i, 1); }
   }
   if (!TEST) requestAnimationFrame(frame);
