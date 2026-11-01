@@ -1514,7 +1514,7 @@ const OB_Q={lock:1,frozen:1,limit:1,seal:1,heavy:1};
 const OB_ORDER=Object.keys(OB_INTRO).sort((a,b)=>OB_INTRO[a]-OB_INTRO[b]);
 const OB_SIDES=['b','l','t','r'];
 const OB_UK={armor:1,magnet:1,key:1,move:1};
-const OB_TUNE={};// seviye -> -1/-2/-3: bot dogrulamasiyla hafifletme (tools/ob-ayar.js uretir)
+const OB_TUNE={"53":-3,"69":-2,"75":-3,"105":-3,"160":-1,"204":-1,"222":-3,"255":-1,"288":-1,"336":-1,"364":-3,"459":-2,"542":-1,"564":-3,"668":-2,"760":-1,"789":-2,"811":-2,"876":-1,"920":-1,"940":-1,"964":-3};// seviye -> -1/-2/-3: bot dogrulamasiyla hafifletme (tools/ob-ayar.js uretir)
 let OB_PLANS=null;
 function obTier(L){
 const cls=diffClass(L);let t=L<60?1:L<150?1.5:L<300?2:L<600?2.5:3;
