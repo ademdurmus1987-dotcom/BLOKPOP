@@ -289,7 +289,8 @@
       queue: lv.queue.map((col) => col.map((s) => ({ id: ++id, c: s.c, ammo: s.ammo, x: 0, kind: s.kind || '', frozen: s.frozen || 0 }))),
       bench: new Array(opts.bench || P.bench).fill(null),
       belt: [], shots: [], flying: [], drones: [], ev: [],
-      maxBelt: P.belt, SP, pierce: P.pierce != null ? P.pierce : lv.B, X0: -SP * 0.8, X1: lv.W + SP * 0.8,
+      maxBelt: P.belt, SP, pierce: P.pierce != null ? P.pierce : lv.B, CM: opts.cm != null ? opts.cm : SP * 0.8, LEG: opts.leg || 0,
+      X0: -(opts.cm != null ? opts.cm : SP * 0.8) - (opts.leg || 0), X1: lv.W + (opts.cm != null ? opts.cm : SP * 0.8) + (opts.leg || 0),   // n bant: sol ayak (LEG) + tahta onu + sag ayak
       speed: (lv.W + 1.6 * SP) / (opts.tcross || P.tc || T_CROSS), shotV: lv.H / 0.42,
       t: 0, state: 'play', endT: 0, nid: id, left: 0, launches: 0, topups: 0
     };

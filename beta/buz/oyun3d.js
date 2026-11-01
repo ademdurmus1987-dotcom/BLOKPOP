@@ -199,7 +199,7 @@ const metal = (col, r) => new THREE.MeshStandardMaterial({ color: col, metalness
 
 // ---------- yerlesim (dunya birimleri) ----------
 // tahta 10 birim genis; alt kenari y=0,z=0'da, THETA kadar arkaya yaslanir
-const BW = 10, THETA = (DERIN ? qn('kt', 14) : 30) * Math.PI / 180, BELT_Z = DERIN ? qn('kb', 3.2) : 1.4;
+const BW = 10, THETA = (DERIN ? qn('kt', 14) : 30) * Math.PI / 180, BELT_Z = DERIN ? qn('kb', 1.4) : 1.4;
 // zemindeki yerler ekrana gore hesaplanir (layout)
 let PAD_Z = 4.0, PAD_X0 = -2.75, PAD_X1 = 4.55, PAD_R = 0.82, LANE_Z0 = 6.3, LANE_DZ = 1.9, LANE_DX = 2.25, STACK = new THREE.Vector3(-4.55, 0, 4.0);
 const boardG = new THREE.Group(); boardG.rotation.x = -THETA; scene.add(boardG);
@@ -215,14 +215,37 @@ const EDGE_Z = BELT_Z - 1.4;
 const DEPTHTX = canvasTex(8, 256, (x, w, h) => { const gr = x.createLinearGradient(0, 0, 0, h); gr.addColorStop(0, '#3a2a1e'); gr.addColorStop(0.18, '#1d150f'); gr.addColorStop(0.6, '#07080b'); gr.addColorStop(1, '#020203'); x.fillStyle = gr; x.fillRect(0, 0, w, h); });
 const AOTX = canvasTex(8, 128, (x, w, h) => { const gr = x.createLinearGradient(0, 0, 0, h); gr.addColorStop(0, 'rgba(8,10,16,.82)'); gr.addColorStop(0.3, 'rgba(8,10,16,.4)'); gr.addColorStop(1, 'rgba(8,10,16,0)'); x.fillStyle = gr; x.fillRect(0, 0, w, h); });
 const PITTX = canvasTex(8, 256, (x, w, h) => { const gr = x.createLinearGradient(0, 0, 0, h); gr.addColorStop(0, '#05060a'); gr.addColorStop(0.7, '#10141c'); gr.addColorStop(1, '#1d2430'); x.fillStyle = gr; x.fillRect(0, 0, w, h); });
+// n seklinde bant (derin kamera): Pofi soldan tahtaya dogru cikar, tahtanin onunden gecip atis yapar, sagdan iner
+const NB = { XC: BW / 2 + qn('nx', -1.0), LEG: qn('nleg', 2.8), W: qn('nw', 1.1) };
+const BELT_TX = [];
+function buildNBelt() {
+  const w = NB.W, L = NB.XC * 2 + w, beltTex = (rot, rep) => { const t = TX.belt.clone(); t.needsUpdate = true; t.wrapS = t.wrapT = THREE.RepeatWrapping; t.center.set(0.5, 0.5); t.rotation = rot; t.repeat.set(rep, 1); BELT_TX.push({ t, dir: rot ? Math.sign(rot) : 1 }); return t; };
+  const top = (tex) => [MAT.rail, MAT.rail, new THREE.MeshStandardMaterial({ map: tex, roughness: 0.6 }), MAT.rail, MAT.rail, MAT.rail];
+  const h = new THREE.Mesh(new THREE.BoxGeometry(L, 0.1, w), top(beltTex(0, L / 2.6))); h.position.set(0, 0.05, BELT_Z); h.receiveShadow = true; staticG.add(h);
+  [-1, 1].forEach((sd) => {
+    const lg = new THREE.Mesh(new THREE.BoxGeometry(w, 0.1, NB.LEG), top(beltTex(sd < 0 ? -Math.PI / 2 : Math.PI / 2, NB.LEG / 2.6))); lg.position.set(sd * NB.XC, 0.05, BELT_Z + w / 2 + NB.LEG / 2); lg.receiveShadow = true; staticG.add(lg);
+    // dis kenar raylari
+    const r1 = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.16, NB.LEG + w), MAT.rail); r1.position.set(sd * (NB.XC + w / 2 + 0.05), 0.08, BELT_Z + NB.LEG / 2); staticG.add(r1);
+    const r2 = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.16, NB.LEG), MAT.rail); r2.position.set(sd * (NB.XC - w / 2 - 0.05), 0.08, BELT_Z + w / 2 + NB.LEG / 2); staticG.add(r2);
+  });
+  const ri = new THREE.Mesh(new THREE.BoxGeometry(NB.XC * 2 - w - 0.1, 0.16, 0.1), MAT.rail); ri.position.set(0, 0.08, BELT_Z + w / 2 + 0.05); staticG.add(ri);
+}
+// motordaki bant konumu -> dunya (n bant: x<CM sol ayak, x>W+CM sag ayak)
+function beltPos(x, y, out) {
+  out = out || new THREE.Vector3();
+  if (!DERIN || !g || !g.LEG) return out.set(colX(x), y, BELT_Z);
+  const xa = -g.CM, xb = g.W + g.CM;
+  if (x < xa) return out.set(-NB.XC, y, BELT_Z + Math.min(NB.LEG + NB.W / 2, (xa - x) * S));
+  if (x > xb) return out.set(NB.XC, y, BELT_Z + Math.min(NB.LEG + NB.W / 2, (x - xb) * S));
+  return out.set(colX(x), y, BELT_Z);
+}
 (function buildStatic() {
   const floor = new THREE.Mesh(new THREE.PlaneGeometry(40, DERIN ? 44 : 36), MAT.floor); floor.rotation.x = -Math.PI / 2; floor.position.set(0, 0, EDGE_Z + 18 - (DERIN ? 4 : 0)); floor.receiveShadow = true; staticG.add(floor);
   // bant: zeminle ayni duzlemde; carksiz
+  if (DERIN) buildNBelt(); else {
   const belt = new THREE.Mesh(new THREE.BoxGeometry(16, 0.1, 2.0), [MAT.rail, MAT.rail, MAT.belt, MAT.rail, MAT.rail, MAT.rail]); belt.position.set(0, 0.05, BELT_Z); belt.receiveShadow = true; staticG.add(belt);
-  [-1, 1].forEach((d) => { if (DERIN && d < 0) return; const r = new THREE.Mesh(new THREE.BoxGeometry(16, 0.16, 0.12), MAT.rail); r.position.set(0, 0.08, BELT_Z + d * 1.06); r.castShadow = true; staticG.add(r); });
-  if (DERIN) {   // uzak kenar yatik: bant yuzeyinden zemine inen egimli metal serit
-    const sl = new THREE.Mesh(new THREE.BoxGeometry(16, 0.03, 0.42), MAT.rail); sl.rotation.x = -0.24; sl.position.set(0, 0.05, BELT_Z - 1.0 - 0.2); sl.receiveShadow = true; staticG.add(sl);
   }
+  [-1, 1].forEach((d) => { if (DERIN) return; const r = new THREE.Mesh(new THREE.BoxGeometry(16, 0.16, 0.12), MAT.rail); r.position.set(0, 0.08, BELT_Z + d * 1.06); r.castShadow = true; staticG.add(r); });
   if (DERIN) {   // tek kamerada zemin tahtanin dibine kadar uzanir; dipte golge (tahta zemine oturur, dip derin gorunur)
     const ao = new THREE.Mesh(new THREE.PlaneGeometry(18, 2.6), new THREE.MeshBasicMaterial({ map: AOTX, transparent: true, depthWrite: false })); ao.rotation.x = -Math.PI / 2; ao.position.set(0, 0.012, 1.1); ao.renderOrder = 1; staticG.add(ao);
     return;
@@ -679,7 +702,7 @@ function freeTray() { let t = trays.find((q) => q.st === 'stack'); if (!t) t = t
 let paused = false, fx = [], idleT = 0, winShown = false, loseShown = false, shake = 0, combo = 0, lastHit = -9, toastT = 0, VW = 1, VH = 1, DPR = 1;
 const jumps = new Map();   // shooter -> {from, t0, dur, kind}
 const CQ = new URLSearchParams(location.search), cqn = (k, d) => (CQ.has(k) ? +CQ.get(k) : d);
-const CAM = { kd: cqn('kd', 10), kh: cqn('kh', 0.04), kmax: cqn('kmax', 0.6), ktrap: cqn('ktrap', 13), kfit: cqn('kfit', 1), fov: cqn('fov', 34), fit: cqn('fit', 10.9), tilt: cqn('tilt', 9), fpitch: cqn('fpitch', 64), ffov: cqn('ffov', 30), gap: cqn('gap', 0), ftop: cqn('ftop', 0.16), kpad: cqn('kpad', DERIN ? 0.15 : 0.16), klane: cqn('klane', DERIN ? 0.5 : 0.4), kside: cqn('kside', 1), krail: cqn('krail', 0), kgap: cqn('kgap', 1.2), klw: cqn('klw', 0.95) };
+const CAM = { kd: cqn('kd', 10), kh: cqn('kh', 0.04), kmax: cqn('kmax', 0.6), ktrap: cqn('ktrap', 13), kfit: cqn('kfit', 1), fov: cqn('fov', 34), fit: cqn('fit', 10.9), tilt: cqn('tilt', 9), fpitch: cqn('fpitch', 64), ffov: cqn('ffov', 30), gap: cqn('gap', 0), ftop: cqn('ftop', 0.16), kpad: cqn('kpad', DERIN ? 0.28 : 0.16), klane: cqn('klane', DERIN ? 0.56 : 0.4), kside: cqn('kside', 1), krail: cqn('krail', 0), kgap: cqn('kgap', 1.2), klw: cqn('klw', 0.95) };
 function projWith(c, vp, v) { const p = v.clone().project(c); return { x: vp.x + (p.x * 0.5 + 0.5) * vp.w, y: vp.y + (-p.y * 0.5 + 0.5) * vp.h, z: p.z }; }
 function project(v) { return projWith(cam, VPB, v); }    // tahta
 function projectF(v) { return projWith(camF, VPF, v); }  // atici alani
@@ -767,7 +790,7 @@ function pxPerUnitF(v) { const a = projectF(v), b = projectF(v.clone().add(new T
 function start(L) {
   LV = Math.max(1, Math.min(200, L)); SV.L = LV; save();
   for (const [s, o] of live) { scene.remove(o.holder); POFI.pool.push(o); } live.clear(); jumps.clear();
-  g = BZM.newGame(LV); fx = []; winShown = false; loseShown = false; idleT = 0; combo = 0; lastHit = -9;
+  g = BZM.newGame(LV, DERIN ? { cm: (NB.XC - BW / 2) / (BW / BZM.planFor(LV).size), leg: (NB.LEG + NB.W / 2) / (BW / BZM.planFor(LV).size) } : {}); fx = []; winShown = false; loseShown = false; idleT = 0; combo = 0; lastHit = -9;
   for (const k in pops) delete pops[k];
   trays.forEach((t, i) => { t.st = 'stack'; t.s = null; });
   buildBoard(); buildPads(g.bench.length); layout(); drawGoal(); updSign();
@@ -931,7 +954,7 @@ function placeShooters(dt) {
   for (const s of g.belt) {
     if (s.gone) continue;
     const fire = s.fireT != null && g.t - s.fireT < 0.14 ? 1 - (g.t - s.fireT) / 0.14 : 0;
-    want.set(s, { pos: new THREE.Vector3(colX(s.x), TRAY_Y, BELT_Z), look: LOOK_UP + fire * 0.18, trunk: TRUNK_UP + fire * 0.6, bob: fire * 0.6, belt: true });
+    want.set(s, { pos: beltPos(s.x, TRAY_Y), look: LOOK_UP + fire * 0.18, trunk: TRUNK_UP + fire * 0.6, bob: fire * 0.6, belt: true });
   }
   // atlayislar (kuyruktan/yuvadan tablaya, tabladan yuvaya)
   for (const [s, j] of jumps) {
@@ -943,7 +966,7 @@ function placeShooters(dt) {
   // drone Pofi oluktan havalanir (tahtada ucan gorunumu ayri)
   for (const f of fx) if (f.kind === 'lift') { const k = f.t / f.life; want.set(f.s, { pos: f.from.clone().add(new THREE.Vector3(0, k * k * 5, -k * 3)), look: 0.3, trunk: 0.6, bob: 0, drone: true, scale: Math.max(0.01, 1 - k * 0.6) }); }
   for (const f of fx) if (f.kind === 'leave' && f.s._pos) want.set(f.s, { pos: f.s._pos.clone().add(new THREE.Vector3(0, f.t * 2.5, 0)), look: 0.3, trunk: 0.6, bob: 0, scale: Math.max(0.01, 1 - f.t / f.life) });
-  if (g.state === 'lose' && g.lostBy) want.set(g.lostBy, { pos: new THREE.Vector3(colX(g.W + 0.3), TRAY_Y, BELT_Z), look: 0, trunk: 0, bob: Math.sin(g.t * 20) * 0.3 });
+  if (g.state === 'lose' && g.lostBy) want.set(g.lostBy, { pos: beltPos(g.X1, TRAY_Y), look: 0, trunk: 0, bob: Math.sin(g.t * 20) * 0.3 });
   // ornekleri esle
   if (POFI.ready) {
     for (const [s, w] of want) {
@@ -998,12 +1021,12 @@ function placeTrays() {
     if (t.st === 'stack') { const target = stackSlot(n++); t.grp.position.lerp(target, 0.25); stackN.push(t); continue; }
     if (t.st === 'out') {   // yigindan banda firlar, Pofi'nin altina
       const s = t.s; if (!s || s.gone) { trayCoast(s || {}); t.st = 'coast'; continue; }
-      const to = new THREE.Vector3(colX(s.x), 0.12, BELT_Z), k = (g.t - t.t0) / 0.32;
+      const to = beltPos(s.x, 0.12), k = (g.t - t.t0) / 0.32;
       if (k >= 1) { t.st = 'ride'; t.grp.position.copy(to); } else arc(t.from, to, k, 1.4, t.grp.position);
       continue;
     }
-    if (t.st === 'ride') { const s = t.s; if (!s || s.gone || !g.belt.includes(s)) { t.from.copy(t.grp.position); t.st = 'back'; t.t0 = g.t; t.s = null; if (s && s._tray === t) s._tray = null; continue; } t.grp.position.set(colX(s.x), 0.12, BELT_Z); continue; }
-    if (t.st === 'coast') { t.x += g.speed * DT; t.grp.position.set(colX(t.x), 0.12, BELT_Z); if (t.x >= g.X1) { t.from.copy(t.grp.position); t.st = 'back'; t.t0 = g.t; } continue; }
+    if (t.st === 'ride') { const s = t.s; if (!s || s.gone || !g.belt.includes(s)) { t.from.copy(t.grp.position); t.st = 'back'; t.t0 = g.t; t.s = null; if (s && s._tray === t) s._tray = null; continue; } beltPos(s.x, 0.12, t.grp.position); continue; }
+    if (t.st === 'coast') { t.x += g.speed * DT; beltPos(t.x, 0.12, t.grp.position); if (t.x >= g.X1) { t.from.copy(t.grp.position); t.st = 'back'; t.t0 = g.t; } continue; }
     if (t.st === 'back') { const k = (g.t - t.t0) / 0.5, to = stackSlot(trays.filter((q) => q.st === 'stack').length); if (k >= 1) { t.st = 'stack'; SFX.tray(); } else arc(t.from, to, k, 2.2, t.grp.position); }
   }
   trays.forEach((t) => { t.grp.rotation.y = t.st === 'back' || t.st === 'out' ? Math.sin(g.t * 20) * 0.3 : 0; });
@@ -1124,7 +1147,7 @@ function frame(ts, noRender) {
   }
   if (toastT && performance.now() > toastT) { $('toast').classList.remove('on'); toastT = 0; }
   if (g) {
-    TX.belt.offset.x = -(g.t * g.speed * S) / (14.4 / 6);
+    TX.belt.offset.x = -(g.t * g.speed * S) / (14.4 / 6); for (const b of BELT_TX) b.t.offset.x = -(g.t * g.speed * S) / 2.6;
     if (cubesDirty) updateCubes();
     animObjs(); placeTrays(); syncDrones(dt);
     const want = placeShooters(dt);
