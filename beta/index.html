@@ -255,6 +255,7 @@ window.addEventListener('load',function(){setTimeout(function(){if(!window.__boo
 <div id="fx"></div>
 <div id="toast"></div>
 </div>
+<script>window.addEventListener('error',function(e){try{var m=(e&&e.message||'')+' @'+(e&&e.lineno||'');window.__bpErr=(window.__bpErr||[]).concat(m).slice(-3);setTimeout(function(){var p=document.getElementById('btnPlay');if(p&&!p.classList.contains('hidden'))return;var d=document.getElementById('bpErrBox');if(!d){d=document.createElement('div');d.id='bpErrBox';d.style.cssText='position:fixed;left:8px;right:8px;bottom:8px;z-index:99999;background:#fff;color:#b00020;font:12px/1.35 monospace;padding:8px;border-radius:8px;border:2px solid #b00020;white-space:pre-wrap';document.body.appendChild(d);}d.textContent='Hata (ekran görüntüsü atın):\n'+window.__bpErr.join('\n');},6000);}catch(x){}});</script>
 <script src="avatars.js" onerror="window.BLOKPOP_AVATARS=window.BLOKPOP_AVATARS||{}"></script>
 <script src="sfx.js" onerror="window.BLOKPOP_SFX=window.BLOKPOP_SFX||{}"></script>
 <script src="runpofi.js"></script>
@@ -1516,6 +1517,7 @@ const OB_SIDES=['b','l','t','r'];
 const OB_UK={armor:1,magnet:1,key:1,move:1};
 const OB_TUNE={"53":-3,"69":-2,"75":-3,"105":-3,"160":-1,"204":-1,"222":-3,"255":-1,"288":-1,"336":-1,"364":-3,"459":-2,"542":-1,"564":-3,"668":-2,"760":-1,"789":-2,"811":-2,"876":-1,"920":-1,"940":-1,"964":-3};// seviye -> -1/-2/-3: bot dogrulamasiyla hafifletme (tools/ob-ayar.js uretir)
 let OB_PLANS=null;
+function obErr(e){try{if(!obErr.n)obErr.n=0;if(obErr.n++<3&&typeof console!=='undefined')console.error('BLOKPOP engel cizim hatasi',e);}catch(x){}}
 function obTier(L){
 const cls=diffClass(L);let t=L<60?1:L<150?1.5:L<300?2:L<600?2.5:3;
 if(cls>=2)t+=1;else if(cls===1)t+=0.5;
@@ -4424,7 +4426,7 @@ push(GX+(c+k/2)*CS+mdx,R3.floor+CS*h*0.5*sc+hop*CS*1.6,(GY+(r+k/2)*CS)*K.ZS,Math
 if(U)sig+='u'+ui+':'+U.hp+(dead?'d':'')+',';
 else if(pr<1)sig+=r*N+c+',';
 }
-if(g.obOn&&!win)sig+=obShells3(g,K,IN,push,push2);
+if(g.obOn&&!win)try{sig+=obShells3(g,K,IN,push,push2);}catch(e){obErr(e);}
 if(win)r3WinCubes(g,K,push);
 for(let i=R3.dying.length-1;i>=0;i--){const d=R3.dying[i];d.t+=dt;if(d.t>=0.16){R3.dying.splice(i,1);continue;}const s=1-d.t/0.16,h=r3H(d.r,d.c,d.v),cc=R3.cols[d.v]||[1,1,1];
 push(GX+(d.c+0.5)*CS,R3.floor+CS*h*0.5*s+(1-s)*CS*0.8,(GY+(d.r+0.5)*CS)*K.ZS,Math.min(1,cc[0]*1.4),Math.min(1,cc[1]*1.4),Math.min(1,cc[2]*1.4),h,s,0,1,0,0,0,0);changed=true;}
@@ -4561,7 +4563,7 @@ if(g.state==='play'&&g.units.length){ctx.save();ctx.setTransform(m.a,m.b,m.c,m.d
 hitNums(ctx,g,(U)=>{const h=r3H(U.r0,U.c0,U.col)*(R3.styD.flat?1:U.k>1?1.45:1.12),x=GX+(U.c0+U.k/2)*CS,z=(GY+(U.r0+U.k/2)*CS)*K.ZS,y=R3.floor+CS*h*(R3.styD.mesh==='ball'?0.75:1)+0.5;
 const P=r3P3(K,x,y,z),Q=r3P3(K,x+CS,y,z);return{X:P.X,Y:P.Y,k:Math.max(0.5,Math.abs(Q.X-P.X)/CS)};});
 ctx.restore();}
-if(g.state==='play'&&g.obOn){ctx.save();ctx.setTransform(m.a,m.b,m.c,m.d,m.e,m.f);obNums(ctx,g,(x,y,h)=>{const yy=R3.floor+CS*(R3.hFG||1)*h,P=r3P3(K,x,yy,y*K.ZS),Q=r3P3(K,x+CS,yy,y*K.ZS);return{X:P.X,Y:P.Y,k:Math.max(0.5,Math.abs(Q.X-P.X)/CS)};});ctx.restore();}
+if(g.state==='play'&&g.obOn)try{ctx.save();ctx.setTransform(m.a,m.b,m.c,m.d,m.e,m.f);obNums(ctx,g,(x,y,h)=>{const yy=R3.floor+CS*(R3.hFG||1)*h,P=r3P3(K,x,yy,y*K.ZS),Q=r3P3(K,x+CS,yy,y*K.ZS);return{X:P.X,Y:P.Y,k:Math.max(0.5,Math.abs(Q.X-P.X)/CS)};});ctx.restore();}catch(e){ctx.restore();obErr(e);}
 if(g.state==='play'&&g.plab&&CELLNUM)drawCellNums(ctx,g,K,m);
 else if(g.state==='play'&&g.plab){ctx.save();ctx.setTransform(m.a,m.b,m.c,m.d,m.e,m.f);ctx.textAlign='center';ctx.textBaseline='middle';ctx.lineJoin='round';
 for(const lb of g.plab.labs){if(!lb.show||!lb.cells.some((i)=>g.grid[(i/N)|0][i%N]>=0))continue;
@@ -4665,7 +4667,7 @@ if(IN)introCell(ctx,IN,r,c,fx,fy-CS,df,true);else df();
 }
 }
 if(!R3.on&&g.state==='play')hitNums(ctx,g,(U)=>({X:GX+(U.c0+U.k/2)*CS,Y:GY+(U.r0+U.k/2)*CS,k:1}));
-if(!R3.on&&g.state==='play'&&g.obOn)obDraw2D(ctx,g);
+if(!R3.on&&g.state==='play'&&g.obOn)try{obDraw2D(ctx,g);}catch(e){obErr(e);}
 if(g.gift&&!g.gift.open&&g.grid[g.gift.r][g.gift.c]>=0){
 const gx=GX+g.gift.c*CS+CS/2,gy=GY+g.gift.r*CS+CS/2,pu=0.5+0.5*Math.sin(g.t*5);
 ctx.save();ctx.translate(gx,gy);
@@ -4741,7 +4743,7 @@ ctx.fillText('+'+(col.length-VIS_ROWS),bx,by+0.5);
 g.bench.forEach((s)=>{if(s&&s.st!=='exit')drawShooter(ctx,g,s,1);});
 g.bench.forEach((s)=>{if(s&&s.st==='exit')drawShooter(ctx,g,s,1);});
 g.active.forEach((s)=>{const al=s.st==='vanish'?1-0.55*s.en:1;if(R3.on&&(s.st==='belt'||s.st==='vanish'||s.st==='gone'))R3.late.push({s,a:al});else drawShooter(ctx,g,s,al);});
-if(g.obOn&&g.state!=='win')obQOverlay(ctx,g);
+if(g.obOn&&g.state!=='win')try{obQOverlay(ctx,g);}catch(e){ctx.restore();obErr(e);}
 if(g.L<=2&&g.state==='play'&&g.active.length===0&&g.t<40){
 const f=g.q[0][0];
 if(f){const bob=Math.sin(g.t*7)*4;ctx.save();ctx.translate(f.x,f.y-68+bob);ctx.fillStyle='#ffd23f';ctx.strokeStyle='#3a1d7a';ctx.lineWidth=3;ctx.lineJoin='round';
