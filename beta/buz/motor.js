@@ -54,11 +54,11 @@
   const COMBOS = [['thick', 'wood'], ['chain', 'thick'], ['lock', 'wood'], ['chain', 'lock'], ['thick', 'wood', 'chain'],
     ['thick'], ['lock', 'chain'], ['wood', 'lock'], ['thick', 'chain', 'lock'], ['thick', 'wood', 'chain', 'lock']];
   function planFor(L) {
-    if (PLAN[L]) return Object.assign({ bench: 5, belt: 4 }, PLAN[L]);
+    if (PLAN[L]) return Object.assign({ bench: 5, belt: 5 }, PLAN[L]);
     const k = L - 11, combo = COMBOS[k % COMBOS.length], round = Math.floor(k / COMBOS.length);
     const dens = Math.min(0.16, 0.08 + 0.015 * round);
     const hard = (L % 10 === 0) ? 1 : 0, easy = (L % 10 === 6) ? 1 : 0;
-    const p = { size: L <= 20 ? 21 : 28, c: L <= 25 ? 4 : 5, K: 4, am: [0.8, 1.6], mix: 1 + 0.3 * hard - 0.3 * easy, bench: 5, belt: 4 };
+    const p = { size: L <= 20 ? 21 : 28, c: L <= 25 ? 4 : 5, K: 4, am: [0.8, 1.6], mix: 1 + 0.3 * hard - 0.3 * easy, bench: 5, belt: 5 };
     if (hard && L >= 30) p.c = 6;
     for (const b of combo) {
       if (b === 'lock') p.lock = L >= 25 && combo.length <= 3 ? 2 : 1;
