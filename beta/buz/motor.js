@@ -40,12 +40,12 @@
   // size: sutun sayisi, c: renk, K: oluk, am: fil mermisi (sutun sayisina oranla), mix: kuyruk karisikligi
   // thick/wood/chain: bloklarin (63 blok) orani; lock: kilit sayisi
   const PLAN = {
-    1: { size: 14, c: 3, K: 3, am: [0.5, 0.9], mix: 0.3, bench: 7 },
-    2: { size: 14, c: 3, K: 3, am: [0.5, 1.0], mix: 0.5, bench: 7 },
-    3: { size: 14, c: 3, K: 3, am: [0.5, 1.0], mix: 0.8, bench: 6, thick: 0.1, tip: 'thick' },
-    4: { size: 14, c: 4, K: 4, am: [0.5, 1.0], mix: 1, bench: 6, thick: 0.12 },
-    5: { size: 14, c: 4, K: 4, am: [0.5, 1.0], mix: 1, bench: 6, wood: 0.1, tip: 'wood' },
-    6: { size: 14, c: 4, K: 4, am: [0.5, 1.0], mix: 1, bench: 6, wood: 0.08, thick: 0.08 },
+    1: { size: 14, c: 3, K: 3, am: [0.5, 0.9], mix: 0.3, bench: 4 },
+    2: { size: 14, c: 3, K: 3, am: [0.5, 1.0], mix: 0.5, bench: 4 },
+    3: { size: 14, c: 3, K: 3, am: [0.5, 1.0], mix: 0.8, bench: 4, thick: 0.1, tip: 'thick' },
+    4: { size: 14, c: 4, K: 4, am: [0.5, 1.0], mix: 1, bench: 4, thick: 0.12 },
+    5: { size: 14, c: 4, K: 4, am: [0.5, 1.0], mix: 1, bench: 4, wood: 0.1, tip: 'wood' },
+    6: { size: 14, c: 4, K: 4, am: [0.5, 1.0], mix: 1, bench: 4, wood: 0.08, thick: 0.08 },
     7: { size: 14, c: 4, K: 4, am: [0.5, 1.0], mix: 1, chain: 0.08, tip: 'chain' },
     8: { size: 14, c: 4, K: 4, am: [0.5, 1.0], mix: 1, chain: 0.08, wood: 0.06 },
     9: { size: 14, c: 4, K: 4, am: [0.5, 1.0], mix: 1, lock: 1, tip: 'lock' },
@@ -60,11 +60,11 @@
   const COMBOS = [['rock', 'thick'], ['drone', 'wood', 'bomb'], ['frozen', 'chain'], ['lock', 'rock'], ['bomb', 'thick', 'frozen'],
     ['drone', 'lock'], ['rock', 'chain', 'bomb'], ['frozen', 'wood', 'drone'], ['thick', 'lock', 'bomb'], ['rock', 'frozen', 'drone', 'chain']];
   function planFor(L) {
-    if (PLAN[L]) return Object.assign({ bench: 6, belt: 4, pierce: 1, tc: 2.2 }, PLAN[L]);
+    if (PLAN[L]) return Object.assign({ bench: 4, belt: 4, pierce: 1, tc: 2.2 }, PLAN[L]);
     const k = L - 16, combo = COMBOS[((k % COMBOS.length) + COMBOS.length) % COMBOS.length], round = Math.floor(k / COMBOS.length);
     const dens = Math.min(0.16, 0.08 + 0.015 * round);
     const hard = (L % 10 === 0) ? 1 : 0, easy = (L % 10 === 6) ? 1 : 0;
-    const p = { size: L <= 30 ? 21 : 28, c: L <= 25 ? 4 : 5, K: 4, am: [0.5, 1.0], mix: 1 + 0.3 * hard - 0.3 * easy, bench: 6, belt: 4, pierce: 1, tc: 2.2 };
+    const p = { size: L <= 30 ? 21 : 28, c: L <= 25 ? 4 : 5, K: 4, am: [0.5, 1.0], mix: 1 + 0.3 * hard - 0.3 * easy, bench: 4, belt: 4, pierce: 1, tc: 2.2 };
     if (hard && L >= 30) p.c = 6;
     for (const b of combo) {
       if (b === 'lock') p.lock = L >= 25 && combo.length <= 3 ? 2 : 1;
@@ -277,7 +277,7 @@
   }
 
   // ---------- oyun ----------
-  const T_CROSS = 3.4, KEY_T = 0.8;
+  const T_CROSS = 3.4, KEY_T = 0.8, MAX_BENCH = 6;
   function newGame(L, opts) {
     opts = opts || {};
     const lv = level(L, opts.seed, opts.plan);
@@ -511,7 +511,10 @@
   }
   function revive(g) {
     if (g.state !== 'lose' || !g.lostBy) return false;
-    g.bench.push(g.lostBy); g.lostBy.benchT = g.t; g.lostBy = null;
+    // devam: yuva sayisi en fazla MAX_BENCH'e cikar; dolunca kaybettiren Pofi en kisa olugun basina doner
+    if (g.bench.length < MAX_BENCH) { g.bench.push(g.lostBy); g.lostBy.benchT = g.t; }
+    else { let k = 0; g.queue.forEach((c, j) => { if (c.length < g.queue[k].length) k = j; }); g.queue[k].unshift(g.lostBy); g.lostBy.x = 0; }
+    g.lostBy = null;
     g.state = 'play'; g.revives = (g.revives || 0) + 1;
     return true;
   }
@@ -589,7 +592,7 @@
     let next = 0.4;
     const idle = () => !g.belt.length && !g.shots.length && !g.flying.length && !g.drones.length;
     const anyQ = (opt) => { const qs = opt.filter((o) => o.from === 'q'); const a = qs.length ? qs : opt; return a[Math.floor(rnd() * a.length)]; };
-    while (g.state === 'play' && g.t < (opts.maxT || 900)) {
+    while ((g.state === 'play' || (g.state === 'lose' && (g.revives || 0) < (opts.revives || 0) && revive(g))) && g.t < (opts.maxT || 900)) {
       step(g, dt);
       g.ev.length = 0;
       if (g.t < next || g.state !== 'play') continue;
@@ -629,8 +632,8 @@
       }
       if (pick) launch(g, pick.from, pick.k);
     }
-    return { L, style, win: g.state === 'win', t: Math.round(g.t), left: g.left, total: g.total, launches: g.launches, topups: g.topups, prog: Math.round(100 * (1 - g.left / g.total)) };
+    return { L, style, win: g.state === 'win', revives: g.revives || 0, t: Math.round(g.t), left: g.left, total: g.total, launches: g.launches, topups: g.topups, prog: Math.round(100 * (1 - g.left / g.total)) };
   }
 
-  return { setLib, colHits, level, planFor, newGame, step, launch, canLaunch, hitsNow, frontierOf, laneOf, bestMove, targetIn, face, botPlay, revive, rng };
+  return { MAX_BENCH: 6, setLib, colHits, level, planFor, newGame, step, launch, canLaunch, hitsNow, frontierOf, laneOf, bestMove, targetIn, face, botPlay, revive, rng };
 });

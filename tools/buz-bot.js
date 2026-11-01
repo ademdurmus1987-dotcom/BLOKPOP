@@ -15,7 +15,7 @@ const path = require('path');
 const ROOT = path.resolve(__dirname, '..');
 const M = require(path.join(ROOT, 'beta', 'buz', 'motor.js'));
 M.setLib(require(path.join(ROOT, 'beta', 'buz', 'izgara.js')));
-const A = { from: 1, to: 30, tries: 5, plan: '{}' };
+const A = { from: 1, to: 30, tries: 5, plan: '{}', devam: 0 };   // --devam 2: kaybedince en fazla 2 kez +1 yuvayla devam
 for (let i = 2; i < process.argv.length; i++) { const k = process.argv[i].replace(/^--/, ''); A[k] = process.argv[++i]; }
 const from = +A.from, to = +A.to, T = +A.tries, over = JSON.parse(A.plan);
 const ST = ['dikkatli', 'sayan', 'orta', 'rastgele'];
@@ -27,7 +27,7 @@ for (let L = from; L <= to; L++) {
   let tw = 0, nw = 0;
   for (const st of ST) {
     r[st] = 0;
-    for (let s = 1; s <= T; s++) { const o = M.botPlay(L, st, s, { plan: over }); if (o.win) { r[st]++; if (st === 'sayan') { tw += o.t; nw++; } } }
+    for (let s = 1; s <= T; s++) { const o = M.botPlay(L, st, s, { plan: over, revives: +(A.devam || 0) }); if (o.win) { r[st]++; if (st === 'sayan') { tw += o.t; nw++; } } }
     tot[st] += r[st];
   }
   n += T;
