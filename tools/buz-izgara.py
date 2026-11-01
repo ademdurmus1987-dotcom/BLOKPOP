@@ -1,6 +1,9 @@
 #!/usr/bin/env python3
-"""BLOKPOP Buz: buzun arkasindaki resimleri (beta/bg/w01..w20) kup izgarasina boler ve
+"""BLOKPOP Buz: buzun arkasindaki resimleri kup izgarasina boler ve
 her kupun oyun rengini cikarir -> beta/buz/izgara.js
+
+Resimler: beta/buz/resim/r*.webp (Buz'a ozel, 7:9; tools/buz-resim-ekle.py ile eklenir)
+ve beta/bg/w01..w20 (dunya arka planlari, ortadan 7:9 kesilir). Sira: iki ozel resim, bir arka plan.
 
 Boyutlar (sutun x sira, hepsi 7:9 oraninda): 14x18, 21x27, 28x36.
 Seviye ilerledikce kupler kuculur (kenar 1/2 -> 1/4).
@@ -86,18 +89,33 @@ def smooth(lab, w, h, passes=2):
     return lab
 
 
+def sources():
+    own = sorted(glob.glob(os.path.join(ROOT, 'beta', 'buz', 'resim', 'r*.webp')))
+    bg = sorted(glob.glob(os.path.join(ROOT, 'beta', 'bg', 'w*.webp')))
+    out = []
+    while own or bg:
+        for _ in range(2):
+            if own:
+                out.append(('own', own.pop(0)))
+        if bg:
+            out.append(('bg', bg.pop(0)))
+    return out
+
+
 def main():
-    files = sorted(glob.glob(os.path.join(ROOT, 'beta', 'bg', 'w*.webp')))
+    files = sources()
     pics = []
     cell = 5
     sheet = Image.new('RGB', (len(files) * (28 * cell + 10), 180 + 3 * (36 * cell + 10)), (250, 250, 255))
-    for fi, f in enumerate(files):
+    for fi, (kind, f) in enumerate(files):
         im = Image.open(f).convert('RGB')
         iw, ih = im.size
-        ch = round(iw * 9 / 7)
-        y0 = min(max(0, (ih - ch) // 2 + round(ih * 0.03)), ih - ch)
+        ch = min(ih, round(iw * 9 / 7))
+        y0 = 0 if kind == 'own' else min(max(0, (ih - ch) // 2 + round(ih * 0.03)), ih - ch)
         crop = im.crop((0, y0, iw, y0 + ch))
-        entry = {'f': os.path.basename(f)[:-5], 'crop': [0, y0, iw, y0 + ch], 's': {}}
+        name = os.path.basename(f)[:-5]
+        src = ('resim/' if kind == 'own' else '../bg/') + name + '.webp'
+        entry = {'f': name, 'src': src, 'dim': [iw, ih], 'crop': [0, y0, iw, y0 + ch], 's': {}}
         sx = fi * (28 * cell + 10) + 5
         sheet.paste(crop.resize((28 * cell, 170)), (sx, 5))
         for si, (W, H) in enumerate(SIZES):
@@ -128,7 +146,7 @@ def main():
                 d.rectangle([x, y, x + cs - 1, y + cs - 1], fill=rgb(e['pal'][int(ch_)]))
         pics.append(entry)
         print('.', end='', flush=True)
-    data = {'v': 2, 'sizes': [list(s) for s in SIZES], 'pics': pics}
+    data = {'v': 3, 'sizes': [list(s) for s in SIZES], 'pics': pics}
     out = '// Otomatik uretildi: python3 tools/buz-izgara.py (elle duzenleme)\nvar BZ_IZGARA=' + json.dumps(data, separators=(',', ':')) + ';\nif(typeof module==="object"&&module.exports)module.exports=BZ_IZGARA;\n'
     open(os.path.join(ROOT, 'beta', 'buz', 'izgara.js'), 'w').write(out)
     os.makedirs(os.path.join(ROOT, 'tools', 'out'), exist_ok=True)

@@ -47,15 +47,26 @@ Her seviye için dikkatli oyuncunun her denemede kazandığı (ama rastgele oyun
 
 Haritadaki **Mod** düğmesi üç mod arasında seçim yapar; her modun ilerlemesi ayrı tutulur. Bot: `--mode insa` ya da `--mode hepsi`.
 
-## Buz prototipi (v2.89, 3B) — `beta/buz/`
+## Buz prototipi (v2.90, 3B) — `beta/buz/`
 Ayrı küçük bir oyun, three.js ile gerçek 3B. Ekran ikiye bölünür: üstte arkaya yaslanmış dev tahta karşıdan (3B buz küpleri, arkasında resim `beta/bg`, ahşap çerçeve), altta tahtadan bir boşlukla ayrılmış atıcı alanı tepeden (mavi-gri taş zemin, düz bant, yuvalar, sol altta 4 gri kare tabla, 4 kuyruk oluğu). İki kamera ayrı katman görür (0 tahta, 1 atıcı alanı); alt kameranın x ölçeği tahtanın sütunlarıyla eşlenir, atış dik gider. Küpler: sv 1–10 14×18, sv 11–30 21×27, sv 31+ 28×36.
 
 Akış: oluğa dokun → yığından tabla banda fırlar (mantar patlaması sesi), Pofi tablaya biner. Bantta başını ve hortumunu kaldırıp sütunun en alttaki kendi renk küpüne **bir** atış yapar (tok vuruş sesi). Bantta en fazla 4 Pofi. Tur bitince mermisi kalan Pofi yuvaya iner, tabla yığına döner. Yuva kalmazsa oyun biter.
 
 Engeller birkaç küpü tek parça kaplar: 3B çivili tahta, metal zincir, asma kilit + anahtar; kalın buz beyaz kabuk. Ses/efekt ana oyunun ses motorundan; titreşim ayarı (⚙). Yavaş telefonda kalite kendiliğinden düşer.
 
+Yeni deneyimler (v2.90), her biri ilk geldiği seviyede ipucuyla tanıtılır:
+- **Büyük kaya** (sv 11): 2×2 blok, her renk vurur, canı tahtanın iki katı; vuruldukça çatlar.
+- **Drone Pofi** (sv 12): tablaya binmez, tahtanın önünde yılan gibi uçar; yakındaki kendi renk küplerini (en altta olmasalar da) vurur, en alttakileri banttakilere bırakır. Bant doluyken de gönderilir; aynı anda bir drone.
+- **Bomba küp** (sv 13): kırılınca çevresini (blok+1 yarıçap) patlatır, engellere hasar verir, bombalar zincirleme patlar. Fazla kalan mermi kuyruktan düşülür.
+- **Donmuş Pofi** (sv 15): oluğun başına gelince ❄ sayısı kadar küp kırılana kadar gönderilemez. Hiç hamle kalmazsa kendiliğinden çözülür.
+- Sv 16'dan sonra engeller ve özel Pofiler karışık kombinasyonlarla döner.
+
+Derinlik: tahta ahşap bir kaidenin üstünde durur; altta bandın arkasında karanlık bir hendek ve platform kenarı görünür (`?sill=0.45&ftop=0.16` ile denenebilir).
+
+Resimler: `beta/buz/resim/` (Buz'a özel, 7:9). Gemini görsellerini eklemek için `python3 tools/buz-resim-ekle.py resimler.zip` (ortadan 7:9 keser, 720×926 webp yapar, aynısını iki kez eklemez, küp renklerini yeniden üretir; kontrol `tools/out/buz-resim.png`). Sıra: iki özel resim, bir dünya arka planı.
+
 - Dosyalar: `beta/buz/index.html`, `beta/buz/oyun3d.js` (3B çizim, ses, dokunma), `beta/buz/motor.js` (kurallar; Node'da da çalışır), `beta/buz/izgara.js` (küp renkleri).
-- Test: `?test=1` döngüyü durdurur; `BZ.run(sn, true)` zamanı ilerletir, `BZ.snap()` kareyi PNG verir. Kamera denemesi: `?tilt=9&fpitch=64&ffov=30&gap=0.035`.
+- Test: `?test=1` döngüyü durdurur; `BZ.run(sn, true, sessiz)` zamanı ilerletir (sessiz=true çizmeden), `BZ.snap()` kareyi PNG verir. Kamera denemesi: `?tilt=9&fpitch=64&ffov=30&gap=0.035`.
 - Küp renkleri: `python3 tools/buz-izgara.py`. Bot: `node tools/buz-bot.js --from 1 --to 30 --tries 5`.
 - Kayıt ayrı anahtarda (`blokpop_buz_v1`). Beta'da Mod menüsünde "Buz (deneme)".
 

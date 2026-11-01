@@ -31,7 +31,7 @@ for (let L = from; L <= to; L++) {
     tot[st] += r[st];
   }
   n += T;
-  const c = lv.counts, eng = [c.thick && 'kalın ' + c.thick, c.wood && 'tahta ' + c.wood, c.chain && 'zincir ' + c.chain, c.lock && 'kilit ' + c.lock].filter(Boolean).join(', ') || '-';
+  const c = lv.counts, eng = [c.thick && 'kalın ' + c.thick, c.wood && 'tahta ' + c.wood, c.chain && 'zincir ' + c.chain, c.lock && 'kilit ' + c.lock, c.rock && 'kaya ' + c.rock, c.bomb && 'bomba ' + c.bomb, c.drone && 'drone ' + c.drone, c.frozen && 'donmuş ' + c.frozen].filter(Boolean).join(', ') || '-';
   rows.push('| ' + L + ' | ' + lv.pic + ' | ' + lv.W + '×' + lv.H + ' | ' + lv.pal.length + ' | ' + c.total + ' | ' + eng + ' | ' + lv.plan.bench + ' | ' + ST.map((s) => r[s] + '/' + T).join(' | ') + ' | ' + (nw ? Math.round(tw / nw) : '-') + ' |');
   process.stdout.write('.');
 }

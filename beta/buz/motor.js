@@ -49,19 +49,29 @@
     7: { size: 14, c: 4, K: 4, am: [0.5, 1.0], mix: 1, chain: 0.08, tip: 'chain' },
     8: { size: 14, c: 4, K: 4, am: [0.5, 1.0], mix: 1, chain: 0.08, wood: 0.06 },
     9: { size: 14, c: 4, K: 4, am: [0.5, 1.0], mix: 1, lock: 1, tip: 'lock' },
-    10: { size: 14, c: 5, K: 4, am: [0.5, 1.0], mix: 1, lock: 1, thick: 0.1 }
+    10: { size: 14, c: 5, K: 4, am: [0.5, 1.0], mix: 1, lock: 1, thick: 0.1 },
+    // yeni deneyimler: kaya (11), drone Pofi (12), bomba kup (13), donmus Pofi (15)
+    11: { size: 21, c: 4, K: 4, am: [0.5, 1.0], mix: 1, rock: 1, tip: 'rock' },
+    12: { size: 21, c: 4, K: 4, am: [0.5, 1.0], mix: 1, drone: 1, thick: 0.06, tip: 'drone' },
+    13: { size: 21, c: 4, K: 4, am: [0.5, 1.0], mix: 1, bomb: 3, wood: 0.06, tip: 'bomb' },
+    14: { size: 21, c: 4, K: 4, am: [0.5, 1.0], mix: 1, rock: 1, chain: 0.06, drone: 1 },
+    15: { size: 21, c: 5, K: 4, am: [0.5, 1.0], mix: 1, frozen: 1, bomb: 2, tip: 'frozen' }
   };
-  const COMBOS = [['thick', 'wood'], ['chain', 'thick'], ['lock', 'wood'], ['chain', 'lock'], ['thick', 'wood', 'chain'],
-    ['thick'], ['lock', 'chain'], ['wood', 'lock'], ['thick', 'chain', 'lock'], ['thick', 'wood', 'chain', 'lock']];
+  const COMBOS = [['rock', 'thick'], ['drone', 'wood', 'bomb'], ['frozen', 'chain'], ['lock', 'rock'], ['bomb', 'thick', 'frozen'],
+    ['drone', 'lock'], ['rock', 'chain', 'bomb'], ['frozen', 'wood', 'drone'], ['thick', 'lock', 'bomb'], ['rock', 'frozen', 'drone', 'chain']];
   function planFor(L) {
     if (PLAN[L]) return Object.assign({ bench: 6, belt: 4, pierce: 1, tc: 2.2 }, PLAN[L]);
-    const k = L - 11, combo = COMBOS[k % COMBOS.length], round = Math.floor(k / COMBOS.length);
+    const k = L - 16, combo = COMBOS[((k % COMBOS.length) + COMBOS.length) % COMBOS.length], round = Math.floor(k / COMBOS.length);
     const dens = Math.min(0.16, 0.08 + 0.015 * round);
     const hard = (L % 10 === 0) ? 1 : 0, easy = (L % 10 === 6) ? 1 : 0;
     const p = { size: L <= 30 ? 21 : 28, c: L <= 25 ? 4 : 5, K: 4, am: [0.5, 1.0], mix: 1 + 0.3 * hard - 0.3 * easy, bench: 6, belt: 4, pierce: 1, tc: 2.2 };
     if (hard && L >= 30) p.c = 6;
     for (const b of combo) {
       if (b === 'lock') p.lock = L >= 25 && combo.length <= 3 ? 2 : 1;
+      else if (b === 'rock') p.rock = L >= 30 ? 2 : 1;
+      else if (b === 'bomb') p.bomb = 2 + (round > 0 ? 1 : 0);
+      else if (b === 'drone') p.drone = 1;
+      else if (b === 'frozen') p.frozen = L >= 30 ? 2 : 1;
       else p[b] = dens * (combo.length >= 3 ? 0.75 : 1) * (easy ? 0.7 : 1);
     }
     return p;
@@ -86,7 +96,7 @@
     const objs = [], keys = [];
     const addObj = (t, br, bc, bw, bh, extra) => {
       const o = Object.assign({ id: objs.length, t, br, bc, bw, bh, r0: br * B, c0: bc * B, w: bw * B, h: bh * B, cells: blockCells(br, bc, bw, bh), pend: 0, alive: true }, extra || {});
-      o.hp = o.hpMax = t === 'lock' ? 1 : bw * B;
+      o.hp = o.hpMax = t === 'lock' ? 1 : t === 'rock' ? bw * B * 4 : bw * B;
       for (const i of o.cells) cells[i].obj = o.id;
       objs.push(o); take(br, bc, bw, bh); return o;
     };
@@ -127,8 +137,27 @@
       const c = opts.length ? opts[Math.floor(rnd() * opts.length)] : 0;
       addObj('chain', br, bc, 1, 1, { c }); nChain++;
     }
-    const lv = { L, pic: pic.f, crop: pic.crop, W, H, B, pal, cells, objs, keys, plan: P, seed,
-      counts: { total: W * H, thick: nThick, wood: nWood, chain: nChain, lock: objs.filter((o) => o.t === 'lock' && o.alive).length } };
+    // buyuk kaya: 2x2 blok, her renk vurur, cani yuksek
+    let nRock = 0;
+    for (let q = 0; q < (P.rock || 0); q++) {
+      const all = []; for (let br = 1; br + 2 <= BH; br++) for (let bc = 0; bc + 2 <= BW; bc++) all.push([br, bc]);
+      shuffle(all, rnd);
+      const sp = all.find(([br, bc]) => free(br, bc, 2, 2));
+      if (sp) { addObj('rock', sp[0], sp[1], 2, 2); nRock++; }
+    }
+    // bomba kup: vurulup kirilinca cevresini patlatir
+    let nBomb = 0;
+    for (let q = 0; q < (P.bomb || 0); q++) {
+      for (let t = 0; t < 200; t++) {
+        const br = ri(rnd, 1, BH - 2), bc = ri(rnd, 0, BW - 1);
+        if (!free(br, bc, 1, 1)) continue;
+        const i = (br * B + Math.floor(B / 2)) * W + bc * B + Math.floor(B / 2);
+        if (cells[i].obj >= 0 || cells[i].layers.length > 1) continue;
+        cells[i].bomb = 1; take(br, bc, 1, 1); nBomb++; break;
+      }
+    }
+    const lv = { L, pic: pic.f, src: pic.src || ('../bg/' + pic.f + '.webp'), dim: pic.dim || [720, 1290], crop: pic.crop, W, H, B, pal, cells, objs, keys, plan: P, seed,
+      counts: { total: W * H, thick: nThick, wood: nWood, chain: nChain, rock: nRock, bomb: nBomb, drone: P.drone || 0, frozen: P.frozen || 0, lock: objs.filter((o) => o.t === 'lock' && o.alive).length } };
     lv.queue = planQueue(lv, rnd);
     return lv;
   }
@@ -136,7 +165,7 @@
   // ---------- kural cekirdegi (soyut durum: {cells, objs, keys}) ----------
   function cloneState(s) {
     return {
-      cells: s.cells.map((x) => ({ c: x.c, layers: x.layers.map((y) => ({ t: y.t, c: y.c })), obj: x.obj, done: x.done, pend: x.pend })),
+      cells: s.cells.map((x) => ({ c: x.c, layers: x.layers.map((y) => ({ t: y.t, c: y.c })), obj: x.obj, done: x.done, pend: x.pend, bomb: x.bomb })),
       objs: s.objs.map((o) => Object.assign({}, o, { cells: o.cells })),
       keys: s.keys.map((k) => Object.assign({}, k))
     };
@@ -157,7 +186,7 @@
       if (f.obj) {
         const o = f.obj;
         if (o.t === 'lock') return null;
-        if (o.t === 'wood' || o.c === color) return { i, r, obj: o.id };
+        if (o.t === 'wood' || o.t === 'rock' || o.c === color) return { i, r, obj: o.id };
         return null;
       }
       return f.layer.c === color ? { i, r, obj: -1 } : null;
@@ -167,7 +196,7 @@
   function needOf(st, ncol) {
     const need = new Array(ncol).fill(0); let wood = 0;
     for (const x of st.cells) { if (x.done) continue; for (let j = x.pend; j < x.layers.length; j++) need[x.layers[j].c]++; }
-    for (const o of st.objs) { if (!o.alive) continue; const left = o.hp - o.pend; if (left <= 0) continue; if (o.t === 'wood') wood += left; else if (o.t === 'chain') need[o.c] += left; }
+    for (const o of st.objs) { if (!o.alive) continue; const left = o.hp - o.pend; if (left <= 0) continue; if (o.t === 'wood' || o.t === 'rock') wood += left; else if (o.t === 'chain') need[o.c] += left; }
     return { need, wood };
   }
   function openLock(st, id) { const o = st.objs[id]; if (o && o.alive) { o.alive = false; for (const i of o.cells) if (st.cells[i].obj === id) st.cells[i].obj = -1; } }
@@ -176,11 +205,32 @@
   function hitAbstract(st, t) {
     if (t.obj >= 0) { const o = st.objs[t.obj]; o.hp--; if (o.hp <= 0) { o.alive = false; for (const i of o.cells) if (st.cells[i].obj === o.id) st.cells[i].obj = -1; } return; }
     const x = st.cells[t.i]; x.layers.shift();
-    if (!x.layers.length) { x.done = true; keyCheck(st, (k) => openLock(st, k.lock)); }
+    if (!x.layers.length) { x.done = true; if (x.bomb) explodeCore(st, t.i, null); keyCheck(st, (k) => openLock(st, k.lock)); }
+  }
+  // patlama: yaricap icindeki kupler tamamen kirilir, engeller hasar alir (kilit haric); zincirleme bombalar
+  function explodeCore(st, i0, out) {
+    const W = st.W, H = st.H, R = (st.B || 2) + 1, q = [i0], seen = new Set([i0]);
+    while (q.length) {
+      const i = q.shift(), r0 = Math.floor(i / W), c0 = i % W, hitObj = new Set();
+      for (let r = Math.max(0, r0 - R); r <= Math.min(H - 1, r0 + R); r++) for (let c = Math.max(0, c0 - R); c <= Math.min(W - 1, c0 + R); c++) {
+        const j = r * W + c, x = st.cells[j];
+        if (x.obj >= 0 && st.objs[x.obj].alive) { hitObj.add(x.obj); continue; }
+        if (x.done) continue;
+        x.layers = []; x.done = true; x.crk = 0;
+        if (out) out.cells.push(j);
+        if (x.bomb && !seen.has(j)) { seen.add(j); q.push(j); if (out) out.chain.push(j); }
+      }
+      for (const id of hitObj) {
+        const o = st.objs[id]; if (o.t === 'lock' || !o.alive) continue;
+        o.hp = Math.max(0, o.hp - Math.ceil(o.hpMax * 0.6));
+        if (o.hp <= 0 && !(o.pend > 0)) { o.alive = false; for (const k of o.cells) if (st.cells[k].obj === id) st.cells[k].obj = -1; }
+        if (out) out.objs.push(id);
+      }
+    }
   }
   function planQueue(lv, rnd) {
     const P = lv.plan, W = lv.W, H = lv.H, C = lv.pal.length;
-    const st = cloneState(lv);
+    const st = cloneState(lv); st.W = W; st.H = H; st.B = lv.B;
     const { need, wood } = needOf(st, C);
     const a0 = Math.max(3, Math.round(P.am[0] * W)), a1 = Math.max(a0 + 1, Math.round(P.am[1] * W));
     const chunks = [];
@@ -190,7 +240,7 @@
     let guard = 0;
     while (pool.length && guard++ < 2000) {
       const score = new Array(C).fill(0);
-      for (let col = 0; col < W; col++) for (let c = 0; c < C; c++) { const t = targetIn(st, W, H, col, c); if (t) score[c] += t.obj >= 0 && st.objs[t.obj].t === 'wood' ? 0.4 : 1; }
+      for (let col = 0; col < W; col++) for (let c = 0; c < C; c++) { const t = targetIn(st, W, H, col, c); if (t) score[c] += t.obj >= 0 && (st.objs[t.obj].t === 'wood' || st.objs[t.obj].t === 'rock') ? 0.4 : 1; }
       let bc = -1, bs = -1;
       for (const ch of pool) { const s = score[ch.c] + rnd() * 0.5; if (s > bs) { bs = s; bc = ch.c; } }
       const mine = pool.filter((ch) => ch.c === bc), ch = mine[Math.floor(rnd() * mine.length)];
@@ -208,6 +258,17 @@
     }
     const swaps = Math.round(order.length * (P.mix || 0));
     for (let k = 0; k < swaps; k++) { const i = Math.floor(rnd() * (order.length - 1)); const t = order[i]; order[i] = order[i + 1]; order[i + 1] = t; }
+    // drone Pofi: en cok kupu olan rengin mermisinden alinir, kuyrugun ortasina konur
+    for (let d = 0; d < (P.drone || 0); d++) {
+      let c = 0; for (let k = 1; k < C; k++) if (need[k] > need[c]) c = k;
+      const want = Math.round(W * 1.6); let got = 0;
+      for (let j = order.length - 1; j >= 0 && got < want; j--) { const o = order[j]; if (o.c !== c || o.kind) continue; const take = Math.min(o.ammo - 2 > 0 ? o.ammo - 2 : o.ammo, want - got); o.ammo -= take; got += take; if (o.ammo <= 0) order.splice(j, 1); }
+      if (got > 0) order.splice(Math.floor(order.length * (0.3 + rnd() * 0.25)), 0, { c, ammo: got, kind: 'drone' });
+    }
+    // donmus Pofi: ilk siradakiler disinda; tahtada belli sayida kup kirilinca cozulur
+    const fz = []; for (let j = P.K; j < order.length; j++) if (!order[j].kind) fz.push(j);
+    shuffle(fz, rnd);
+    for (let q = 0; q < (P.frozen || 0) && q < fz.length; q++) order[fz[q]].frozen = Math.round(W * 1.2);
     const cols = [];
     for (let k = 0; k < P.K; k++) cols.push([]);
     order.forEach((s, i) => cols[i % P.K].push(s));
@@ -224,9 +285,9 @@
     const SP = 1.25 * lv.W / 7;
     const g = {
       L, lv, W: lv.W, H: lv.H, B: lv.B, pal: lv.pal, cells: st.cells, objs: st.objs, keys: st.keys,
-      queue: lv.queue.map((col) => col.map((s) => ({ id: ++id, c: s.c, ammo: s.ammo, x: 0 }))),
+      queue: lv.queue.map((col) => col.map((s) => ({ id: ++id, c: s.c, ammo: s.ammo, x: 0, kind: s.kind || '', frozen: s.frozen || 0 }))),
       bench: new Array(opts.bench || P.bench).fill(null),
-      belt: [], shots: [], flying: [], ev: [],
+      belt: [], shots: [], flying: [], drones: [], ev: [],
       maxBelt: P.belt, SP, pierce: P.pierce != null ? P.pierce : lv.B, X0: -SP * 0.8, X1: lv.W + SP * 0.8,
       speed: (lv.W + 1.6 * SP) / (opts.tcross || P.tc || T_CROSS), shotV: lv.H / 0.42,
       t: 0, state: 'play', endT: 0, nid: id, left: 0, launches: 0, topups: 0
@@ -241,11 +302,12 @@
     g.queue.forEach((col) => col.forEach((s) => a.push(s)));
     g.bench.forEach((s) => { if (s) a.push(s); });
     g.belt.forEach((s) => { if (!s.gone) a.push(s); });
+    g.drones.forEach((d) => { if (!d.done) a.push(d.s); });
     return a;
   }
   function addAmmo(g, c, n) {
     let tgt = null;
-    for (let k = 0; k < g.queue.length && !tgt; k++) for (let j = g.queue[k].length - 1; j >= 0; j--) if (g.queue[k][j].c === c) { tgt = g.queue[k][j]; break; }
+    for (let k = 0; k < g.queue.length && !tgt; k++) for (let j = g.queue[k].length - 1; j >= 0; j--) if (g.queue[k][j].c === c && !g.queue[k][j].kind) { tgt = g.queue[k][j]; break; }
     if (!tgt) tgt = g.bench.find((s) => s && s.c === c) || null;
     if (tgt) tgt.ammo += n;
     else { let k = 0; g.queue.forEach((col, j) => { if (col.length < g.queue[k].length) k = j; }); g.queue[k].push({ id: ++g.nid, c, ammo: n, x: 0 }); }
@@ -278,6 +340,18 @@
     return '';
   }
   function launch(g, from, k) {
+    if (from === 'q') {
+      const f = g.queue[k] && g.queue[k][0];
+      if (f && f.frozen > 0) return 'frozen';
+      if (f && f.kind === 'drone') {
+        if (g.state !== 'play') return 'end';
+        if (g.drones.some((d) => !d.done)) return 'drone';
+        g.queue[k].shift(); f.launchT = g.t; f.fromK = k;
+        g.drones.push({ s: f, t0: g.t, cd: 0.6, dur: 5.5, done: false, x: g.W / 2, y: g.H + 2 });
+        g.launches++; g.ev.push({ t: 'droneGo', s: f, k });
+        return '';
+      }
+    }
     const why = canLaunch(g);
     if (why) return why;
     let s;
@@ -302,30 +376,63 @@
       const dist = (g.H - t.r) + 0.5;
       g.shots.push({ i: t.i, r: t.r, col, c: s.c, obj: t.obj, kind, t0: g.t, t1: g.t + dist / g.shotV + n * 0.03, sid: s.id, n });
       if (n === 0) g.ev.push({ t: 'fire', s, r: t.r, col, kind });
-      if (kind === 'wood') topUp(g);
+      if (kind === 'wood' || kind === 'rock') topUp(g);
       n++;
       if (s.ammo <= 0) { s.gone = true; s.goneT = g.t; g.ev.push({ t: 'empty', s }); break; }
       if (t.obj >= 0 || n >= g.pierce) break;
     }
     return n > 0;
   }
+  function cellDone(g, i) {
+    g.left--;
+    // donmus Pofi sadece oluk basindayken erir: her kirilan kup bir azaltir
+    for (const col of g.queue) { const s = col[0]; if (s && s.frozen > 0) { s.frozen--; if (s.frozen <= 0) g.ev.push({ t: 'thaw', s }); } }
+  }
+  function boom(g, i) {
+    const out = { cells: [], chain: [], objs: [] };
+    explodeCore(g, i, out);
+    for (const j of out.cells) cellDone(g, j);
+    for (const id of new Set(out.objs)) { const o = g.objs[id]; g.ev.push({ t: 'objhit', o, i: o.cells[0], col: o.c0, broke: !o.alive, boom: true }); }
+    g.ev.push({ t: 'boom', i, cells: out.cells, chain: out.chain });
+    trimSurplus(g);
+  }
+  // patlamadan sonra fazla kalan mermiyi kuyruktaki fillerden dus (bekleme yeri dolmasin)
+  function trimSurplus(g) {
+    const C = g.pal.length, { need, wood } = needOf(g, C), have = new Array(C).fill(0);
+    allShooters(g).forEach((s) => { have[s.c] += s.ammo; });
+    for (let c = 0; c < C; c++) {
+      let extra = have[c] - need[c] - wood;
+      for (let k = 0; k < g.queue.length && extra > 0; k++) {
+        const col = g.queue[k];
+        for (let j = col.length - 1; j >= 0 && extra > 0; j--) {
+          const s = col[j]; if (s.c !== c || s.kind) continue;
+          const d = Math.min(s.ammo, extra); s.ammo -= d; extra -= d;
+          if (s.ammo <= 0) { g.ev.push({ t: 'leave', s, from: 'q', k, j }); col.splice(j, 1); }
+        }
+      }
+    }
+  }
   function impact(g, sh) {
     if (sh.obj >= 0) {
       const o = g.objs[sh.obj];
-      o.pend--; o.hp--;
+      o.pend--;
+      if (!o.alive) return;
+      o.hp = Math.max(0, o.hp - 1);
       const broke = o.hp <= 0;
       if (broke) { o.alive = false; for (const i of o.cells) if (g.cells[i].obj === o.id) g.cells[i].obj = -1; }
       g.ev.push({ t: 'objhit', o, i: sh.i, col: sh.col, broke });
       return;
     }
     const x = g.cells[sh.i];
-    const y = x.layers.shift();
     x.pend--;
+    if (x.done) return;   // patlamayla once kirildi
+    const y = x.layers.shift();
     const done = !x.layers.length;
     if (y.t === 'ice' && !done) x.crk = 1;
     g.ev.push({ t: 'hit', i: sh.i, r: sh.r, col: sh.col, kind: y.t, done, cellC: x.c });
     if (done) {
-      x.done = true; g.left--;
+      x.done = true; cellDone(g, sh.i);
+      if (x.bomb) boom(g, sh.i);
       keyCheck(g, (k) => { g.flying.push({ key: k, t0: g.t, t1: g.t + KEY_T }); g.ev.push({ t: 'key', k }); });
       sweepUseless(g);
     }
@@ -351,12 +458,55 @@
       g.bench[k] = s; s.benchT = g.t;
       g.ev.push({ t: 'bench', s, k });
     }
+    stepDrones(g, dt);
     for (let j = g.shots.length - 1; j >= 0; j--) { const sh = g.shots[j]; if (g.t >= sh.t1) { g.shots.splice(j, 1); impact(g, sh); } }
+    unstick(g);
     for (let j = g.flying.length - 1; j >= 0; j--) {
       const f = g.flying[j];
       if (g.t >= f.t1) { g.flying.splice(j, 1); const o = g.objs[f.key.lock]; if (o && o.alive) { openLock(g, o.id); g.ev.push({ t: 'unlock', o }); } }
     }
     if (g.left <= 0 && !g.shots.length) { g.state = 'win'; g.endT = g.t; g.ev.push({ t: 'win' }); }
+  }
+  // drone Pofi: tahtanin onunde yilan gibi gezer; yakinindaki kendi renk kupunu (alttaki kurali olmadan) vurur
+  function dronePos(g, d) {
+    const u = (g.t - d.t0) / d.dur, k = u % 2, tri = k < 1 ? k : 2 - k;
+    return { x: g.W * (0.5 + 0.44 * Math.sin((g.t - d.t0) * Math.PI * 2 / (d.dur / 2.5))), y: g.H * (0.92 - 0.86 * tri) };
+  }
+  function droneTargets(g, c) { let n = 0; for (let i = 0; i < g.cells.length; i++) { const f = face(g, i); if (f && f.layer && f.layer.c === c) n++; } return n; }
+  function stepDrones(g, dt) {
+    for (const d of g.drones) {
+      if (d.done) continue;
+      const p = dronePos(g, d); d.x = p.x; d.y = p.y;
+      d.cd -= dt;
+      if (d.cd > 0) continue;
+      d.cd = 0.13;
+      const s = d.s, R = Math.max(2.2, g.B * 1.7);
+      let best = -1, bd = 1e9;
+      const r0 = Math.max(0, Math.floor(p.y - R)), r1 = Math.min(g.H - 1, Math.ceil(p.y + R)), c0 = Math.max(0, Math.floor(p.x - R)), c1 = Math.min(g.W - 1, Math.ceil(p.x + R));
+      // banttakilerin vurabildigi en alttaki kupleri onlara birakir; yukaridaki gomulu kupleri tercih eder
+      const fr = frontierOf(g);
+      for (let r = r0; r <= r1; r++) for (let c = c0; c <= c1; c++) { const i = r * g.W + c, f = face(g, i); if (!f || !f.layer || f.layer.c !== s.c) continue; const dd = (c + 0.5 - p.x) ** 2 + (r + 0.5 - p.y) ** 2 + (fr[c] === r ? R * R : 0); if (dd < bd) { bd = dd; best = i; } }
+      if (best >= 0 && s.ammo > 0) {
+        const x = g.cells[best], kind = x.layers[x.pend].t; x.pend++; s.ammo--;
+        g.shots.push({ i: best, r: Math.floor(best / g.W), col: best % g.W, c: s.c, obj: -1, kind, t0: g.t, t1: g.t + 0.16, sid: s.id, drone: { x: p.x, y: p.y } });
+        g.ev.push({ t: 'dfire', s, i: best });
+      }
+      const life = g.t - d.t0;
+      if (s.ammo <= 0 || (life > 1.2 && !droneTargets(g, s.c)) || life > d.dur * 6) {
+        d.done = true; g.ev.push({ t: 'droneEnd', s, left: s.ammo });
+        if (s.ammo > 0) { s.ammo = 0; topUp(g); }
+      }
+    }
+    for (let j = g.drones.length - 1; j >= 0; j--) if (g.drones[j].done) g.drones.splice(j, 1);
+  }
+  // hicbir hamle kalmadiysa (one donmus Pofiler dikildi) en az kalan donmus Pofi cozulur
+  function unstick(g) {
+    if (g.belt.length || g.shots.length || g.flying.length || g.drones.length) return;
+    let movable = false, best = null;
+    for (const col of g.queue) { if (!col.length) continue; if (col[0].frozen > 0) { if (!best || col[0].frozen < best.frozen) best = col[0]; } else movable = true; }
+    if (!best || movable) return;
+    for (const s of g.bench) if (s && hitsNow(g, s.c)) return;
+    best.frozen = 0; g.ev.push({ t: 'thaw', s: best });
   }
   function revive(g) {
     if (g.state !== 'lose' || !g.lostBy) return false;
@@ -373,7 +523,7 @@
     for (let r = g.H - 1; r >= 0 && n < D; r--) {
       const i = r * g.W + col, f = face(g, i);
       if (!f) continue;
-      if (f.obj) { if (n === 0 && f.obj.t !== 'lock' && (f.obj.t === 'wood' || f.obj.c === color)) n = 1; break; }
+      if (f.obj) { if (n === 0 && f.obj.t !== 'lock' && (f.obj.t === 'wood' || f.obj.t === 'rock' || f.obj.c === color)) n = 1; break; }
       const x = g.cells[i];
       let k = 0;
       for (let j = x.pend; j < x.layers.length && x.layers[j].c === color; j++) k++;
@@ -410,7 +560,7 @@
   }
   function options(g) {
     const opt = [];
-    g.queue.forEach((col, k) => { if (col.length) opt.push({ from: 'q', k, s: col[0] }); });
+    g.queue.forEach((col, k) => { if (col.length && !(col[0].frozen > 0)) opt.push({ from: 'q', k, s: col[0] }); });
     g.bench.forEach((s, k) => { if (s) opt.push({ from: 'b', k, s }); });
     return opt;
   }
@@ -418,6 +568,7 @@
     const busy = new Set(g.belt.map((x) => x.c));
     let best = null, bs = -1;
     for (const o of options(g)) {
+      if (o.s.kind === 'drone') { if (!g.drones.length) return o; continue; }
       if (busy.has(o.s.c)) continue;
       const h = hitsNow(g, o.s.c);
       if (!h) continue;
@@ -435,13 +586,16 @@
     const rnd = rng((seed || 1) * 2654435761);
     const dt = 1 / 30;
     let next = 0.4;
-    const idle = () => !g.belt.length && !g.shots.length && !g.flying.length;
+    const idle = () => !g.belt.length && !g.shots.length && !g.flying.length && !g.drones.length;
     const anyQ = (opt) => { const qs = opt.filter((o) => o.from === 'q'); const a = qs.length ? qs : opt; return a[Math.floor(rnd() * a.length)]; };
     while (g.state === 'play' && g.t < (opts.maxT || 900)) {
       step(g, dt);
       g.ev.length = 0;
       if (g.t < next || g.state !== 'play') continue;
-      const opt = options(g);
+      let opt = options(g);
+      const dr = opt.find((o) => o.s.kind === 'drone');
+      if (dr && !g.drones.length && style !== 'rastgele') { launch(g, dr.from, dr.k); next = g.t + 0.5; continue; }
+      if (style !== 'rastgele') opt = opt.filter((o) => o.s.kind !== 'drone');
       if (!opt.length || canLaunch(g)) { next = g.t + 0.1; continue; }
       let pick = null;
       if (style === 'rastgele') { pick = opt[Math.floor(rnd() * opt.length)]; next = g.t + 0.5 + rnd() * 0.8; }

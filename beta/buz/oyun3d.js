@@ -15,7 +15,11 @@ const TIPS = {
   thick: { t: 'Yeni: Kalın buz', p: 'Kalın buz <b>2 atışta</b> kırılır. İlk atışta çatlar, ikinci atışta resim açılır.' },
   wood: { t: 'Yeni: Tahta', p: 'Çivili tahtayı <b>her renk Pofi</b> kırabilir. Üstündeki sayı kaç atış daha gerektiğini gösterir.' },
   chain: { t: 'Yeni: Zincir', p: 'Zinciri sadece <b>zincirin rengindeki</b> Pofi kırabilir. Sonra altındaki buzlar kendi rengiyle kırılır.' },
-  lock: { t: 'Yeni: Kilit', p: 'Kilitli buz <b>vurulamaz</b>. Anahtarı başka bir buz bloğunun içinde. O bloğu tamamen kırınca anahtar uçar ve kilidi açar.' }
+  lock: { t: 'Yeni: Kilit', p: 'Kilitli buz <b>vurulamaz</b>. Anahtarı başka bir buz bloğunun içinde. O bloğu tamamen kırınca anahtar uçar ve kilidi açar.' },
+  rock: { t: 'Yeni: Büyük kaya', p: 'Kocaman kaya birçok buzu kapatır. <b>Her renk Pofi</b> kayaya vurabilir ama çok sağlamdır; üstündeki sayı kalan atışı gösterir. Her vuruşta çatlar, kırılınca altındaki buzlar açılır.' },
+  drone: { t: 'Yeni: Drone Pofi', p: 'Pervaneli Pofi tablaya binmez, <b>tahtanın önünde uçar</b>. Uçarken yakınındaki <b>kendi rengindeki</b> buzları en altta olmasalar bile vurur. Bant doluyken de gönderilebilir.' },
+  bomb: { t: 'Yeni: Bomba küp', p: 'Bombalı küpü kendi rengindeki Pofi kırınca <b>patlar</b> ve çevresindeki buzları bir anda kırar. Yakındaki tahta, kaya ve zincirler de hasar alır.' },
+  frozen: { t: 'Yeni: Donmuş Pofi', p: 'Buz bloğundaki Pofi oluğun başına gelince bekler. Üstündeki ❄ sayısı kadar <b>küp kırınca</b> buz çözülür, sonra onu da gönderebilirsin.' }
 };
 const COMBO_AT = [15, 40, 80, 150], COMBO_W = ['Harika!', 'Süper!', 'Muhteşem!', 'EFSANE!'], COMBO_COL = [['#fff38a', '#ffb000'], ['#b6fff0', '#18c9a2'], ['#ffd0f2', '#ff3fa0'], ['#ffffff', '#ff6a00']];
 const MAX_TRAY = 4;
@@ -58,8 +62,31 @@ const SFX = {
   bench() { tone(500, 0.12, 'sine', 0.2); tone(750, 0.16, 'sine', 0.2, 0.09, 0, true); },
   deny() { tone(120, 0.1, 'sine', 0.3, 0, 70); noise(0.06, 0.14, 0, 'lowpass', 600, 200); },
   lose() { tone(392, 0.7, 'sawtooth', 0.12, 0, 130); tone(196, 0.8, 'sine', 0.18, 0, 62); noise(0.4, 0.07, 0, 'lowpass', 1200, 200); },
+  // kaya: agir tas vurusu / parcalanma
+  stone() { tone(95, 0.12, 'sine', 0.5, 0, 55); noise(0.12, 0.3, 0, 'lowpass', 900, 180); noise(0.02, 0.22, 0, 'bandpass', 1900, 900); },
+  rockBreak() { noise(0.75, 0.5, 0, 'lowpass', 1700, 90); tone(70, 0.55, 'sine', 0.55, 0, 32); for (let i = 0; i < 6; i++) noise(0.05, 0.2, 0.05 + i * 0.07, 'bandpass', 1300 - i * 140, 500); },
+  // bomba: derin gumburtu + patlama gurultusu + cizirti
+  boom() { tone(92, 0.75, 'sine', 0.75, 0, 28); tone(55, 0.95, 'triangle', 0.4, 0.02, 25); noise(1.15, 0.65, 0, 'lowpass', 3200, 80); noise(0.08, 0.55, 0, 'bandpass', 1900, 600); for (let i = 0; i < 7; i++) noise(0.04, 0.12, 0.12 + i * 0.08, 'highpass', 3000, 5200); },
+  fuse() { noise(0.12, 0.05, 0, 'highpass', 5000, 7000); },
+  thaw() { [2637, 3136, 3520, 4186].forEach((f, i) => tone(f, 0.16, 'triangle', 0.07, i * 0.035, 0, true)); noise(0.28, 0.22, 0, 'highpass', 3500, 7500); tone(300, 0.1, 'sine', 0.16, 0, 200); },
+  droneGo() { tone(260, 0.45, 'sawtooth', 0.07, 0, 820); noise(0.45, 0.1, 0, 'bandpass', 500, 2600); tone(1400, 0.08, 'sine', 0.08, 0.3, 1800); },
   win() { [523, 659, 784, 1047, 1319].forEach((f, i) => { tone(f, 0.34, 'triangle', 0.22, i * 0.09, 0, true); tone(f / 2, 0.3, 'sine', 0.1, i * 0.09); }); [523, 659, 784].forEach((f) => tone(f, 0.9, 'sine', 0.1, 0.48)); noise(0.5, 0.06, 0.4, 'highpass', 5000, 9000, true); }
 };
+// drone vizildamasi (drone uctugu surece)
+let hum = null;
+function humOn() {
+  if (!AC || SV.mute || hum) return;
+  try {
+    const o = AC.createOscillator(), o2 = AC.createOscillator(), f = AC.createBiquadFilter(), gn = AC.createGain(), lfo = AC.createOscillator(), lg = AC.createGain();
+    o.type = 'sawtooth'; o.frequency.value = 118; o2.type = 'sawtooth'; o2.frequency.value = 122; f.type = 'lowpass'; f.frequency.value = 850; f.Q.value = 2.5;
+    lfo.frequency.value = 24; lg.gain.value = 0.02; lfo.connect(lg); lg.connect(gn.gain);
+    gn.gain.setValueAtTime(0.0001, AC.currentTime); gn.gain.exponentialRampToValueAtTime(0.045, AC.currentTime + 0.3);
+    o.connect(f); o2.connect(f); f.connect(gn); gn.connect(master); o.start(); o2.start(); lfo.start();
+    hum = { o, o2, lfo, gn };
+  } catch (e) { hum = null; }
+}
+function humSet(k) { if (!hum) return; try { const t = AC.currentTime; hum.o.frequency.setTargetAtTime(110 + k * 60, t, 0.08); hum.o2.frequency.setTargetAtTime(114 + k * 62, t, 0.08); } catch (e) {} }
+function humOff() { if (!hum) return; const h = hum; hum = null; try { const t = AC.currentTime; h.gn.gain.cancelScheduledValues(t); h.gn.gain.setValueAtTime(Math.max(0.0001, h.gn.gain.value), t); h.gn.gain.exponentialRampToValueAtTime(0.0001, t + 0.3); [h.o, h.o2, h.lfo].forEach((x) => x.stop(t + 0.35)); } catch (e) {} }
 const VIBK = [0, 0.55, 1, 1.7];
 function vib(p) { const k = VIBK[SV.vib | 0] || 0; if (!k) return; const now = Date.now(); if (typeof p === 'number') { if (now - lastVib < 45) return; lastVib = now; p = Math.max(4, Math.round(p * k)); } else p = p.map((v, i) => (i % 2 ? v : Math.max(4, Math.round(v * k)))); try { if (navigator.vibrate) navigator.vibrate(p); } catch (e) {} }
 
@@ -151,8 +178,18 @@ const MAT = {
   pad: new THREE.MeshStandardMaterial({ color: '#1c2430', roughness: 0.9, transparent: true, opacity: 0.6 }),
   padRing: new THREE.MeshStandardMaterial({ color: '#cfe8ff', roughness: 0.5, emissive: '#2a4a6a', emissiveIntensity: 0.5 }),
   lane: new THREE.MeshStandardMaterial({ map: TX.slate, roughness: 0.8 }),
-  laneWall: new THREE.MeshStandardMaterial({ color: '#8f9aab', metalness: 0.6, roughness: 0.35 })
+  laneWall: new THREE.MeshStandardMaterial({ color: '#8f9aab', metalness: 0.6, roughness: 0.35 }),
+  bomb: new THREE.MeshStandardMaterial({ color: '#262a33', metalness: 0.45, roughness: 0.32 }),
+  fuse: new THREE.MeshStandardMaterial({ color: '#d8b27a', roughness: 0.9 }),
+  iceBlock: new THREE.MeshPhysicalMaterial({ color: '#9fd8ff', map: TX.frost, roughness: 0.1, transparent: true, opacity: 0.42, clearcoat: 1, clearcoatRoughness: 0.05, depthWrite: false, envMapIntensity: 1.2 }),
+  droneBody: new THREE.MeshStandardMaterial({ color: '#f3f5f8', metalness: 0.15, roughness: 0.32 }),
+  droneTrim: new THREE.MeshStandardMaterial({ color: '#ff8c2e', metalness: 0.2, roughness: 0.4 }),
+  droneArm: new THREE.MeshStandardMaterial({ color: '#363c47', metalness: 0.6, roughness: 0.35 }),
+  prop: new THREE.MeshStandardMaterial({ color: '#1b1f26', roughness: 0.5 }),
+  propDisc: new THREE.MeshBasicMaterial({ color: '#ffffff', transparent: true, opacity: 0.16, depthWrite: false, side: THREE.DoubleSide })
 };
+const SHADOWTX = canvasTex(64, 64, (x, w) => { const gr = x.createRadialGradient(w / 2, w / 2, 0, w / 2, w / 2, w / 2); gr.addColorStop(0, 'rgba(0,0,0,.8)'); gr.addColorStop(0.55, 'rgba(0,0,0,.35)'); gr.addColorStop(1, 'rgba(0,0,0,0)'); x.fillStyle = gr; x.fillRect(0, 0, w, w); });
+const GLOWTX = canvasTex(64, 64, (x, w) => { const gr = x.createRadialGradient(w / 2, w / 2, 0, w / 2, w / 2, w / 2); gr.addColorStop(0, 'rgba(255,255,230,1)'); gr.addColorStop(0.25, 'rgba(255,200,60,.9)'); gr.addColorStop(1, 'rgba(255,120,0,0)'); x.fillStyle = gr; x.fillRect(0, 0, w, w); });
 const metal = (col, r) => new THREE.MeshStandardMaterial({ color: col, metalness: 0.75, roughness: r == null ? 0.3 : r });
 
 // ---------- yerlesim (dunya birimleri) ----------
@@ -164,17 +201,39 @@ const boardG = new THREE.Group(); boardG.rotation.x = -THETA; scene.add(boardG);
 const staticG = new THREE.Group(); scene.add(staticG);
 let g = null, LV = 1, S = 1, BH = 1;  // S: kup boyu
 let cubeMesh = null, frostMesh = null, picMesh = null, frameG = null, objG = null, keyG = null;
-const objMeshes = {}, keyMeshes = {};
+const objMeshes = {}, keyMeshes = {}, bombMeshes = {};
 const _m = new THREE.Matrix4(), _q = new THREE.Quaternion(), _v = new THREE.Vector3(), _s = new THREE.Vector3(), _c = new THREE.Color();
 
 // zemin, bant, yuvalar, oluklar (seviyeden bagimsiz)
+// derinlik: tahta bir kaidenin ustunde durur; atici alani ile kaide arasinda karanlik bir hendek var
+const EDGE_Z = BELT_Z - 1.4;
+const DEPTHTX = canvasTex(8, 256, (x, w, h) => { const gr = x.createLinearGradient(0, 0, 0, h); gr.addColorStop(0, '#3a2a1e'); gr.addColorStop(0.18, '#1d150f'); gr.addColorStop(0.6, '#07080b'); gr.addColorStop(1, '#020203'); x.fillStyle = gr; x.fillRect(0, 0, w, h); });
+const PITTX = canvasTex(8, 256, (x, w, h) => { const gr = x.createLinearGradient(0, 0, 0, h); gr.addColorStop(0, '#05060a'); gr.addColorStop(0.7, '#10141c'); gr.addColorStop(1, '#1d2430'); x.fillStyle = gr; x.fillRect(0, 0, w, h); });
 (function buildStatic() {
-  const floor = new THREE.Mesh(new THREE.PlaneGeometry(40, 40), MAT.floor); floor.rotation.x = -Math.PI / 2; floor.position.set(0, 0, 8); floor.receiveShadow = true; staticG.add(floor);
+  const floor = new THREE.Mesh(new THREE.PlaneGeometry(40, 36), MAT.floor); floor.rotation.x = -Math.PI / 2; floor.position.set(0, 0, EDGE_Z + 18); floor.receiveShadow = true; staticG.add(floor);
+  // platform kenari: parlak metal dudak + koyu on yuz
+  const lip = new THREE.Mesh(new THREE.BoxGeometry(40, 0.2, 0.34), MAT.laneWall); lip.position.set(0, 0.0, EDGE_Z + 0.17); lip.receiveShadow = true; staticG.add(lip);
+  const face = new THREE.Mesh(new THREE.PlaneGeometry(40, 9), new THREE.MeshBasicMaterial({ map: PITTX })); face.position.set(0, -4.6, EDGE_Z); face.rotation.y = Math.PI; staticG.add(face);
+  // hendegin karsi duvari (kaide) ve dibi: asagi indikce kararir
+  const wall = new THREE.Mesh(new THREE.PlaneGeometry(40, 10), new THREE.MeshBasicMaterial({ map: DEPTHTX })); wall.position.set(0, -5.15, EDGE_Z - 1.1); staticG.add(wall);
+  // karsi kenar: tahtanin kaidesi (ahsap, isikli) - hendegin obur yakasi
+  const far = new THREE.Mesh(new THREE.BoxGeometry(40, 0.3, 1.4), MAT.wood); far.position.set(0, -0.15, EDGE_Z - 1.8); far.receiveShadow = true; staticG.add(far);
+  const farEdge = new THREE.Mesh(new THREE.BoxGeometry(40, 0.08, 0.1), MAT.trayRim); farEdge.position.set(0, 0.0, EDGE_Z - 1.12); staticG.add(farEdge);
+  const pit = new THREE.Mesh(new THREE.PlaneGeometry(40, 3), new THREE.MeshBasicMaterial({ color: '#020203' })); pit.rotation.x = -Math.PI / 2; pit.position.set(0, -9.6, EDGE_Z - 0.55); staticG.add(pit);
   // bant: zeminle ayni duzlemde, tahtanin dibinde; carksiz
   const belt = new THREE.Mesh(new THREE.BoxGeometry(16, 0.1, 2.0), [MAT.rail, MAT.rail, MAT.belt, MAT.rail, MAT.rail, MAT.rail]); belt.position.set(0, 0.05, BELT_Z); belt.receiveShadow = true; staticG.add(belt);
   [-1, 1].forEach((d) => { const r = new THREE.Mesh(new THREE.BoxGeometry(16, 0.16, 0.12), MAT.rail); r.position.set(0, 0.08, BELT_Z + d * 1.06); r.castShadow = true; staticG.add(r); });
 })();
 toFloor(staticG);
+const sillG = new THREE.Group(); scene.add(sillG);
+function buildSill() {
+  while (sillG.children.length) { const m = sillG.children[0]; sillG.remove(m); if (m.geometry) m.geometry.dispose(); }
+  const w = BW + 2 * 0.55 + 0.6;
+  const shelf = new THREE.Mesh(new THREE.BoxGeometry(w, 0.42, 1.25), MAT.wood); shelf.position.set(0, -0.21, 0.5); shelf.castShadow = true; shelf.receiveShadow = true; sillG.add(shelf);
+  const edge = new THREE.Mesh(new THREE.BoxGeometry(w + 0.1, 0.1, 0.12), MAT.trayRim); edge.position.set(0, -0.02, 1.12); sillG.add(edge);
+  const front = new THREE.Mesh(new THREE.PlaneGeometry(w + 6, 7), new THREE.MeshBasicMaterial({ map: DEPTHTX })); front.position.set(0, -0.42 - 3.5, 1.12); sillG.add(front);
+}
+buildSill();
 const laneG = new THREE.Group(); scene.add(laneG);
 function buildLanes() {
   while (laneG.children.length) { const m = laneG.children[0]; laneG.remove(m); if (m.geometry) m.geometry.dispose(); }
@@ -214,10 +273,11 @@ function cellLocal(i, out) { const c = i % g.W, r = Math.floor(i / g.W); return 
 function cellWorld(i, out) { const v = cellLocal(i, out); boardG.updateMatrixWorld(); return v.applyMatrix4(boardG.matrixWorld); }
 
 function buildBoard() {
-  [cubeMesh, frostMesh, picMesh, frameG, objG, keyG].forEach((o) => { if (o) { boardG.remove(o); o.traverse && o.traverse((x) => { if (x.geometry) x.geometry.dispose(); }); } });
+  [cubeMesh, frostMesh, picMesh, frameG, objG, keyG].forEach((o) => { if (o) { boardG.remove(o); o.traverse && o.traverse((x) => { if (x.geometry) x.geometry.dispose(); if (x.userData && x.userData.tex) x.userData.tex.dispose(); }); } });
+  for (const [s, v] of droneViews) { boardG.remove(v.grp); boardG.remove(v.sh); } droneViews.clear(); humOff();
   S = BW / g.W; BH = S * g.H;
   // resim
-  const tex = picTex(g.lv.pic, g.lv.crop);
+  const tex = picTex(g.lv.pic, g.lv.crop, g.lv.src, g.lv.dim);
   picMesh = new THREE.Mesh(new THREE.PlaneGeometry(BW, BH), new THREE.MeshStandardMaterial({ map: tex, roughness: 0.9 }));
   picMesh.position.set(0, BH / 2, 0); picMesh.receiveShadow = true; boardG.add(picMesh);
   // cerceve
@@ -234,20 +294,21 @@ function buildBoard() {
   for (let i = 0; i < n; i++) { cubeMesh.setColorAt(i, _c.set('#ffffff')); }
   boardG.add(cubeMesh); boardG.add(frostMesh);
   objG = new THREE.Group(); boardG.add(objG); keyG = new THREE.Group(); boardG.add(keyG);
-  for (const k in objMeshes) delete objMeshes[k]; for (const k in keyMeshes) delete keyMeshes[k];
+  for (const k in objMeshes) delete objMeshes[k]; for (const k in keyMeshes) delete keyMeshes[k]; for (const k in bombMeshes) delete bombMeshes[k];
+  g.cells.forEach((cl, i) => { if (!cl.bomb || cl.done) return; const m = bombMesh(g.pal[cl.c], S * 1.6); cellLocal(i, m.position); m.position.z = S * 0.95; bombMeshes[i] = m; objG.add(m); });
   g.objs.forEach((o) => { if (o.alive) { const m = buildObj(o); objMeshes[o.id] = m; objG.add(m); } });
   g.keys.forEach((k) => { const m = keyMesh(KEYC[(g.objs[k.lock] && g.objs[k.lock].lid || 0) % 3], g.B * S * 0.8); const B = g.B; m.position.set(-BW / 2 + (k.bc * B + B / 2) * S, (g.H - k.br * B - B / 2) * S, S * 0.95); keyMeshes[k.id] = m; keyG.add(m); });
   cubesDirty = true;
 }
 const PICS = {};
-function picTex(name, crop) {
+function picTex(name, crop, src, dim) {
   let e = PICS[name];
   if (!e) {
     const img = new Image(); const t = new THREE.Texture(img); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 4;
-    img.onload = () => { t.needsUpdate = true; drawGoal(); }; img.src = '../bg/' + name + '.webp';
+    img.onload = () => { t.needsUpdate = true; drawGoal(); }; img.src = src || ('../bg/' + name + '.webp');
     e = PICS[name] = { img, t };
   }
-  const t = e.t; const W0 = 720, H0 = 1290;
+  const t = e.t; const W0 = dim ? dim[0] : 720, H0 = dim ? dim[1] : 1290;
   t.repeat.set((crop[2] - crop[0]) / W0, (crop[3] - crop[1]) / H0); t.offset.set(crop[0] / W0, 1 - crop[3] / H0);
   return t;
 }
@@ -259,7 +320,7 @@ function updateCubes() {
   for (let i = 0; i < n; i++) {
     const cl = g.cells[i]; cellLocal(i, _v);
     let sc = 1;
-    if (cl.done) { const p = pops[i]; if (p != null) { const k = (g.t - p) / 0.2; sc = k >= 1 ? 0 : 1 + 0.35 * k; if (k >= 1) delete pops[i]; } else sc = 0; }
+    if (cl.done) { const p = pops[i]; if (p != null) { const k = (g.t - p) / 0.2; sc = k < 0 ? 1 : k >= 1 ? 0 : 1 + 0.35 * k; if (k >= 1) delete pops[i]; } else sc = 0; }
     _s.set(sc, sc, sc); _m.compose(_v, _q.identity(), _s); cubeMesh.setMatrixAt(i, _m);
     _c.set(g.pal[cl.c]);
     if (!cl.done) { if (cl.crk) _c.lerp(new THREE.Color('#ffffff'), 0.28); else if (isFront[i]) _c.multiplyScalar(1.12); else _c.multiplyScalar(0.92); }
@@ -290,6 +351,12 @@ function buildObj(o) {
     });
     const ring = new THREE.Mesh(new THREE.TorusGeometry(s * 0.13, s * 0.04, 10, 24), mat); ring.position.z = 0.12; grp.add(ring);
     const shade = new THREE.Mesh(new THREE.PlaneGeometry(w, h), new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.18, depthWrite: false })); shade.position.z = -0.02; grp.add(shade);
+  } else if (o.t === 'rock') {
+    const tex = rockTex(o.id * 977 + g.L, 0), mat = new THREE.MeshStandardMaterial({ map: tex, color: '#b3aca2', roughness: 0.95, metalness: 0, flatShading: true });
+    const rock = new THREE.Mesh(rockGeo(o.id * 131 + g.L * 7), mat); rock.scale.set(w * 0.56, h * 0.56, S * 1.25); rock.position.z = -S * 0.1; rock.castShadow = true; rock.receiveShadow = true; grp.add(rock);
+    // kenarlarda kucuk taslar
+    for (let q = 0; q < 5; q++) { const a = q * 1.3 + o.id, pb = new THREE.Mesh(rockGeo(o.id * 31 + q, 1), mat); const r = 0.47 + (q % 2) * 0.05; pb.scale.setScalar(S * (0.35 + (q % 3) * 0.1)); pb.position.set(Math.cos(a) * w * r, Math.sin(a) * h * r, -S * 0.05); pb.castShadow = true; grp.add(pb); }
+    grp.userData.tex = tex; grp.userData.stage = 0;
   } else if (o.t === 'lock') {
     const cover = new THREE.Mesh(new THREE.BoxGeometry(w * 0.98, h * 0.98, S * 0.9), MAT.frost); cover.position.z = -S * 0.4; grp.add(cover);
     grp.add(padlockMesh(KEYC[o.lid % 3], s * 0.75));
@@ -297,6 +364,75 @@ function buildObj(o) {
   grp.userData.o = o;
   return grp;
 }
+// kaya: puruzlu, koseli tas (her kopede ayni yer degisimi -> delik olmaz)
+function rockGeo(seed, det) {
+  const geo = new THREE.IcosahedronGeometry(1, det == null ? 2 : det), p = geo.attributes.position, rnd = BZM.rng(seed >>> 0), disp = {};
+  for (let i = 0; i < p.count; i++) {
+    const x = p.getX(i), y = p.getY(i), z = p.getZ(i), k = Math.round(x * 999) + ',' + Math.round(y * 999) + ',' + Math.round(z * 999);
+    if (disp[k] == null) disp[k] = 0.8 + rnd() * 0.32;
+    const d = disp[k]; p.setXYZ(i, x * d, y * d, z * d);
+  }
+  geo.computeVertexNormals(); return geo;
+}
+// kaya dokusu: gri benekler + kirildikca artan catlaklar (on yuz uv ~ (0.75, 0.5))
+function rockTex(seed, stage) {
+  const c = document.createElement('canvas'); c.width = c.height = 256; const x = c.getContext('2d'), rnd = BZM.rng(seed >>> 0);
+  x.fillStyle = '#8f8a83'; x.fillRect(0, 0, 256, 256);
+  for (let i = 0; i < 900; i++) { const v = 90 + rnd() * 90; x.fillStyle = `rgba(${v},${v - 4},${v - 10},${0.18 + rnd() * 0.25})`; const r = 1 + rnd() * 5; x.fillRect(rnd() * 256, rnd() * 256, r, r); }
+  for (let i = 0; i < 14; i++) { x.fillStyle = `rgba(${rnd() < 0.5 ? '60,55,50' : '200,195,185'},${0.08 + rnd() * 0.1})`; x.beginPath(); x.ellipse(rnd() * 256, rnd() * 256, 10 + rnd() * 30, 6 + rnd() * 18, rnd() * 3, 0, 7); x.fill(); }
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.userData = { c, seed };
+  drawCracks(t, stage); return t;
+}
+function drawCracks(t, stage) {
+  const x = t.userData.c.getContext('2d'), rnd = BZM.rng((t.userData.seed * 7 + 3) >>> 0);
+  for (let k = 0; k < 9; k++) {
+    let px = 192 + (rnd() - 0.5) * 30, py = 128 + (rnd() - 0.5) * 30; const a0 = rnd() * 6.28, len = 4 + Math.floor(rnd() * 4), pts = [[px, py]];
+    for (let q = 0; q < len; q++) { const a = a0 + (rnd() - 0.5) * 1.2; px += Math.cos(a) * (9 + rnd() * 9); py += Math.sin(a) * (9 + rnd() * 9); pts.push([px, py]); }
+    if (k >= stage * 3) continue;
+    x.lineJoin = 'round'; x.lineCap = 'round';
+    x.strokeStyle = 'rgba(25,20,16,.85)'; x.lineWidth = 3.2; x.beginPath(); pts.forEach(([a, b], i) => (i ? x.lineTo(a, b) : x.moveTo(a, b))); x.stroke();
+    x.strokeStyle = 'rgba(235,230,220,.45)'; x.lineWidth = 1.2; x.beginPath(); pts.forEach(([a, b], i) => (i ? x.lineTo(a + 1.5, b + 1.5) : x.moveTo(a + 1.5, b + 1.5))); x.stroke();
+  }
+  t.needsUpdate = true;
+}
+function rockCrack(o, m) { if (!m || !m.userData.tex) return; const st = Math.min(3, Math.floor((1 - o.hp / o.hpMax) * 4)); if (st > m.userData.stage) { m.userData.stage = st; drawCracks(m.userData.tex, st); } }
+// bomba: koyu kure, kupun renginde serit, fitil ve kivilcim
+function bombMesh(col, s) {
+  const grp = new THREE.Group();
+  const body = new THREE.Mesh(new THREE.SphereGeometry(s * 0.4, 20, 14), MAT.bomb); body.castShadow = true; grp.add(body);
+  const band = new THREE.Mesh(new THREE.TorusGeometry(s * 0.4, s * 0.075, 8, 28), metal(col, 0.3)); band.rotation.x = Math.PI / 2 * 0.72; grp.add(band);
+  const shine = new THREE.Mesh(new THREE.SphereGeometry(s * 0.09, 8, 6), new THREE.MeshBasicMaterial({ color: '#ffffff', transparent: true, opacity: 0.55 })); shine.position.set(-s * 0.15, s * 0.16, s * 0.33); grp.add(shine);
+  const cap = new THREE.Mesh(new THREE.CylinderGeometry(s * 0.1, s * 0.12, s * 0.12, 12), MAT.steel); cap.position.set(s * 0.2, s * 0.33, 0); cap.rotation.z = -0.6; grp.add(cap);
+  const curve = new THREE.QuadraticBezierCurve3(new THREE.Vector3(s * 0.25, s * 0.4, 0), new THREE.Vector3(s * 0.38, s * 0.62, s * 0.05), new THREE.Vector3(s * 0.52, s * 0.56, s * 0.1));
+  grp.add(new THREE.Mesh(new THREE.TubeGeometry(curve, 8, s * 0.035, 6), MAT.fuse));
+  const spark = new THREE.Sprite(new THREE.SpriteMaterial({ map: GLOWTX, blending: THREE.AdditiveBlending, depthWrite: false, transparent: true }));
+  spark.position.set(s * 0.53, s * 0.57, s * 0.12); spark.scale.setScalar(s * 0.5); grp.add(spark);
+  grp.userData.spark = spark; grp.userData.s = s;
+  return grp;
+}
+// donmus Pofi icin buz blogu
+function iceBlock() {
+  const grp = new THREE.Group(), m = new THREE.Mesh(new THREE.BoxGeometry(1.45, 1.85, 1.45), MAT.iceBlock); m.position.y = 0.95; m.renderOrder = 3; grp.add(m);
+  const eg = new THREE.EdgesGeometry(m.geometry), ed = new THREE.LineSegments(eg, new THREE.LineBasicMaterial({ color: '#e8f8ff', transparent: true, opacity: 0.9 })); ed.position.copy(m.position); grp.add(ed);
+  return grp;
+}
+// drone: govde, 4 kol, donen pervaneler
+function droneMesh() {
+  const grp = new THREE.Group(), body = new THREE.Mesh(cubeGeo(0.72, 0.3), MAT.droneBody); body.rotation.x = -Math.PI / 2; grp.add(body);
+  const trim = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.08, 0.5), MAT.droneTrim); trim.position.y = 0.16; grp.add(trim);
+  const props = [];
+  for (let q = 0; q < 4; q++) {
+    const a = Math.PI / 4 + q * Math.PI / 2, ax = Math.cos(a), az = Math.sin(a);
+    const arm = new THREE.Mesh(new THREE.BoxGeometry(0.95, 0.08, 0.11), MAT.droneArm); arm.position.set(ax * 0.47, 0.02, az * 0.47); arm.rotation.y = -a; grp.add(arm);
+    const mot = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.11, 0.16, 12), MAT.droneArm); mot.position.set(ax * 0.92, 0.08, az * 0.92); grp.add(mot);
+    const disc = new THREE.Mesh(new THREE.CircleGeometry(0.44, 24), MAT.propDisc); disc.rotation.x = -Math.PI / 2; disc.position.set(ax * 0.92, 0.17, az * 0.92); grp.add(disc);
+    const pr = new THREE.Mesh(new THREE.BoxGeometry(0.84, 0.025, 0.08), MAT.prop); pr.position.set(ax * 0.92, 0.18, az * 0.92); grp.add(pr); props.push(pr);
+  }
+  const led = new THREE.Mesh(new THREE.SphereGeometry(0.06, 8, 6), new THREE.MeshBasicMaterial({ color: '#ff3355' })); led.position.set(0, 0.1, 0.37); grp.add(led);
+  grp.userData.props = props; grp.userData.led = led;
+  return grp;
+}
+function spinDrone(d, dt, t) { d.userData.props.forEach((p, i) => { p.rotation.y += dt * (i % 2 ? 40 : -40); }); d.userData.led.visible = Math.sin(t * 9) > -0.3; }
 function padlockMesh(col, s) {
   const grp = new THREE.Group(), body = new THREE.Mesh(cubeGeo(s * 0.62, s * 0.3), metal(col, 0.25)); body.scale.y = 0.78; body.position.y = -s * 0.1; body.castShadow = true; grp.add(body);
   const sh = new THREE.Mesh(new THREE.TorusGeometry(s * 0.2, s * 0.055, 12, 24, Math.PI), MAT.steel); sh.position.y = s * 0.14; sh.castShadow = true; grp.add(sh);
@@ -368,6 +504,15 @@ new GLTFLoader().load(PDEF.f, (gl) => {
   const lo = $('loading'); if (lo) lo.remove();
 }, undefined, () => { const lo = $('loading'); if (lo) lo.textContent = 'Pofi yüklenemedi'; });
 const live = new Map();   // shooter -> instance
+const droneViews = new Map();   // drone Pofi -> tahta onunde ucan gorunum (katman 0)
+// tahta kamerasinda gorunen Pofi (drone icin; katman 0, golgesiz)
+function boardPofi(col) {
+  const root = skClone(POFI.scene), holder = new THREE.Group(); holder.add(root);
+  let mesh = null; root.traverse((x) => { if (x.isSkinnedMesh) { mesh = x; x.frustumCulled = false; } });
+  const k = POFI_H / POFI.h0; root.scale.setScalar(k); root.position.y = -POFI.y0 * k;
+  if (!POFI.mats[col]) POFI.mats[col] = tintMat(POFI.mesh.material, PDEF, col); mesh.material = POFI.mats[col];
+  return { holder, root, mesh, b: bonesOf(root) };
+}
 const BLOB_GEO = new THREE.CircleGeometry(0.62, 24), BLOB_MAT = new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.32, depthWrite: false });
 function pofiInst(col) {
   const o = POFI.pool.pop() || (() => {
@@ -413,7 +558,7 @@ function freeTray() { let t = trays.find((q) => q.st === 'stack'); if (!t) t = t
 let paused = false, fx = [], idleT = 0, winShown = false, loseShown = false, shake = 0, combo = 0, lastHit = -9, toastT = 0, VW = 1, VH = 1, DPR = 1;
 const jumps = new Map();   // shooter -> {from, t0, dur, kind}
 const CQ = new URLSearchParams(location.search), cqn = (k, d) => (CQ.has(k) ? +CQ.get(k) : d);
-const CAM = { fov: cqn('fov', 34), fit: cqn('fit', 10.9), tilt: cqn('tilt', 9), fpitch: cqn('fpitch', 64), ffov: cqn('ffov', 30), gap: cqn('gap', 0.035) };
+const CAM = { fov: cqn('fov', 34), fit: cqn('fit', 10.9), tilt: cqn('tilt', 9), fpitch: cqn('fpitch', 64), ffov: cqn('ffov', 30), gap: cqn('gap', 0), ftop: cqn('ftop', 0.16) };
 function projWith(c, vp, v) { const p = v.clone().project(c); return { x: vp.x + (p.x * 0.5 + 0.5) * vp.w, y: vp.y + (-p.y * 0.5 + 0.5) * vp.h, z: p.z }; }
 function project(v) { return projWith(cam, VPB, v); }    // tahta
 function projectF(v) { return projWith(camF, VPF, v); }  // atici alani
@@ -423,7 +568,7 @@ function layout() {
   ren.setPixelRatio(DPR); ren.setSize(VW, VH, false);
   ov.width = Math.round(VW * DPR); ov.height = Math.round(VH * DPR);
   const css = getComputedStyle(document.documentElement), sat = parseFloat(css.getPropertyValue('--sat')) || 0, sab = parseFloat(css.getPropertyValue('--sab')) || 0;
-  const bh = (g ? BH : 12.86) + 1.1;
+  const SILL = cqn('sill', 0.45), bh = (g ? BH : 12.86) + 1.1 + SILL;
   // --- ust: tahta, karsidan (biraz yukaridan) ---
   const topY = sat + 44;
   let bwPx = VW, bhPx = VW * bh / CAM.fit;
@@ -432,7 +577,7 @@ function layout() {
   const th = Math.tan(CAM.fov * Math.PI / 360);
   cam.fov = CAM.fov; cam.aspect = VW / bhPx;
   const dist = (bh / 2) / th * 1.0;
-  const ctr = new THREE.Vector3(0, (bh - 1.1) / 2 * Math.cos(THETA), -(bh - 1.1) / 2 * Math.sin(THETA)), nrm = new THREE.Vector3(0, Math.sin(THETA), Math.cos(THETA));
+  const hc = (bh - 1.1 - SILL) / 2 - SILL / 2, ctr = new THREE.Vector3(0, hc * Math.cos(THETA), -hc * Math.sin(THETA)), nrm = new THREE.Vector3(0, Math.sin(THETA), Math.cos(THETA));
   nrm.applyAxisAngle(new THREE.Vector3(1, 0, 0), -CAM.tilt * Math.PI / 180);
   cam.position.copy(ctr).addScaledVector(nrm, dist); cam.lookAt(ctr); cam.updateProjectionMatrix(); cam.updateMatrixWorld();
   // --- alt: atici alani, tepeden (tahtayla arasinda bosluk) ---
@@ -447,7 +592,7 @@ function layout() {
   for (let d = 10; d <= 60; d += 0.5) for (let zc = BELT_Z; zc <= BELT_Z + 14; zc += 0.25) {
     camF.position.set(0, 0, zc).addScaledVector(dirF, d); camF.lookAt(0, 0, zc); camF.updateProjectionMatrix(); camF.updateMatrixWorld();
     const a = projectF(new THREE.Vector3(want, 0.1, BELT_Z)), b = projectF(new THREE.Vector3(0, 0.1, BELT_Z - 0.9));
-    const err = Math.abs(a.x - VW) / VW + Math.abs((b.y - fy) / fh - 0.04) * 2;
+    const err = Math.abs(a.x - VW) / VW + Math.abs((b.y - fy) / fh - CAM.ftop) * 2;
     if (!best || err < best.err) best = { err, d, zc };
   }
   camF.position.set(0, 0, best.zc).addScaledVector(dirF, best.d); camF.lookAt(0, 0, best.zc); camF.updateProjectionMatrix(); camF.updateMatrixWorld();
@@ -541,14 +686,39 @@ function handleEvents() {
         cubesDirty = true; updSign(); break;
       }
       case 'objhit': {
-        const o = e.o, p = project(cellWorld(e.i));
-        if (o.t === 'wood') { burst(p.x, p.y, 9, ['#e7a862', '#9c5a22', '#c9823f'], 180, 5, 0.6, 500, 'rect'); SFX.crack('wood'); }
-        else { burst(p.x, p.y, 7, [g.pal[o.c], '#cfd6e0'], 170, 4, 0.6, 500, 'ring'); SFX.crack('chain'); }
-        vib(e.broke ? 30 : 12);
-        const m = objMeshes[o.id]; if (m) m.userData.hitT = g.t;
-        if (e.broke) { if (m) { m.userData.dieT = g.t; } const c = project(objCenter(o)); for (let q = 0; q < 3; q++) burst(c.x + (q - 1) * 20, c.y, 10, o.t === 'wood' ? ['#e7a862', '#9c5a22'] : [g.pal[o.c], '#fff'], 260, 6, 0.8, 600, o.t === 'wood' ? 'rect' : 'ring'); SFX.smash(1); shake = Math.min(0.3, shake + 0.12); }
+        const o = e.o, p = project(cellWorld(e.i)), m = objMeshes[o.id];
+        const ROCKC = ['#a39d93', '#6f6a62', '#cfc9be'];
+        if (!e.boom) {
+          if (o.t === 'wood') { burst(p.x, p.y, 9, ['#e7a862', '#9c5a22', '#c9823f'], 180, 5, 0.6, 500, 'rect'); SFX.crack('wood'); }
+          else if (o.t === 'rock') { burst(p.x, p.y, 8, ROCKC, 210, 5, 0.6, 650, 'tri'); fx.push({ kind: 'glow', x: p.x, y: p.y, s: 26, t: 0, life: 0.3, c: '#d8d2c8' }); SFX.stone(); shake = Math.min(0.2, shake + 0.04); }
+          else { burst(p.x, p.y, 7, [g.pal[o.c], '#cfd6e0'], 170, 4, 0.6, 500, 'ring'); SFX.crack('chain'); }
+          vib(e.broke ? 30 : o.t === 'rock' ? 18 : 12);
+        }
+        if (m) m.userData.hitT = g.t;
+        if (o.t === 'rock') rockCrack(o, m);
+        if (e.broke) {
+          if (m) { m.userData.dieT = g.t; } const c = project(objCenter(o));
+          const cols = o.t === 'wood' ? ['#e7a862', '#9c5a22'] : o.t === 'rock' ? ROCKC : [g.pal[o.c], '#fff'], shp = o.t === 'wood' ? 'rect' : o.t === 'rock' ? 'tri' : 'ring';
+          const nb = o.t === 'rock' ? 6 : 3; for (let q = 0; q < nb; q++) burst(c.x + (q - (nb - 1) / 2) * 18, c.y + (q % 2) * 12, o.t === 'rock' ? 12 : 10, cols, o.t === 'rock' ? 320 : 260, o.t === 'rock' ? 9 : 6, 0.9, 700, shp);
+          if (o.t === 'rock') { fx.push({ kind: 'glow', x: c.x, y: c.y, s: 120, t: 0, life: 0.5, c: '#bdb6aa' }); SFX.rockBreak(); vib([30, 20, 60]); shake = Math.min(0.45, shake + 0.3); }
+          else { SFX.smash(1); shake = Math.min(0.3, shake + 0.12); }
+        }
         break;
       }
+      case 'boom': {
+        const w0 = cellWorld(e.i), p = project(w0), cs = pxPerUnit(w0) * S;
+        boomFx(p.x, p.y, cs, 0);
+        e.chain.forEach((j, q) => { const pj = project(cellWorld(j)); boomFx(pj.x, pj.y, cs, (q + 1) * 0.12); });
+        const ci = e.i % g.W, ri = Math.floor(e.i / g.W);
+        for (const j of e.cells) pops[j] = g.t + Math.hypot((j % g.W) - ci, Math.floor(j / g.W) - ri) * 0.03;
+        const n = Math.min(16, e.cells.length); for (let q = 0; q < n; q++) { const j = e.cells[Math.floor(q * e.cells.length / n)], pj = project(cellWorld(j)); burst(pj.x, pj.y, 3, [g.pal[g.cells[j].c], '#ffffff'], 280, 4, 0.6, 600, 'tri'); }
+        [e.i].concat(e.chain).forEach(dropBomb);
+        const cc = project(new THREE.Vector3(0, BH * 0.45, 0).applyMatrix4(boardG.matrixWorld)); fx = fx.filter((q) => q.kind !== 'combo'); fx.push({ kind: 'combo', x: cc.x, y: cc.y, t: 0, life: 1.2, tx: e.chain.length ? 'ZİNCİRLEME BUM!' : 'BUM!', tier: 3 });
+        shake = Math.min(0.7, shake + 0.5); SFX.boom(); vib([60, 30, 120]); cubesDirty = true; updSign(); break;
+      }
+      case 'thaw': { const s = e.s; if (s._pos) { const q = projectF(s._pos.clone().add(new THREE.Vector3(0, 1.0, 0))); burst(q.x, q.y, 16, ['#ffffff', '#cfeeff', '#9fd8ff'], 230, 5, 0.6, 500, 'tri'); fx.push({ kind: 'ring', x: q.x, y: q.y, s: 20, t: 0, life: 0.4, c: '#cfeeff' }); } SFX.thaw(); vib([15, 20, 25]); break; }
+      case 'droneGo': { const s = e.s, p0 = lanePos(e.k, 0); fx.push({ kind: 'lift', s, t: 0, life: 0.6, from: new THREE.Vector3(p0.x, 0.05, p0.z) }); SFX.droneGo(); SFX.launch(); vib([12, 20, 12]); idleT = 0; break; }
+      case 'dfire': { const v = droneViews.get(e.s); if (v) v.fireT = g.t; SFX.shoot(); break; }
       case 'key': { SFX.chime(); vib([15, 25, 15]); break; }
       case 'unlock': { const c = project(objCenter(e.o)); burst(c.x, c.y, 20, [KEYC[e.o.lid % 3], '#fff'], 260, 5, 0.7, 300, 'dot'); fx.push({ kind: 'ring', x: c.x, y: c.y, s: 30, t: 0, life: 0.5, c: KEYC[e.o.lid % 3] }); SFX.knock(); SFX.chime(); vib([20, 40, 20]); const m = objMeshes[e.o.id]; if (m) m.userData.dieT = g.t; cubesDirty = true; break; }
       case 'bench': { const s = e.s; jumps.set(s, { from: s._pos ? s._pos.clone() : new THREE.Vector3(6, TRAY_Y, BELT_Z), t0: g.t, dur: 0.42, toPad: e.k }); trayBack(s); SFX.bench(); vib(10); break; }
@@ -559,6 +729,14 @@ function handleEvents() {
   }
   g.ev.length = 0;
 }
+function boomFx(x, y, cs, delay) {
+  fx.push({ kind: 'glow', x, y, s: Math.max(90, cs * 9), t: -delay, life: 0.5, c: '#ffb020' });
+  fx.push({ kind: 'glow', x, y, s: Math.max(40, cs * 4), t: -delay, life: 0.3, c: '#ffffff' });
+  fx.push({ kind: 'ring', x, y, s: Math.max(10, cs * 1.2), t: -delay, life: 0.5, c: '#fff1b0', w: 7, grow: Math.max(60, cs * 6) });
+  const cols = ['#ffe066', '#ff9a1f', '#ff5a1f', '#ffffff', '#5a4a40'];
+  for (let k = 0; k < 26; k++) { const a = Math.random() * 6.283, v = (140 + Math.random() * 360) * Math.max(0.7, cs / 18); fx.push({ x, y, vx: Math.cos(a) * v, vy: Math.sin(a) * v - 80, r: 3 + Math.random() * 5, c: cols[k % cols.length], t: -delay, life: 0.5 + Math.random() * 0.4, g: 420, rot: Math.random() * 6, vr: (Math.random() - 0.5) * 14, shape: k % 3 ? 'dot' : 'tri' }); }
+}
+function dropBomb(i) { const m = bombMeshes[i]; if (m) { objG.remove(m); delete bombMeshes[i]; } }
 function objCenter(o) { return new THREE.Vector3(-BW / 2 + (o.c0 + o.w / 2) * S, (g.H - o.r0 - o.h / 2) * S, S).applyMatrix4(boardG.matrixWorld); }
 function trayBack(s) { const t = s._tray; if (!t) return; t.from.copy(t.grp.position); t.st = 'back'; t.t0 = g.t; t.s = null; s._tray = null; }
 function trayCoast(s) { const t = s._tray; if (!t) return; t.st = 'coast'; t.x = s.x; t.s = null; s._tray = null; }
@@ -581,6 +759,8 @@ function hit(px, py) {
   best.s.tapT = performance.now();
   const why = BZM.launch(g, best.from, best.k);
   if (why === 'full') { toast('Tabla kalmadı'); SFX.deny(); vib([20, 30, 20]); } else if (why === 'busy') SFX.tap();
+  else if (why === 'frozen') { toast('Donmuş! ' + best.s.frozen + ' küp daha kır'); SFX.deny(); vib([20, 30, 20]); best.s.tapT = 0; }
+  else if (why === 'drone') { toast('Drone zaten uçuyor'); SFX.deny(); }
 }
 ov.addEventListener('pointerdown', (e) => { e.preventDefault(); hit(e.clientX, e.clientY); });
 
@@ -592,7 +772,7 @@ const LOOK_UP = cqn('look', 0.7), TRUNK_UP = cqn('trunk', 1.7);
 function placeShooters(dt) {
   const want = new Map();   // s -> {pos, look, trunk, bob, vis}
   // kuyruk
-  g.queue.forEach((col, k) => { const n = Math.min(col.length, 4); for (let j = 0; j < n; j++) { const s = col[j], p = lanePos(k, j); want.set(s, { pos: new THREE.Vector3(p.x, 0.05, p.z), look: 0, trunk: 0.15, bob: Math.sin(g.t * 3 + s.id) * 0.5 + 0.5 }); } });
+  g.queue.forEach((col, k) => { const n = Math.min(col.length, 4); for (let j = 0; j < n; j++) { const s = col[j], p = lanePos(k, j), fz = s.frozen > 0; want.set(s, { pos: new THREE.Vector3(p.x, 0.05, p.z), look: 0, trunk: fz ? 0 : 0.15, bob: fz ? 0 : Math.sin(g.t * 3 + s.id) * 0.5 + 0.5, frozen: fz, drone: s.kind === 'drone' }); } });
   // yuvalar
   g.bench.forEach((s, k) => { if (!s) return; const p = padPos(k); want.set(s, { pos: new THREE.Vector3(p.x, 0.02, p.z), look: 0.1, trunk: 0.25, bob: Math.sin(g.t * 3.4 + s.id) * 0.5 + 0.5 }); });
   // bant: tabla ustunde, kafa yukarida, hortum kalkik
@@ -608,6 +788,8 @@ function placeShooters(dt) {
     arc(j.from, w.pos, k, 1.6, tmpV); w.pos = tmpV.clone(); w.bob = Math.sin(k * Math.PI) * -0.4;
   }
   // gidenler (isi bitti): yukari suzulup kaybolur
+  // drone Pofi oluktan havalanir (tahtada ucan gorunumu ayri)
+  for (const f of fx) if (f.kind === 'lift') { const k = f.t / f.life; want.set(f.s, { pos: f.from.clone().add(new THREE.Vector3(0, k * k * 5, -k * 3)), look: 0.3, trunk: 0.6, bob: 0, drone: true, scale: Math.max(0.01, 1 - k * 0.6) }); }
   for (const f of fx) if (f.kind === 'leave' && f.s._pos) want.set(f.s, { pos: f.s._pos.clone().add(new THREE.Vector3(0, f.t * 2.5, 0)), look: 0.3, trunk: 0.6, bob: 0, scale: Math.max(0.01, 1 - f.t / f.life) });
   if (g.state === 'lose' && g.lostBy) want.set(g.lostBy, { pos: new THREE.Vector3(colX(g.W + 0.3), TRAY_Y, BELT_Z), look: 0, trunk: 0, bob: Math.sin(g.t * 20) * 0.3 });
   // ornekleri esle
@@ -618,10 +800,45 @@ function placeShooters(dt) {
       let bob = w.bob; if (s.tapT && performance.now() - s.tapT < 160) bob += (1 - (performance.now() - s.tapT) / 160) * 0.8;
       poseInst(o, w.look, w.trunk, bob);
       if (w.scale != null) o.holder.scale.multiplyScalar(w.scale);
+      if (w.frozen) { if (!o.ice) { o.ice = toFloor(iceBlock()); o.holder.add(o.ice); } o.ice.visible = true; } else if (o.ice) o.ice.visible = false;
+      if (w.drone) { if (!o.dr) { o.dr = toFloor(droneMesh()); o.dr.position.y = 2.15; o.dr.scale.setScalar(0.78); o.holder.add(o.dr); } o.dr.visible = true; spinDrone(o.dr, dt, g.t); } else if (o.dr) o.dr.visible = false;
     }
     for (const [s, o] of live) if (!want.has(s)) { scene.remove(o.holder); POFI.pool.push(o); live.delete(s); }
   } else for (const [s, w] of want) s._pos = w.pos.clone();
   return want;
+}
+function syncDrones(dt) {
+  if (!POFI.ready) return;
+  const act = new Set();
+  for (const d of g.drones) {
+    act.add(d.s);
+    let v = droneViews.get(d.s);
+    if (!v) {
+      const inst = boardPofi(g.pal[d.s.c]), dr = droneMesh(), grp = new THREE.Group();
+      dr.position.y = 1.95; dr.rotation.x = 0.85; grp.add(inst.holder); grp.add(dr); boardG.add(grp);
+      const sh = new THREE.Mesh(new THREE.CircleGeometry(1, 24), new THREE.MeshBasicMaterial({ map: SHADOWTX, transparent: true, depthWrite: false, opacity: 0.55 })); sh.renderOrder = 4; boardG.add(sh);
+      v = { grp, inst, dr, sh, bank: 0, px: null, t: 0, endT: null, fireT: -9, x: d.x, y: d.y }; droneViews.set(d.s, v);
+    }
+    v.x = d.x; v.y = d.y; v.t = g.t - d.t0;
+  }
+  let any = false, spd = 0;
+  for (const [s, v] of droneViews) {
+    if (!act.has(s) && v.endT == null) v.endT = g.t;
+    const lx = -BW / 2 + v.x * S, ly = (g.H - v.y) * S - 0.95;
+    let y = ly, sc = 1.15;
+    if (v.t < 0.5) { const k = ease(Math.min(1, v.t / 0.5)); y = -4 + (ly + 4) * k; }
+    if (v.endT != null) { const k = (g.t - v.endT) / 0.8; if (k >= 1) { boardG.remove(v.grp); boardG.remove(v.sh); droneViews.delete(s); continue; } y = ly + k * k * 9; sc *= 1 - k * 0.4; }
+    else any = true;
+    v.grp.position.set(lx, y, S * 0.5 + 2.2); v.grp.scale.setScalar(sc);
+    v.sh.position.set(lx + 0.35, y + 0.2, S * 0.95); v.sh.scale.set(1.25 * sc / 1.15, 1.1 * sc / 1.15, 1); v.sh.material.opacity = 0.5 * Math.min(1, sc / 1.15);
+    const vx = v.px == null ? 0 : (lx - v.px) / Math.max(dt, 1e-3); v.px = lx; spd = Math.max(spd, Math.abs(vx));
+    v.bank += (Math.max(-0.45, Math.min(0.45, -vx * 0.06)) - v.bank) * Math.min(1, dt * 6);
+    v.grp.rotation.set(0.28, 0, v.bank);
+    const fire = g.t - v.fireT < 0.1 ? 1 - (g.t - v.fireT) / 0.1 : 0;
+    poseInst(v.inst, 0.35, 1.3 + fire * 0.5, fire * 0.4 + Math.sin(g.t * 5) * 0.15);
+    spinDrone(v.dr, dt, g.t);
+  }
+  if (any && !paused) { humOn(); humSet(Math.min(1, spd / 6)); } else humOff();
 }
 function placeTrays() {
   const stackN = []; let n = 0;
@@ -646,6 +863,7 @@ function animObjs() {
     if (m.userData.hitT != null && g.t - m.userData.hitT < 0.12) m.position.x = -BW / 2 + (o.c0 + o.w / 2) * S + Math.sin(g.t * 90) * 0.04;
     else m.position.x = -BW / 2 + (o.c0 + o.w / 2) * S;
   }
+  for (const i in bombMeshes) { const m = bombMeshes[i], sp = m.userData.spark, f = 0.75 + Math.random() * 0.5; sp.scale.setScalar(m.userData.s * 0.55 * f); const pu = 1 + Math.max(0, Math.sin(g.t * 7 + +i)) * 0.06; m.scale.setScalar(pu); }
   for (const k of g.keys) { const m = keyMeshes[k.id]; if (!m) continue; if (k.out && m.parent === keyG) { keyG.remove(m); } m.rotation.y = Math.sin(g.t * 2 + k.id) * 0.4; }
 }
 // ust katman: atislar, sirt sayilari, engel canlari, efektler
@@ -656,13 +874,22 @@ function drawOverlay(dt, want) {
   c.save(); c.translate(sx, sy);
   // tahta ile atici alani arasindaki bosluk: tahta rafinin alt kenari
   const gy0 = VPB.y + VPB.h, gy1 = VPF.y;
-  if (gy1 > gy0) { const gr = c.createLinearGradient(0, gy0, 0, gy1); gr.addColorStop(0, '#6b3f1c'); gr.addColorStop(0.45, '#3a2210'); gr.addColorStop(1, '#151b24'); c.fillStyle = gr; c.fillRect(0, gy0, VW, gy1 - gy0); c.fillStyle = 'rgba(255,220,170,.35)'; c.fillRect(0, gy0, VW, 2); c.fillStyle = 'rgba(0,0,0,.45)'; c.fillRect(0, gy1 - 3, VW, 3); }
+  if (gy1 > gy0) { c.fillStyle = '#020203'; c.fillRect(0, gy0, VW, gy1 - gy0); }
+  // gorus kenarlarinda yumusak gecis (hendek derinligi)
+  { const h1 = Math.max(4, VH * 0.006), gr = c.createLinearGradient(0, gy0 - h1, 0, gy0); gr.addColorStop(0, 'rgba(20,12,6,0)'); gr.addColorStop(1, 'rgba(20,12,6,.6)'); c.fillStyle = gr; c.fillRect(0, gy0 - h1, VW, h1);
+    const h2 = Math.max(4, VH * 0.006), gr2 = c.createLinearGradient(0, gy1, 0, gy1 + h2); gr2.addColorStop(0, 'rgba(20,12,6,.6)'); gr2.addColorStop(1, 'rgba(2,2,3,0)'); c.fillStyle = gr2; c.fillRect(0, gy1, VW, h2); }
   // atislar
   c.save(); c.globalCompositeOperation = 'lighter';
   for (const sh of g.shots) {
     let from = shotFrom.get(sh);
-    if (!from) { const s = g.belt.find((q) => q.id === sh.sid); const o = s && live.get(s); if (o && o.b.Trunk2) { o.b.Trunk2.getWorldPosition(tmpV); o.b.Trunk1.getWorldPosition(tmpV2); from = tmpV.clone().addScaledVector(tmpV.clone().sub(tmpV2), 1.2); } else from = new THREE.Vector3(colX(sh.col + 0.5), 1.9, BELT_Z); shotFrom.set(sh, from); }
-    const to = cellWorld(sh.i), k = Math.min(1, (g.t - sh.t0) / (sh.t1 - sh.t0)), a = projectF(from), b = project(to), x = a.x + (b.x - a.x) * k, y = a.y + (b.y - a.y) * k, col = g.pal[sh.c], rad = 7;
+    if (!from) {
+      if (sh.drone) {   // drone atisi: tahta kamerasinda, hortumun ucundan
+        let o = null; for (const [q, v] of droneViews) if (q.id === sh.sid) o = v.inst;
+        if (o && o.b.Trunk2) { o.b.Trunk2.getWorldPosition(tmpV); o.b.Trunk1.getWorldPosition(tmpV2); from = { p: tmpV.clone().addScaledVector(tmpV.clone().sub(tmpV2), 0.8), b: 1 }; } else from = { p: cellWorld(sh.i).add(new THREE.Vector3(0, -1, 1)), b: 1 };
+      } else { const s = g.belt.find((q) => q.id === sh.sid); const o = s && live.get(s); if (o && o.b.Trunk2) { o.b.Trunk2.getWorldPosition(tmpV); o.b.Trunk1.getWorldPosition(tmpV2); from = { p: tmpV.clone().addScaledVector(tmpV.clone().sub(tmpV2), 1.2), b: 0 }; } else from = { p: new THREE.Vector3(colX(sh.col + 0.5), 1.9, BELT_Z), b: 0 }; }
+      shotFrom.set(sh, from);
+    }
+    const to = cellWorld(sh.i), k = Math.min(1, (g.t - sh.t0) / (sh.t1 - sh.t0)), a = from.b ? project(from.p) : projectF(from.p), b = project(to), x = a.x + (b.x - a.x) * k, y = a.y + (b.y - a.y) * k, col = g.pal[sh.c], rad = from.b ? 5 : 7;
     const tx = a.x + (b.x - a.x) * Math.max(0, k - 0.25), ty = a.y + (b.y - a.y) * Math.max(0, k - 0.25);
     const tr = c.createLinearGradient(x, y, tx, ty); tr.addColorStop(0, 'rgba(255,255,255,.85)'); tr.addColorStop(1, 'rgba(255,255,255,0)'); c.strokeStyle = tr; c.lineWidth = rad * 1.1; c.lineCap = 'round'; c.beginPath(); c.moveTo(tx, ty); c.lineTo(x, y); c.stroke();
     c.fillStyle = col2rad(c, x, y, rad * 2.4, col); c.beginPath(); c.arc(x, y, rad * 2.4, 0, 7); c.fill();
@@ -676,7 +903,10 @@ function drawOverlay(dt, want) {
     if (!s._pos) continue; const o = live.get(s); let hp;
     if (o && o.b.Head) { o.b.Head.getWorldPosition(tmpV); tmpV.y -= 0.12; tmpV.z += 0.35; hp = projectF(tmpV); } else hp = projectF(s._pos.clone().add(new THREE.Vector3(0, 1.2, 0.3)));
     const ppu = pxPerUnitF(s._pos); pill(c, hp.x, hp.y, String(s.ammo), Math.max(12, ppu * 0.36), w.scale);
+    if (w.frozen) { const q = projectF(s._pos.clone().add(new THREE.Vector3(0, 2.2, 0))); pill(c, q.x, q.y, '❄' + s.frozen, Math.max(14, ppu * 0.42), null, '#d8f2ff', '#0d3a5c'); }
   }
+  // ucan drone'un mermisi
+  for (const [s, v] of droneViews) { if (v.endT != null || !v.inst.b.Head) continue; v.inst.b.Head.getWorldPosition(tmpV); const q = project(tmpV); pill(c, q.x, q.y + 4, String(s.ammo), 15); }
   // kuyrukta gorunmeyen fil sayisi
   g.queue.forEach((col, k) => { if (col.length > 4) { const p = projectF(new THREE.Vector3((k - 1.5) * LANE_DX + 0.7, 0.4, LANE_Z0 + 3.6 * LANE_DZ)); c.font = '700 16px ' + FONT; c.textAlign = 'center'; c.textBaseline = 'middle'; c.lineWidth = 4; c.strokeStyle = '#2a1606'; c.fillStyle = '#fff'; c.strokeText('+' + (col.length - 4), p.x, p.y); c.fillText('+' + (col.length - 4), p.x, p.y); } });
   // yuva durumu ve hedef sayilari
@@ -689,9 +919,9 @@ function drawOverlay(dt, want) {
   if (LV <= 3 && g.state === 'play' && idleT > 3 && !g.belt.length) { const bm = BZM.bestMove(g); if (bm) { const p = bm.from === 'q' ? lanePos(bm.k, 0) : padPos(bm.k), q = projectF(new THREE.Vector3(p.x, 0.9, p.z)), r = pxPerUnitF(new THREE.Vector3(p.x, 0, p.z)) * 1.0, a = 0.5 + 0.5 * Math.sin(g.t * 6); c.strokeStyle = 'rgba(255,255,255,' + (0.5 + 0.5 * a) + ')'; c.lineWidth = 4; c.beginPath(); c.ellipse(q.x, q.y, r * 0.8 + a * 4, r + a * 4, 0, 0, 7); c.stroke(); } }
   // parcaciklar
   for (let i = fx.length - 1; i >= 0; i--) {
-    const f = fx[i]; f.t += dt; if (f.t >= f.life) { fx.splice(i, 1); continue; } const a = 1 - f.t / f.life;
-    if (f.kind === 'leave') continue;
-    if (f.kind === 'ring') { c.strokeStyle = f.c; c.globalAlpha = a; c.lineWidth = 3 * a + 0.5; c.beginPath(); c.arc(f.x, f.y, f.s + (1 - a) * 20, 0, 7); c.stroke(); c.globalAlpha = 1; continue; }
+    const f = fx[i]; f.t += dt; if (f.t >= f.life) { fx.splice(i, 1); continue; } if (f.t < 0) continue; const a = 1 - f.t / f.life;
+    if (f.kind === 'leave' || f.kind === 'lift') continue;
+    if (f.kind === 'ring') { c.strokeStyle = f.c; c.globalAlpha = a; c.lineWidth = (f.w || 3) * a + 0.5; c.beginPath(); c.arc(f.x, f.y, f.s + (1 - a) * (f.grow || 20), 0, 7); c.stroke(); c.globalAlpha = 1; continue; }
     if (f.kind === 'glow') { c.save(); c.globalCompositeOperation = 'lighter'; const r = f.s * (1.3 - 0.5 * a); c.globalAlpha = a; c.fillStyle = col2rad(c, f.x, f.y, r, f.c); c.beginPath(); c.arc(f.x, f.y, r, 0, 7); c.fill(); c.restore(); continue; }
     if (f.kind === 'combo') { const u = 1 - a, pp = u < 0.14 ? (() => { const v = u / 0.14 - 1; return 1 + 2.7 * v * v * v + 1.7 * v * v; })() : 1, sc = pp * (1 + 0.035 * Math.sin(u * 22)), cc = COMBO_COL[f.tier]; c.save(); c.globalAlpha = a < 0.22 ? a / 0.22 : 1; c.translate(f.x, f.y - u * 22); c.rotate(-0.07); c.scale(sc, sc); const fs = 34 + f.tier * 6; c.font = '700 ' + fs + 'px ' + FONT; c.textAlign = 'center'; c.textBaseline = 'middle'; c.lineJoin = 'round'; c.lineWidth = 10; c.strokeStyle = '#2a0b3d'; c.strokeText(f.tx, 0, 3); c.strokeText(f.tx, 0, 0); const lg = c.createLinearGradient(0, -fs / 2, 0, fs / 2); lg.addColorStop(0, cc[0]); lg.addColorStop(1, cc[1]); c.fillStyle = lg; c.fillText(f.tx, 0, 0); c.restore(); continue; }
     f.vy += (f.g || 0) * dt; f.x += f.vx * dt; f.y += f.vy * dt; f.rot += f.vr * dt;
@@ -707,7 +937,7 @@ function drawOverlay(dt, want) {
   for (const fl of g.flying) { const k = fl.key, o = g.objs[k.lock]; if (!o) continue; const B = g.B, a = project(new THREE.Vector3(-BW / 2 + (k.bc * B + B / 2) * S, (g.H - k.br * B - B / 2) * S, S).applyMatrix4(boardG.matrixWorld)), b = project(objCenter(o)), e = Math.min(1, (g.t - fl.t0) / (fl.t1 - fl.t0)), x = a.x + (b.x - a.x) * e, y = a.y + (b.y - a.y) * e - Math.sin(e * Math.PI) * 60; c.save(); c.shadowColor = 'rgba(255,230,120,.9)'; c.shadowBlur = 16; keyIcon2d(c, x, y, 34, KEYC[o.lid % 3], -0.6 + e * 6.28); c.restore(); }
   c.restore();
 }
-function pill(c, x, y, t, h, sc) { if (sc != null) { if (sc < 0.05) return; h *= sc; } const w = Math.max(h, h * 0.55 * t.length + h * 0.5); c.fillStyle = '#fff'; c.strokeStyle = '#20140a'; c.lineWidth = Math.max(1.5, h * 0.12); c.beginPath(); c.roundRect(x - w / 2, y - h / 2, w, h, h / 2); c.fill(); c.stroke(); c.fillStyle = '#20140a'; c.font = '700 ' + Math.round(h * 0.78) + 'px ' + FONT; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillText(t, x, y + h * 0.05); }
+function pill(c, x, y, t, h, sc, bg, fg) { if (sc != null) { if (sc < 0.05) return; h *= sc; } const w = Math.max(h, h * 0.55 * t.length + h * 0.5); c.fillStyle = bg || '#fff'; c.strokeStyle = fg || '#20140a'; c.lineWidth = Math.max(1.5, h * 0.12); c.beginPath(); c.roundRect(x - w / 2, y - h / 2, w, h, h / 2); c.fill(); c.stroke(); c.fillStyle = fg || '#20140a'; c.font = '700 ' + Math.round(h * 0.78) + 'px ' + FONT; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillText(t, x, y + h * 0.05); }
 function keyIcon2d(c, x, y, s, kc, rot) { c.save(); c.translate(x, y); c.rotate(rot); c.fillStyle = kc; c.strokeStyle = '#2a1a08'; c.lineWidth = 2; c.beginPath(); c.arc(-s * 0.22, 0, s * 0.18, 0, 7); c.fill(); c.stroke(); c.fillRect(-s * 0.08, -s * 0.06, s * 0.46, s * 0.12); c.strokeRect(-s * 0.08, -s * 0.06, s * 0.46, s * 0.12); c.restore(); }
 
 // ---------- dongu ----------
@@ -741,7 +971,7 @@ function frame(ts, noRender) {
   if (g) {
     TX.belt.offset.x = -(g.t * g.speed * S) / (14.4 / 6);
     if (cubesDirty) updateCubes();
-    animObjs(); placeTrays();
+    animObjs(); placeTrays(); syncDrones(dt);
     const want = placeShooters(dt);
     if (!noRender) { renderViews(); drawOverlay(dt, want); }
     else for (let i = fx.length - 1; i >= 0; i--) { fx[i].t += dt; if (fx[i].t >= fx[i].life) fx.splice(i, 1); }
@@ -759,8 +989,8 @@ $('bRe').onclick = () => { start(LV); };
 $('bSet').onclick = () => { showSettings(); };
 addEventListener('resize', layout);
 // test: ?test=1 ile dongu durur, BZ.run(sn) ile zaman ilerletilir (yavas tarayicida ekran goruntusu icin)
-window.BZ = { get g() { return g; }, start, M: BZM, pause(v) { paused = !!v; }, cam, scene, POFI,
+window.BZ = { get g() { return g; }, start, M: BZM, pf: (x, y, z) => projectF(new THREE.Vector3(x, y, z)), pb: (x, y, z) => project(new THREE.Vector3(x, y, z)), VPF, VPB, pause(v) { paused = !!v; }, cam, scene, POFI,
   snap() { const c = document.createElement('canvas'); c.width = glc.width; c.height = glc.height; const x = c.getContext('2d'); x.drawImage(glc, 0, 0); x.drawImage(ov, 0, 0, c.width, c.height); return c.toDataURL('image/png'); },
-  run(sec, bot) { let t = last || 0; const n = Math.round(sec * 30); for (let i = 0; i < n; i++) { t += 1000 / 30; if (bot && i % 12 === 0 && g.state === 'play') { const b = BZM.bestMove(g); if (b) BZM.launch(g, b.from, b.k); else if (!g.belt.length && !g.shots.length) { const o = g.queue.findIndex((c) => c.length); if (o >= 0) BZM.launch(g, 'q', o); } } frame(t, i < n - 1); } } };
+  run(sec, bot, quiet) { let t = last || 0; const n = Math.round(sec * 30); for (let i = 0; i < n; i++) { t += 1000 / 30; if (bot && i % 12 === 0 && g.state === 'play') { const b = BZM.bestMove(g); if (b) BZM.launch(g, b.from, b.k); else if (!g.belt.length && !g.shots.length) { const o = g.queue.findIndex((c) => c.length); if (o >= 0) BZM.launch(g, 'q', o); } } frame(t, quiet || i < n - 1); } } };
 start(qL ? +qL[1] : SV.L || 1);
 if (!TEST) requestAnimationFrame(frame); else frame(0);
