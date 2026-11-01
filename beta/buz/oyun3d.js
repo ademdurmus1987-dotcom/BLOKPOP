@@ -198,7 +198,7 @@ const metal = (col, r) => new THREE.MeshStandardMaterial({ color: col, metalness
 
 // ---------- yerlesim (dunya birimleri) ----------
 // tahta 10 birim genis; alt kenari y=0,z=0'da, THETA kadar arkaya yaslanir
-const BW = 10, THETA = (DERIN ? qn('kt', 28) : 30) * Math.PI / 180, BELT_Z = DERIN ? qn('kb', 5) : 1.4;
+const BW = 10, THETA = (DERIN ? qn('kt', 28) : 30) * Math.PI / 180, BELT_Z = DERIN ? qn('kb', 4) : 1.4;
 // zemindeki yerler ekrana gore hesaplanir (layout)
 let PAD_Z = 4.0, PAD_X0 = -2.75, PAD_X1 = 4.55, PAD_R = 0.82, LANE_Z0 = 6.3, LANE_DZ = 1.9, LANE_DX = 2.25, STACK = new THREE.Vector3(-4.55, 0, 4.0);
 const boardG = new THREE.Group(); boardG.rotation.x = -THETA; scene.add(boardG);
@@ -218,7 +218,10 @@ const PITTX = canvasTex(8, 256, (x, w, h) => { const gr = x.createLinearGradient
   const floor = new THREE.Mesh(new THREE.PlaneGeometry(40, DERIN ? 44 : 36), MAT.floor); floor.rotation.x = -Math.PI / 2; floor.position.set(0, 0, EDGE_Z + 18 - (DERIN ? 4 : 0)); floor.receiveShadow = true; staticG.add(floor);
   // bant: zeminle ayni duzlemde; carksiz
   const belt = new THREE.Mesh(new THREE.BoxGeometry(16, 0.1, 2.0), [MAT.rail, MAT.rail, MAT.belt, MAT.rail, MAT.rail, MAT.rail]); belt.position.set(0, 0.05, BELT_Z); belt.receiveShadow = true; staticG.add(belt);
-  [-1, 1].forEach((d) => { const r = new THREE.Mesh(new THREE.BoxGeometry(16, 0.16, 0.12), MAT.rail); r.position.set(0, 0.08, BELT_Z + d * 1.06); r.castShadow = true; staticG.add(r); });
+  [-1, 1].forEach((d) => { if (DERIN && d < 0) return; const r = new THREE.Mesh(new THREE.BoxGeometry(16, 0.16, 0.12), MAT.rail); r.position.set(0, 0.08, BELT_Z + d * 1.06); r.castShadow = true; staticG.add(r); });
+  if (DERIN) {   // uzak kenar yatik: bant yuzeyinden zemine inen egimli metal serit
+    const sl = new THREE.Mesh(new THREE.BoxGeometry(16, 0.03, 0.42), MAT.rail); sl.rotation.x = -0.24; sl.position.set(0, 0.05, BELT_Z - 1.0 - 0.2); sl.receiveShadow = true; staticG.add(sl);
+  }
   if (DERIN) {   // tek kamerada zemin tahtanin dibine kadar uzanir; dipte golge (tahta zemine oturur, dip derin gorunur)
     const ao = new THREE.Mesh(new THREE.PlaneGeometry(18, 2.6), new THREE.MeshBasicMaterial({ map: AOTX, transparent: true, depthWrite: false })); ao.rotation.x = -Math.PI / 2; ao.position.set(0, 0.012, 1.1); ao.renderOrder = 1; staticG.add(ao);
     return;
@@ -428,7 +431,7 @@ function bombMesh(col, s) {
 }
 // donmus Pofi icin buz blogu
 function iceBlock() {
-  const grp = new THREE.Group(), m = new THREE.Mesh(new THREE.BoxGeometry(1.45, 1.85, 1.45), MAT.iceBlock); m.position.y = 0.95; m.renderOrder = 3; grp.add(m);
+  const grp = new THREE.Group(), m = new THREE.Mesh(KUP ? new THREE.BoxGeometry(1.95, 1.6, 1.5) : new THREE.BoxGeometry(1.45, 1.85, 1.45), MAT.iceBlock); m.position.y = KUP ? 0.8 : 0.95; m.renderOrder = 3; grp.add(m);
   const eg = new THREE.EdgesGeometry(m.geometry), ed = new THREE.LineSegments(eg, new THREE.LineBasicMaterial({ color: '#e8f8ff', transparent: true, opacity: 0.9 })); ed.position.copy(m.position); grp.add(ed);
   return grp;
 }
@@ -512,7 +515,95 @@ function cycleMean(b, mixer, act) {
   for (let i = 0; i < N; i++) { act.time = (i / N) * d; mixer.update(0); for (const n in b) { const q = b[n].quaternion; if (!acc[n]) acc[n] = new THREE.Vector4(); const a = acc[n], sg = a.x * q.x + a.y * q.y + a.z * q.z + a.w * q.w < 0 ? -1 : 1; a.x += q.x * sg; a.y += q.y * sg; a.z += q.z * sg; a.w += q.w * sg; } }
   const out = {}; for (const n in acc) { const a = acc[n]; out[n] = new THREE.Quaternion(a.x, a.y, a.z, a.w).normalize(); } return out;
 }
-new GLTFLoader().load(PDEF.f, (gl) => {
+// ---------- kup Pofi (v2.94): kutu govdeli fil; parcalardan kurulur, renge boyanir ----------
+// govde = yuvarlak kenarli kup, yanda buyuk kulaklar, onde 3 parcali hortum (atista yukari kivrilir),
+// kisa bacaklar, puskullu kuyruk. Model on yuzu +z'de, ayaklar y=0'da.
+const KUP = Q0.get('pofi') !== 'glb', KS = qn('ks', 1.0);
+function roundBox(w, h, d, r, seg) {
+  const g0 = new THREE.BoxGeometry(w, h, d, seg, seg, seg), p = g0.attributes.position, nr = g0.attributes.normal, v = new THREE.Vector3(), c = new THREE.Vector3();
+  const hw = w / 2 - r, hh = h / 2 - r, hd = d / 2 - r, cl = (x, a) => Math.max(-a, Math.min(a, x));
+  for (let i = 0; i < p.count; i++) {
+    v.fromBufferAttribute(p, i); c.set(cl(v.x, hw), cl(v.y, hh), cl(v.z, hd)); v.sub(c);
+    const L = v.length(); if (L > 1e-6) v.multiplyScalar(1 / L); nr.setXYZ(i, v.x, v.y, v.z);
+    p.setXYZ(i, c.x + v.x * r, c.y + v.y * r, c.z + v.z * r);
+  }
+  return g0;
+}
+// yumusak kosel plaka (kulak): buyuk koseli dikdortgen, kenarlari bombeli
+function softPlate(w, h, r, d) {
+  const x0 = -w / 2, y0 = -h / 2, sh = new THREE.Shape();
+  sh.moveTo(x0 + r, y0); sh.lineTo(x0 + w - r, y0); sh.quadraticCurveTo(x0 + w, y0, x0 + w, y0 + r); sh.lineTo(x0 + w, y0 + h - r); sh.quadraticCurveTo(x0 + w, y0 + h, x0 + w - r, y0 + h);
+  sh.lineTo(x0 + r, y0 + h); sh.quadraticCurveTo(x0, y0 + h, x0, y0 + h - r); sh.lineTo(x0, y0 + r); sh.quadraticCurveTo(x0, y0, x0 + r, y0);
+  const bev = d * 0.45, geo = new THREE.ExtrudeGeometry(sh, { depth: Math.max(0.005, d - 2 * bev), bevelEnabled: true, bevelThickness: bev, bevelSize: bev * 0.9, bevelSegments: 3, curveSegments: 6 });
+  geo.translate(0, 0, -(d - 2 * bev) / 2); geo.computeVertexNormals(); return geo;
+}
+// govde rengi: ustu acik, alti hafif koyu-mor (gorseldeki plastik gecis)
+function gradColors(geo, y0, y1) {
+  const p = geo.attributes.position, col = new Float32Array(p.count * 3);
+  for (let i = 0; i < p.count; i++) { const t = Math.max(0, Math.min(1, (p.getY(i) - y0) / (y1 - y0))); col[i * 3] = 0.84 + 0.2 * t; col[i * 3 + 1] = 0.84 + 0.22 * t; col[i * 3 + 2] = 0.95 + 0.12 * t; }
+  geo.setAttribute('color', new THREE.BufferAttribute(col, 3)); return geo;
+}
+const KG = (() => {
+  const body = gradColors(roundBox(1, 1, 1.02, 0.2, 6), -0.5, 0.5);
+  const ear = softPlate(0.5, 0.68, 0.22, 0.1), earIn = softPlate(0.32, 0.48, 0.14, 0.03);
+  const leg = new THREE.CylinderGeometry(0.15, 0.16, 0.34, 18), nail = new THREE.SphereGeometry(0.045, 10, 8);
+  const seg = new THREE.CylinderGeometry(0.115, 0.125, 0.2, 18); seg.rotateX(Math.PI / 2); seg.translate(0, 0, 0.1);
+  const joint = new THREE.SphereGeometry(0.12, 16, 12), lip = new THREE.TorusGeometry(0.105, 0.035, 10, 22), hole = new THREE.CircleGeometry(0.085, 18);
+  const tail = new THREE.TubeGeometry(new THREE.CubicBezierCurve3(new THREE.Vector3(0, 0, 0), new THREE.Vector3(0.02, -0.08, -0.12), new THREE.Vector3(0.06, -0.24, -0.1), new THREE.Vector3(0.05, -0.36, -0.16)), 12, 0.03, 8);
+  const tuft = new THREE.SphereGeometry(0.07, 12, 10); tuft.scale(0.8, 1.4, 0.8);
+  const eye = new THREE.SphereGeometry(0.075, 16, 12); eye.scale(1, 1.15, 0.45);
+  const shine = new THREE.SphereGeometry(0.022, 8, 6), brow = roundBox(0.2, 0.055, 0.05, 0.022, 2), blush = new THREE.CircleGeometry(0.075, 18);
+  return { body, ear, earIn, leg, nail, seg, joint, lip, hole, tail, tuft, eye, shine, brow, blush };
+})();
+const KM = {
+  eye: new THREE.MeshStandardMaterial({ color: '#241c30', roughness: 0.15, metalness: 0.1 }), shine: new THREE.MeshBasicMaterial({ color: '#ffffff' }),
+  hole: new THREE.MeshBasicMaterial({ color: '#1a2236' }), blush: new THREE.MeshBasicMaterial({ color: '#ff8fb0', transparent: true, opacity: 0.45, depthWrite: false })
+};
+const KMC = {};   // renk -> malzemeler
+function kupMats(col) {
+  if (KMC[col]) return KMC[col];
+  const c = new THREE.Color(col);
+  return (KMC[col] = {
+    grad: new THREE.MeshStandardMaterial({ color: c, vertexColors: true, roughness: 0.38, metalness: 0 }),
+    body: new THREE.MeshStandardMaterial({ color: c.clone().multiplyScalar(0.96), roughness: 0.4 }),
+    inner: new THREE.MeshStandardMaterial({ color: c.clone().multiplyScalar(0.72), roughness: 0.55 }),
+    nail: new THREE.MeshStandardMaterial({ color: c.clone().lerp(new THREE.Color('#ffffff'), 0.55), roughness: 0.5 }),
+    brow: new THREE.MeshStandardMaterial({ color: c.clone().lerp(new THREE.Color('#2a3446'), 0.6), roughness: 0.5 })
+  });
+}
+function kupPofi() {
+  const holder = new THREE.Group(), root = new THREE.Group(); holder.add(root);
+  const fig = new THREE.Group(); fig.scale.setScalar(KS); root.add(fig);
+  const LEG = 0.3, BY = LEG + 0.5, parts = { grad: [], body: [], inner: [], nail: [], brow: [] };
+  const add = (geo, kind, mat) => { const m = new THREE.Mesh(geo, mat || null); if (kind) parts[kind].push(m); m.castShadow = false; return m; };
+  const body = add(KG.body, 'grad'); body.position.y = BY; fig.add(body);
+  [-1, 1].forEach((sd) => {
+    const e = new THREE.Group(); e.position.set(sd * 0.7, BY + 0.12, 0.02); e.rotation.set(0, sd * 0.3, sd * -0.1); fig.add(e);
+    e.add(add(KG.ear, 'body')); const ei = add(KG.earIn, 'inner'); ei.position.set(sd * 0.02, -0.03, 0.05); e.add(ei);
+    [-1, 1].forEach((fb) => {
+      const l = add(KG.leg, 'body'); l.position.set(sd * 0.27, LEG / 2, fb * 0.27); fig.add(l);
+      if (fb > 0) for (let n = -1; n <= 1; n++) { const t = add(KG.nail, 'nail'); t.scale.set(1, 0.8, 0.5); t.position.set(sd * 0.27 + n * 0.07, 0.05, 0.27 + 0.145); fig.add(t); }
+    });
+    const ey = new THREE.Mesh(KG.eye, KM.eye); ey.position.set(sd * 0.2, BY + 0.1, 0.505); fig.add(ey);
+    const sh = new THREE.Mesh(KG.shine, KM.shine); sh.position.set(sd * 0.2 + 0.025, BY + 0.135, 0.535); fig.add(sh);
+    const br = add(KG.brow, 'brow'); br.position.set(sd * 0.2, BY + 0.24, 0.52); br.rotation.z = sd * -0.38; fig.add(br);
+    const bl = new THREE.Mesh(KG.blush, KM.blush); bl.position.set(sd * 0.3, BY - 0.06, 0.513); fig.add(bl);
+  });
+  // hortum: 3 parca, her eklem x ekseninde kivrilir
+  const segs = []; let par = fig;
+  const base = new THREE.Group(); base.position.set(0, BY - 0.04, 0.47); fig.add(base); par = base;
+  for (let i = 0; i < 3; i++) { const sg = new THREE.Group(); if (i) sg.position.z = 0.19; par.add(sg); sg.add(add(KG.joint, 'body')); sg.add(add(KG.seg, 'body')); segs.push(sg); par = sg; }
+  const tip = new THREE.Group(); tip.position.z = 0.2; par.add(tip);
+  const lip = add(KG.lip, 'body'); tip.add(lip); const hole = new THREE.Mesh(KG.hole, KM.hole); hole.position.z = 0.012; tip.add(hole);
+  // kuyruk
+  const tl = new THREE.Group(); tl.position.set(0, BY - 0.12, -0.5); fig.add(tl); tl.add(add(KG.tail, 'body')); const tf = add(KG.tuft, 'inner'); tf.position.set(0.05, -0.4, -0.17); tl.add(tf);
+  const head = new THREE.Object3D(); head.position.set(0, BY + 0.05, -0.15); fig.add(head);
+  const t1 = new THREE.Object3D(); segs[2].add(t1);
+  return { holder, root, b: { Head: head, Trunk1: t1, Trunk2: tip }, segs, parts, kup: true, col: null };
+}
+function kupColor(o, col) { const m = kupMats(col); for (const k in o.parts) for (const x of o.parts[k]) x.material = m[k]; o.col = col; }
+if (KUP) { POFI.ready = true; const lo = $('loading'); if (lo) lo.remove(); }
+else new GLTFLoader().load(PDEF.f, (gl) => {
   const model = gl.scene; let mesh = null; model.traverse((o) => { if (o.isSkinnedMesh) mesh = o; });
   if (!mesh) return; addTrunk(model, mesh);
   const bb = new THREE.Box3().setFromObject(model);
@@ -523,6 +614,7 @@ const live = new Map();   // shooter -> instance
 const droneViews = new Map();   // drone Pofi -> tahta onunde ucan gorunum (katman 0)
 // tahta kamerasinda gorunen Pofi (drone icin; katman 0, golgesiz)
 function boardPofi(col) {
+  if (KUP) { const o = kupPofi(); kupColor(o, col); return o; }
   const root = skClone(POFI.scene), holder = new THREE.Group(); holder.add(root);
   let mesh = null; root.traverse((x) => { if (x.isSkinnedMesh) { mesh = x; x.frustumCulled = false; } });
   const k = POFI_H / POFI.h0; root.scale.setScalar(k); root.position.y = -POFI.y0 * k;
@@ -531,6 +623,11 @@ function boardPofi(col) {
 }
 const BLOB_GEO = new THREE.CircleGeometry(0.62, 24), BLOB_MAT = new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.32, depthWrite: false });
 function pofiInst(col) {
+  if (KUP) {
+    const o = POFI.pool.pop() || (() => { const k = kupPofi(); const blob = new THREE.Mesh(BLOB_GEO, BLOB_MAT); blob.rotation.x = -Math.PI / 2; blob.position.y = 0.03; k.holder.add(blob); toFloor(k.holder); return k; })();
+    if (o.col !== col) kupColor(o, col);
+    return o;
+  }
   const o = POFI.pool.pop() || (() => {
     const root = skClone(POFI.scene), holder = new THREE.Group(); holder.add(root);
     let mesh = null; root.traverse((x) => { if (x.isSkinnedMesh) { mesh = x; x.frustumCulled = false; x.castShadow = false; } });
@@ -551,6 +648,12 @@ function pitchUp(o, ang) {
   for (const [n, w] of [['Spine2', 0.25], ['Neck', 0.35], ['Head', 0.4]]) { const bn = o.b[n]; if (!bn) continue; bn.getWorldQuaternion(QA); QR.setFromAxisAngle(AXR, -ang * w); QA.premultiply(QR); bn.parent.getWorldQuaternion(QB); bn.quaternion.copy(QB.invert().multiply(QA)); bn.updateMatrixWorld(true); }
 }
 function poseInst(o, look, trunk, bob) {
+  if (o.kup) {   // govde geriye yaslanir (bakis), hortum uc eklemde yukari kivrilir
+    o.root.rotation.set((DERIN ? 0 : -0.3) - look * 0.32, Math.PI, 0, 'YXZ');
+    const a = Math.max(0, trunk) * 0.34; o.segs[0].rotation.x = -a * 0.8 + 0.06; o.segs[1].rotation.x = -a; o.segs[2].rotation.x = -a * 1.1 - 0.28;
+    o.holder.scale.set(1 + bob * 0.05, 1 - bob * 0.06, 1 + bob * 0.05);
+    return;
+  }
   const mean = POFI.mean; for (const n in o.b) { const q = mean[n]; if (q) o.b[n].quaternion.copy(q); }
   o.root.rotation.set(DERIN ? -0.04 : -0.32, Math.PI, 0, 'YXZ');   // dik dur, sirti kameraya
   if (look) pitchUp(o, look);
@@ -574,7 +677,7 @@ function freeTray() { let t = trays.find((q) => q.st === 'stack'); if (!t) t = t
 let paused = false, fx = [], idleT = 0, winShown = false, loseShown = false, shake = 0, combo = 0, lastHit = -9, toastT = 0, VW = 1, VH = 1, DPR = 1;
 const jumps = new Map();   // shooter -> {from, t0, dur, kind}
 const CQ = new URLSearchParams(location.search), cqn = (k, d) => (CQ.has(k) ? +CQ.get(k) : d);
-const CAM = { kd: cqn('kd', 22), kh: cqn('kh', 0.28), kmax: cqn('kmax', 0.6), kfit: cqn('kfit', 1), fov: cqn('fov', 34), fit: cqn('fit', 10.9), tilt: cqn('tilt', 9), fpitch: cqn('fpitch', 64), ffov: cqn('ffov', 30), gap: cqn('gap', 0), ftop: cqn('ftop', 0.16), kpad: cqn('kpad', 0.16), klane: cqn('klane', DERIN ? 0.28 : 0.4), kside: cqn('kside', 1), krail: cqn('krail', 1), kgap: cqn('kgap', 1.2), klw: cqn('klw', 1.25) };
+const CAM = { kd: cqn('kd', 22), kh: cqn('kh', 0.28), kmax: cqn('kmax', 0.6), kfit: cqn('kfit', 1), fov: cqn('fov', 34), fit: cqn('fit', 10.9), tilt: cqn('tilt', 9), fpitch: cqn('fpitch', 64), ffov: cqn('ffov', 30), gap: cqn('gap', 0), ftop: cqn('ftop', 0.16), kpad: cqn('kpad', DERIN ? 0.15 : 0.16), klane: cqn('klane', DERIN ? 0.47 : 0.4), kside: cqn('kside', 1), krail: cqn('krail', 0), kgap: cqn('kgap', 1.2), klw: cqn('klw', 1.25) };
 function projWith(c, vp, v) { const p = v.clone().project(c); return { x: vp.x + (p.x * 0.5 + 0.5) * vp.w, y: vp.y + (-p.y * 0.5 + 0.5) * vp.h, z: p.z }; }
 function project(v) { return projWith(cam, VPB, v); }    // tahta
 function projectF(v) { return projWith(camF, VPF, v); }  // atici alani
@@ -602,7 +705,7 @@ function layout() {
 // normalinde kd kadar geride; kayik bakis cercevesiyle tahta ustte, zemin altta derinlemesine gorunur
 function layoutDeep(sat) {
   Object.assign(VPB, { x: 0, y: 0, w: VW, h: VH }); Object.assign(VPF, VPB);
-  const th = THETA, bh = g ? BH : 12.86, kh = CAM.kh, d = CAM.kd, topY = sat + 44 + 8, s = Math.min(VW / (BW * CAM.kfit), (VH * CAM.kmax - topY) / bh);   // genis ekranda tahta yuksekligi sinirli
+  const th = THETA, bh = g ? BH : 12.86, kh = CAM.kh, d = CAM.kd, topY = sat + 44 + 8, s = Math.min(VW / ((CAM.kfit === 1 ? 2 * (BW / 2 + 0.55) * d / (d - 0.75) : BW * CAM.kfit)), (VH * CAM.kmax - topY) / bh);   // cercevenin dis kenarlari ekran kenarinda   // genis ekranda tahta yuksekligi sinirli
   const P0 = new THREE.Vector3(0, bh * kh * Math.cos(th), -bh * kh * Math.sin(th)), nrm = new THREE.Vector3(0, Math.sin(th), Math.cos(th));
   camF.position.copy(P0).addScaledVector(nrm, d); camF.up.set(0, 1, 0); camF.lookAt(P0); camF.updateMatrixWorld();
   const near = 0.3, k = near / d;
@@ -835,7 +938,7 @@ function placeShooters(dt) {
       poseInst(o, w.look, w.trunk, bob);
       if (w.scale != null) o.holder.scale.multiplyScalar(w.scale);
       if (w.frozen) { if (!o.ice) { o.ice = toFloor(iceBlock()); o.holder.add(o.ice); } o.ice.visible = true; } else if (o.ice) o.ice.visible = false;
-      if (w.drone) { if (!o.dr) { o.dr = toFloor(droneMesh()); o.dr.position.y = 2.15; o.dr.scale.setScalar(0.78); o.holder.add(o.dr); } o.dr.visible = true; spinDrone(o.dr, dt, g.t); } else if (o.dr) o.dr.visible = false;
+      if (w.drone) { if (!o.dr) { o.dr = toFloor(droneMesh()); o.dr.position.y = KUP ? 1.75 : 2.15; o.dr.scale.setScalar(0.78); o.holder.add(o.dr); } o.dr.visible = true; spinDrone(o.dr, dt, g.t); } else if (o.dr) o.dr.visible = false;
     }
     for (const [s, o] of live) if (!want.has(s)) { scene.remove(o.holder); POFI.pool.push(o); live.delete(s); }
   } else for (const [s, w] of want) s._pos = w.pos.clone();
@@ -849,7 +952,7 @@ function syncDrones(dt) {
     let v = droneViews.get(d.s);
     if (!v) {
       const inst = boardPofi(g.pal[d.s.c]), dr = droneMesh(), grp = new THREE.Group();
-      dr.position.y = 1.95; dr.rotation.x = 0.85; grp.add(inst.holder); grp.add(dr); boardG.add(grp);
+      dr.position.y = KUP ? 1.7 : 1.95; dr.rotation.x = 0.85; grp.add(inst.holder); grp.add(dr); boardG.add(grp);
       const sh = new THREE.Mesh(new THREE.CircleGeometry(1, 24), new THREE.MeshBasicMaterial({ map: SHADOWTX, transparent: true, depthWrite: false, opacity: 0.55 })); sh.renderOrder = 4; boardG.add(sh);
       v = { grp, inst, dr, sh, bank: 0, px: null, t: 0, endT: null, fireT: -9, x: d.x, y: d.y }; droneViews.set(d.s, v);
     }
