@@ -193,3 +193,11 @@ Bir hücrede 1–5 küp üst üste durur. Veri: `g.stk[hücre] = [{c: renk, hp: 
 - **Kayıt:** oyun anı kaydına `stk` eklendi (eski kayıtlar aynen açılır). 121–122'nin v3.16'dan kalan yarım oyunu farklı düzende olduğu için açılmaz, bölüm baştan başlar; ana ilerleme, yıldız ve coin kaydı değişmedi.
 - **Geri dönüş:** GitHub'da `yedek/v3.16` dalı v3.16'nın tam kopyasıdır.
 - **Test:** `node tools/tests/katli-test.js http://127.0.0.1:8765/beta/ [--eski http://127.0.0.1:8765/<eski kopya>/]` — renk/kat sırası, mermi denkliği (her adımda), kayıt-geri yükleme, eski biçimli kayıt ve isteğe bağlı olarak 1–1000 bölümün eski sürümle aynı kaldığı.
+
+## Yapı prototipi (v3.18, 3B) — `beta/yapi/`
+Buz prototipinden türetilmiş ayrı küçük oyun; ana oyunun **Mod** menüsünde "Yapı (deneme)". Resim yok: hedef, çizgili bir platformun üstünde duran, iri küplerden kurulmuş bir yapıdır (kule, piramit, kale). Tahta kameraya karşıdan ve hafif geriye yatık (`?kt=10` derece) durur; dünya resimleri (`beta/bg`) arka plandır.
+
+- Kural Buz ile aynı: Pofi bantta sütunun altından geçerken o sütundaki **en alttaki** küpü vurur (rengi tutarsa). Alttaki küp kırılınca takla atarak fırlar, üstündekiler yerçekimiyle bir kat aşağı düşer.
+- Seviyeler `motor.js` içinde `YAPI` tablosu: her seviye bir sütun yükseklik fonksiyonu (`h(c)`), renk sayısı ve adı. 1 İkiz Kuleler, 2 Piramit, 3 Kale Duvarı, 4 Merdiven, 5 Büyük Kale (sonra döner). Renkler 2 katlık bantlar + 2×2 vurgu kümeleri.
+- Kuyruk ve mermi Buz motorundan (`planQueue`); mermi = küp sayısı. Bot: `node -e "const M=require('./beta/yapi/motor.js');console.log(M.botPlay(1,'dikkatli',1))"`.
+- Kayıt ayrı anahtarda (`blokpop_yapi_v1`).

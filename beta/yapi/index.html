@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="theme-color" content="#7a4a22">
+<title>Blokpop Yapı</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{--font:"Fredoka","Baloo 2","Nunito","Arial Rounded MT Bold",system-ui,sans-serif;--sat:env(safe-area-inset-top,0px);--sab:env(safe-area-inset-bottom,0px)}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent;user-select:none;-webkit-user-select:none}
+html,body{margin:0;height:100%;overflow:hidden;background:#3c2412;font-family:var(--font);color:#1b1030;touch-action:none;overscroll-behavior:none}
+#gl,#ov{position:fixed;inset:0;width:100%;height:100%;display:block}#ov{z-index:2}#loading{position:fixed;left:50%;bottom:18%;transform:translateX(-50%);z-index:3;padding:8px 14px;border-radius:12px;background:rgba(0,0,0,.45);color:#fff;font:600 15px/1 var(--font);pointer-events:none}
+#top{position:fixed;left:0;right:0;top:0;margin:0 auto;max-width:520px;padding:calc(var(--sat) + 6px) 8px 0;display:flex;align-items:center;gap:5px;pointer-events:none;z-index:5}
+.ib{pointer-events:auto;flex:none;width:40px;height:40px;border-radius:12px;border:3px solid #3a2208;background:linear-gradient(180deg,#fffaf0,#efe2c8);color:#2b6fd6;font:700 19px/1 var(--font);display:flex;align-items:center;justify-content:center;box-shadow:0 4px 0 #3a2208;cursor:pointer;padding:0;transition:transform .07s,box-shadow .07s}
+.ib.sm{width:30px;font-size:14px}
+.ib.dn,.btn.dn{transform:translateY(3px) scale(.93);box-shadow:0 1px 0 #3a2208}
+#sign{flex:1;min-width:0;height:42px;border-radius:10px;border:3px solid #3a2208;background:linear-gradient(180deg,#d99a5a,#a8642c);box-shadow:0 3px 0 #3a2208,inset 0 2px 0 rgba(255,235,200,.45);position:relative;display:flex;align-items:center;justify-content:center;font:700 19px/1 var(--font);color:#fff;text-shadow:0 2px 0 #4a2a0e,0 0 3px #4a2a0e;overflow:hidden}
+#sign i{position:absolute;left:6px;right:6px;bottom:4px;height:4px;border-radius:3px;background:rgba(60,30,8,.45)}
+#sign i b{display:block;height:100%;width:0;border-radius:3px;background:#9ff0ff;transition:width .25s}
+#sign:before{content:"";position:absolute;left:-2px;right:-2px;top:-3px;height:9px;background:radial-gradient(circle at 10% 100%,#fff 0 6px,transparent 7px),radial-gradient(circle at 35% 100%,#fff 0 5px,transparent 6px),radial-gradient(circle at 62% 100%,#fff 0 6px,transparent 7px),radial-gradient(circle at 88% 100%,#fff 0 5px,transparent 6px),linear-gradient(#fff,#fff) top/100% 4px no-repeat;opacity:.95}
+#goal{flex:none;width:40px;height:40px;border-radius:11px;border:3px solid #3a2208;background:#cfe9ff;box-shadow:0 3px 0 #3a2208}
+.modal{position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:rgba(20,10,4,.6);z-index:20;padding:20px}
+.modal.on{display:flex}
+.card{width:100%;max-width:360px;background:#fff6e4;border:4px solid #3a2208;border-radius:24px;box-shadow:0 6px 0 #3a2208,0 18px 30px rgba(0,0,0,.4);padding:18px 18px 16px;text-align:center;animation:pop .28s cubic-bezier(.2,1.6,.4,1)}
+@keyframes pop{from{transform:scale(.7);opacity:0}to{transform:scale(1);opacity:1}}
+.card h2{margin:2px 0 8px;font:700 25px/1.1 var(--font)}
+.card p{margin:6px 0 12px;font:500 17px/1.35 var(--font)}
+.card canvas{display:block;margin:4px auto 10px;border-radius:14px;border:3px solid #3a2208}
+.btn{display:flex;align-items:center;justify-content:center;width:100%;height:54px;margin-top:10px;border:3px solid #3a2208;border-radius:17px;background:linear-gradient(180deg,rgba(255,255,255,.35),rgba(255,255,255,0) 55%),var(--c,#3d9bff);color:#fff;font:700 21px/1 var(--font);text-shadow:0 2px 0 rgba(0,0,0,.28);box-shadow:0 5px 0 #3a2208;cursor:pointer;transition:transform .07s,box-shadow .07s}
+.btn.g{--c:#43c94f}.btn.o{--c:#ff8c2e}.btn.w{--c:#fff;color:#2a1606;text-shadow:none;height:46px;font-size:18px}
+.tag{display:inline-block;margin-bottom:6px;padding:3px 12px;border-radius:99px;border:2.5px solid #3a2208;background:#3d9bff;color:#fff;font:700 14px/1.2 var(--font);text-shadow:0 1px 0 rgba(0,0,0,.3)}
+.row{display:flex;gap:6px;margin:6px 0 4px}.row .btn{height:44px;font-size:16px;margin-top:0;--c:#fff;color:#2a1606;text-shadow:none}.row .btn.on{--c:#ffc93d}
+.lbl{font:700 16px/1 var(--font);text-align:left;margin-top:12px}
+.note{font:500 13px/1.3 var(--font);color:#7a5a3a;margin-top:6px}
+#toast{position:fixed;left:50%;top:44%;transform:translate(-50%,-50%);padding:8px 16px;border-radius:14px;border:3px solid #3a2208;background:#fff6e4;font:700 18px/1 var(--font);opacity:0;transition:opacity .2s;pointer-events:none;z-index:15}
+#toast.on{opacity:1}
+</style>
+</head>
+<body>
+<canvas id="gl"></canvas>
+<canvas id="ov"></canvas>
+<div id="loading">Pofi yükleniyor…</div>
+<div id="top">
+  <button class="ib" id="bHome" aria-label="Ana oyun">⌂</button>
+  <button class="ib sm" id="bPrev" aria-label="Önceki seviye">◀</button>
+  <div id="sign"><span id="signT">Yapı 1</span><i><b id="signP"></b></i></div>
+  <button class="ib sm" id="bNext" aria-label="Sonraki seviye">▶</button>
+  <canvas id="goal" width="80" height="80" aria-label="Hedef resim"></canvas>
+  <button class="ib" id="bRe" aria-label="Yeniden başla">↻</button>
+  <button class="ib" id="bSet" aria-label="Ayarlar">⚙</button>
+</div>
+<div class="modal" id="modal"><div class="card" id="card"></div></div>
+<div id="toast"></div>
+<script src="motor.js?v=1"></script>
+<script type="module" src="oyun3d.js?v=1"></script>
+</body>
+</html>
