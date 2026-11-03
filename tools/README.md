@@ -194,10 +194,13 @@ Bir hücrede 1–5 küp üst üste durur. Veri: `g.stk[hücre] = [{c: renk, hp: 
 - **Geri dönüş:** GitHub'da `yedek/v3.16` dalı v3.16'nın tam kopyasıdır.
 - **Test:** `node tools/tests/katli-test.js http://127.0.0.1:8765/beta/ [--eski http://127.0.0.1:8765/<eski kopya>/]` — renk/kat sırası, mermi denkliği (her adımda), kayıt-geri yükleme, eski biçimli kayıt ve isteğe bağlı olarak 1–1000 bölümün eski sürümle aynı kaldığı.
 
-## Yapı prototipi (v3.18, 3B) — `beta/yapi/`
-Buz prototipinden türetilmiş ayrı küçük oyun; ana oyunun **Mod** menüsünde "Yapı (deneme)". Resim yok: hedef, çizgili bir platformun üstünde duran, iri küplerden kurulmuş bir yapıdır (kule, piramit, kale). Tahta kameraya karşıdan ve hafif geriye yatık (`?kt=10` derece) durur; dünya resimleri (`beta/bg`) arka plandır.
+## Yapı prototipi v2 (3B, sıfırdan) — `beta/yapi/`
+Ana oyunun **Mod** menüsünde "Yapı (deneme)". Ayrı küçük oyun, three.js ile gerçek 3B; resim yok.
 
-- Kural Buz ile aynı: Pofi bantta sütunun altından geçerken o sütundaki **en alttaki** küpü vurur (rengi tutarsa). Alttaki küp kırılınca takla atarak fırlar, üstündekiler yerçekimiyle bir kat aşağı düşer.
-- Seviyeler `motor.js` içinde `YAPI` tablosu: her seviye bir sütun yükseklik fonksiyonu (`h(c)`), renk sayısı ve adı. 1 İkiz Kuleler, 2 Piramit, 3 Kale Duvarı, 4 Merdiven, 5 Büyük Kale (sonra döner). Renkler 2 katlık bantlar + 2×2 vurgu kümeleri.
-- Kuyruk ve mermi Buz motorundan (`planQueue`); mermi = küp sayısı. Bot: `node -e "const M=require('./beta/yapi/motor.js');console.log(M.botPlay(1,'dikkatli',1))"`.
-- Kayıt ayrı anahtarda (`blokpop_yapi_v1`).
+- **Saha:** düz çimen zeminin ortasında alçak bir platform (kenarı kırmızı-beyaz çizgili); platformun üstünde F×F hücrede üst üste dizilmiş iri kasalar (her hücre bir yığın, 1–8 kat). Etrafında kare asfalt yol ve oklar, ön sol köşede giriş kapısı. Uzakta dünya resmi (`beta/bg`) ufuk manzarası, gökyüzü geçişi ve sis. Kamera önden, alçak açıdan bakar (`?ang=16` derece).
+- **Kural:** Pofi yolda saat yönünde bir tur atar. Bir şeridin hizasından geçerken o şeritte **dışarıdan ilk dolu yığına** bakar; yığının **en alttaki** kasası kendi rengindeyse atış yapar. Kasa takla atarak dışarı fırlar, üstündekiler bir kat düşer. Turu biten ve mermisi kalan Pofi bekleme yerine iner; yer kalmazsa oyun biter (+1 yer ile devam). Yolda en fazla 4 Pofi.
+- **Seviyeler** (`motor.js` → `LEVELS`, her biri bir yükseklik fonksiyonu `h(r,c)`): 1 İkiz Kuleler, 2 Piramit, 3 Kale, 4 Merdiven, 5 Büyük Kale (sonra döner). Renk: 2 katlık bantlar, bölgeye göre kayma, %18 rastgele vurgu.
+- **Kuyruk:** soyma benzetimi (`planQueue`): o an en çok açıkta olan rengin Pofi'si sıraya girer ve benzetimde kendi küplerini kırar. Mermi = kasa sayısı.
+- **Bot:** `node -e "const M=require('./beta/yapi/motor.js');console.log(M.botPlay(1,'dikkatli',1))"` — dikkatli oyuncu 5 seviyenin hepsini 10/10 kazanıyor, rastgele dokunan 0/10.
+- **Test görüntüsü:** `?test=1&sv=<seviye>` döngüyü durdurur; `YP.run(sn, true)` zamanı botla ilerletir.
+- Kayıt ayrı anahtarda (`blokpop_yapi_v2`). Pofi modeli Buz prototipindeki küp Pofi'nin kopyası.
