@@ -204,3 +204,6 @@ Ana oyunun **Mod** menüsünde "Yapı (deneme)". Ayrı küçük oyun, three.js i
 - **Bot:** `node -e "const M=require('./beta/yapi/motor.js');console.log(M.botPlay(1,'dikkatli',1))"` — dikkatli oyuncu 5 seviyenin hepsini 10/10 kazanıyor, rastgele dokunan 0/10.
 - **Test görüntüsü:** `?test=1&sv=<seviye>` döngüyü durdurur; `YP.run(sn, true)` zamanı botla ilerletir.
 - Kayıt ayrı anahtarda (`blokpop_yapi_v2`). Pofi modeli Buz prototipindeki küp Pofi'nin kopyası.
+- **Sahne görseli (v2.1):** Adem'in çizdirdiği çöl harabesi sahnesi `beta/yapi/sahne.webp` (üstteki boyalı çubuk silindi, alttaki arayüz kesildi). Resim ekrana genişliğe göre, üst kenara dayalı yerleşir; `solveCam` kamerayı resimdeki cam platformun dört köşesine oturtur (`IMG.glass` piksel koordinatları), bant konumu aynı kameradan zemine ışınla bulunur (`IMG.belt`). 3B'de sadece kasalar, Pofi'ler, atışlar ve gölgeler (`ShadowMaterial`) çizilir. Başka sahne resmi eklenirse sadece `IMG` koordinatları ölçülür.
+- **Kasa:** Adem'in metal-dişli küp görseli `kup_yuz.webp` (yeşil ve mavi taşmalar temizlendi, ortadaki rakam silindi). Her renk için bir doku: metal kupun rengine boyanır, ortadaki çekirdek renkli parlar (`kupMat`). Renk başına ayrı `InstancedMesh`.
+- **Alt panel:** kuyruk kartları boyalı parşömen (`kart.webp`, rozet bölgesi temizlendi), bekleme yerleri yarı saydam taş kutular.

@@ -1,4 +1,5 @@
-// BLOKPOP Yapi v2 (prototip) - 3B gorunum. Duz zemin, ortada platform ustunde ust uste kupler, etrafinda kare yol.
+// BLOKPOP Yapi v2 (prototip) - 3B gorunum. Sahne Adem'in cizdirdigi gorsel (sahne.webp: col harabeleri, cam platform, etrafinda bant);
+// 3B kasalar ve Pofi'ler bu resmin ustune, kamerasi resimdeki platforma oturacak sekilde cizilir (fit -> solveCam).
 // Kurallar motor.js'te (window.YPM); burasi cizim ve dokunma.
 import * as THREE from '../three.module.min.js';
 const YPM = window.YPM;
@@ -10,27 +11,22 @@ let SV = { L: 1, max: 1, mute: false };
 try { const d = JSON.parse(localStorage.getItem(SKEY) || 'null'); if (d) SV = Object.assign(SV, d); } catch (e) {}
 const save = () => { try { localStorage.setItem(SKEY, JSON.stringify(SV)); } catch (e) {} };
 const glc = $('gl');
-const ren = new THREE.WebGLRenderer({ canvas: glc, antialias: true, preserveDrawingBuffer: TEST });
-ren.outputColorSpace = THREE.SRGBColorSpace; ren.toneMapping = THREE.ACESFilmicToneMapping; ren.toneMappingExposure = 1.0;
+const ren = new THREE.WebGLRenderer({ canvas: glc, antialias: true, alpha: true, preserveDrawingBuffer: TEST }); ren.setClearColor(0x000000, 0);
+ren.outputColorSpace = THREE.SRGBColorSpace; ren.toneMapping = THREE.ACESFilmicToneMapping; ren.toneMappingExposure = 1.2;
 ren.shadowMap.enabled = true; ren.shadowMap.type = THREE.PCFSoftShadowMap;
 const scene = new THREE.Scene();
 const cam = new THREE.PerspectiveCamera(40, 1, 0.3, 400);
-// gok: dikey gecis + uzak dunya resmi (kartpostal gibi)
-scene.background = canvasTex(4, 256, (x, w, h) => { const gr = x.createLinearGradient(0, 0, 0, h); gr.addColorStop(0, '#5fb8ff'); gr.addColorStop(0.55, '#bfe6ff'); gr.addColorStop(1, '#fff3d6'); x.fillStyle = gr; x.fillRect(0, 0, w, h); });
-scene.fog = new THREE.Fog('#d8efff', 60, 160);
-{ const h = new THREE.HemisphereLight(0xeaf6ff, 0x6a8a3a, 0.75); scene.add(h); }
-const sun = new THREE.DirectionalLight(0xfff0d6, 2.3); sun.position.set(-8, 16, 10); sun.castShadow = true;
+{ const h = new THREE.HemisphereLight(0xfff1d8, 0x8a6a48, 1.3); scene.add(h); }
+const sun = new THREE.DirectionalLight(0xffe0b0, 2.4); sun.position.set(-9, 16, 8); sun.castShadow = true;
 sun.shadow.mapSize.set(1024, 1024); Object.assign(sun.shadow.camera, { left: -12, right: 12, top: 12, bottom: -12, near: 2, far: 50 }); sun.shadow.bias = -0.0006; sun.shadow.normalBias = 0.02;
 scene.add(sun); scene.add(sun.target);
 const fill = new THREE.DirectionalLight(0xdfeaff, 0.5); fill.position.set(8, 6, 12); scene.add(fill);
 function canvasTex(w, h, draw, rep) { const c = document.createElement('canvas'); c.width = w; c.height = h; draw(c.getContext('2d'), w, h); const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 4; if (rep) { t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(rep[0], rep[1]); } return t; }
 
-// duz zemin (cimen), uzak manzara
-const GRASS = canvasTex(256, 256, (x, w, h) => { x.fillStyle = '#7ccf4a'; x.fillRect(0, 0, w, h); for (let i = 0; i < 900; i++) { x.fillStyle = Math.random() < 0.5 ? 'rgba(255,255,255,.07)' : 'rgba(30,90,10,.08)'; const s = 2 + Math.random() * 6; x.fillRect(Math.random() * w, Math.random() * h, s, s * 0.5); } }, [120, 120]);
-const ground = new THREE.Mesh(new THREE.PlaneGeometry(600, 600), new THREE.MeshStandardMaterial({ map: GRASS, roughness: 0.95 }));
-ground.rotation.x = -Math.PI / 2; ground.receiveShadow = true; scene.add(ground);
-const farImg = new Image(), farTex = new THREE.Texture(farImg); farTex.colorSpace = THREE.SRGBColorSpace; farTex.repeat.set(1, 0.314); farTex.offset.set(0, 0.5); farImg.onload = () => { farTex.needsUpdate = true; };
-const far = new THREE.Mesh(new THREE.PlaneGeometry(260, 146), new THREE.MeshBasicMaterial({ map: farTex, fog: false, toneMapped: false })); far.position.set(0, 40, -150); scene.add(far);
+// gorsel sahnede platformun ve bandin yeri (sahne.webp piksel koordinati, 1190 genislik)
+const IMG = { w: 1190, h: 2000, glass: { ty: 1120, tl: 290, tr: 905, by: 1395, bl: 205, br: 995 }, belt: { f: 1462, b: 1101, l: 138, r: 1058, my: 1250 } };
+// golge yakalayicilar: cam platformun ve bandin ustune dusen golgeler (resim zaten boyali, sadece golge cizilir)
+const SHMAT = new THREE.ShadowMaterial({ opacity: 0.32 });
 
 // ---------------- malzemeler ----------------
 function crateDraw(x, w, h) { x.fillStyle = '#f4f4f4'; x.fillRect(0, 0, w, h); const b = w * 0.1;
@@ -50,13 +46,34 @@ const MAT = {
   road: new THREE.MeshStandardMaterial({ color: '#4a4f5c', roughness: 0.85 }),
   curb: new THREE.MeshStandardMaterial({ color: '#ffd23f', roughness: 0.6 })
 };
-function roundedCube(s) { return roundBox(s, s, s, s * 0.14, 3); }
+function roundedCube(s) { return roundBox(s, s, s, s * 0.06, 2); }
+// kasa: Adem'in metal-disli kup gorseli (kup_yuz.webp, ortadaki rakam silindi); ortadaki cekirdek kupun renginde parlar
+const CORE = { x: 0.4961, y: 0.5181, r: 0.2079 };
+const FACE = new Image(); let faceOk = false; const KMAT = {};
+const GLOWMASK = canvasTex(256, 256, (x, w, h) => { x.fillStyle = '#000'; x.fillRect(0, 0, w, h); const gr = x.createRadialGradient(CORE.x * w, CORE.y * h, 0, CORE.x * w, CORE.y * h, CORE.r * w * 1.02); gr.addColorStop(0, '#fff'); gr.addColorStop(0.75, '#d0d0d0'); gr.addColorStop(1, '#000'); x.fillStyle = gr; x.fillRect(0, 0, w, h); });
+function kupMat(col) {
+  if (KMAT[col] && (KMAT[col].ok || !faceOk)) return KMAT[col].m;
+  const t = canvasTex(256, 256, (x, w, h) => {
+    if (faceOk) x.drawImage(FACE, 0, 0, w, h); else { x.fillStyle = '#8a8478'; x.fillRect(0, 0, w, h); }
+    // metali kupun rengine boya (golge ve dokular kalir), koselerdeki celik daha az boyansin
+    x.save(); x.globalCompositeOperation = 'color'; x.globalAlpha = 0.78; x.fillStyle = col; x.fillRect(0, 0, w, h); x.restore();
+    x.save(); x.globalCompositeOperation = 'soft-light'; x.globalAlpha = 0.5; x.fillStyle = col; x.fillRect(0, 0, w, h); x.restore();
+    const cx = CORE.x * w, cy = CORE.y * h, R = CORE.r * w, c = new THREE.Color(col), hi = '#' + c.clone().lerp(new THREE.Color('#ffffff'), 0.55).getHexString();
+    const gr = x.createRadialGradient(cx - R * 0.25, cy - R * 0.3, R * 0.05, cx, cy, R * 0.98); gr.addColorStop(0, '#ffffff'); gr.addColorStop(0.2, hi); gr.addColorStop(0.75, col); gr.addColorStop(1, '#' + c.clone().multiplyScalar(0.45).getHexString());
+    x.fillStyle = gr; x.beginPath(); x.arc(cx, cy, R * 0.98, 0, 6.283); x.fill();
+    x.lineWidth = w * 0.012; x.strokeStyle = 'rgba(255,255,255,.55)'; x.beginPath(); x.arc(cx, cy, R * 0.82, 3.6, 5.2); x.stroke();
+  });
+  const m = new THREE.MeshStandardMaterial({ map: t, roughness: 0.6, metalness: 0, emissive: col, emissiveMap: GLOWMASK, emissiveIntensity: 0.8 });
+  KMAT[col] = { m, ok: faceOk }; return m;
+}
+FACE.onload = () => { faceOk = true; if (g) { for (const k in KMAT) delete KMAT[k]; buildCubeMeshes(); dirty = true; } }; FACE.src = 'kup_yuz.webp?v=1';
 
 // ---------------- oyun durumu ----------------
 let g = null, LV = 1, F = 6;
 const world = new THREE.Group(); scene.add(world);
-let cubeMesh = null, platG = null, trackG = null;
-const S = 1, PLAT_H = 0.5;
+let cubeMeshes = [], platG = null, trackG = null;
+const S = 1, PLAT_H = 0.42;
+let VB = { hx: 5, zf: 5, zb: -5 };   // bandin gorsel yeri (dunya): yarim genislik, on ve arka z
 const DEB = [], SHOTS = new Map(), FALL = {};   // dusme: hucre -> {off, v}
 const pofis = new Map();
 const _m = new THREE.Matrix4(), _q = new THREE.Quaternion(), _v = new THREE.Vector3(), _s = new THREE.Vector3(), _c = new THREE.Color();
@@ -64,57 +81,44 @@ const cellXZ = (i) => ({ x: (i % F) - F / 2 + 0.5, z: Math.floor(i / F) - F / 2 
 const cubeY = (k) => PLAT_H + (k + 0.5) * S;
 
 function buildLevel() {
-  [cubeMesh, platG, trackG].forEach((o) => { if (o) world.remove(o); });
+  [platG, trackG].forEach((o) => { if (o) world.remove(o); });
   DEB.forEach((d) => world.remove(d.m)); DEB.length = 0; for (const [, o] of SHOTS) world.remove(o.m); SHOTS.clear();
   for (const [, p] of pofis) world.remove(p.holder); pofis.clear();
   for (const k in FALL) delete FALL[k];
   F = g.F;
-  farImg.src = '../bg/w' + ('0' + (((LV + 3) % 20) + 1)).slice(-2) + '.webp';
-  // platform: duz zemine oturan alcak kaide
   platG = new THREE.Group();
-  const pw = F + 0.5, top = new THREE.Mesh(new THREE.BoxGeometry(pw, PLAT_H, pw), [MAT.side, MAT.side, MAT.plat, MAT.plat, MAT.side, MAT.side]);
-  top.position.y = PLAT_H / 2; top.castShadow = true; top.receiveShadow = true; platG.add(top);
-  world.add(platG);
-  // yol: platformun etrafinda kare serit, sari kenar cizgisi ve oklar
-  trackG = new THREE.Group(); const h = F / 2 + YPM.M, W = 0.9;
-  const road = new THREE.Shape(); const o = h + W / 2, i0 = h - W / 2;
-  road.moveTo(-o, -o); road.lineTo(o, -o); road.lineTo(o, o); road.lineTo(-o, o); road.lineTo(-o, -o);
-  const hole = new THREE.Path(); hole.moveTo(-i0, -i0); hole.lineTo(-i0, i0); hole.lineTo(i0, i0); hole.lineTo(i0, -i0); hole.lineTo(-i0, -i0); road.holes.push(hole);
-  const rm = new THREE.Mesh(new THREE.ShapeGeometry(road), MAT.road); rm.rotation.x = -Math.PI / 2; rm.position.y = 0.02; rm.receiveShadow = true; trackG.add(rm);
-  const arrowG = new THREE.ShapeGeometry((() => { const a = new THREE.Shape(); a.moveTo(-0.14, -0.12); a.lineTo(0.12, 0); a.lineTo(-0.14, 0.12); a.lineTo(-0.06, 0); a.lineTo(-0.14, -0.12); return a; })());
-  const am = new THREE.MeshBasicMaterial({ color: '#ffffff', transparent: true, opacity: 0.55 });
-  for (let d = 0.5; d < g.LAP; d += 1.0) { const p = YPM.trackPos(g, d), m = new THREE.Mesh(arrowG, am); m.rotation.x = -Math.PI / 2; m.rotation.z = -[0, Math.PI / 2, Math.PI, -Math.PI / 2][p.side]; m.position.set(p.x, 0.03, p.z); trackG.add(m); }
-  // giris kapisi (Pofi'ler buradan yola cikar)
-  const gate = new THREE.Mesh(new THREE.TorusGeometry(0.62, 0.09, 10, 24, Math.PI), MAT.curb); const p0 = YPM.trackPos(g, 0.01); gate.position.set(p0.x, 0, p0.z); gate.castShadow = true; trackG.add(gate);
-  world.add(trackG);
-  // kupler: her hucrede en fazla 8 kat -> instanced
-  const n = F * F * 8;
-  cubeMesh = new THREE.InstancedMesh(roundedCube(S * 0.96), MAT.crate, n); cubeMesh.castShadow = true; cubeMesh.receiveShadow = true;
-  cubeMesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage); for (let k = 0; k < n; k++) cubeMesh.setColorAt(k, _c.set('#ffffff'));
-  world.add(cubeMesh);
+  const sg = new THREE.Mesh(new THREE.PlaneGeometry(F + 0.3, F + 0.3), SHMAT); sg.rotation.x = -Math.PI / 2; sg.position.y = PLAT_H + 0.005; sg.receiveShadow = true; platG.add(sg);
+  const gg = new THREE.Mesh(new THREE.PlaneGeometry(80, 80), SHMAT); gg.rotation.x = -Math.PI / 2; gg.position.y = 0; gg.receiveShadow = true; platG.add(gg);
+  world.add(platG); trackG = null;
+  buildCubeMeshes();
   fit(); dirty = true;
+}
+function buildCubeMeshes() {
+  cubeMeshes.forEach((m) => world.remove(m)); cubeMeshes = [];
+  const cnt = g.pal.map(() => 0); g.cells.forEach((x) => x.st.forEach((v) => cnt[v]++));
+  const geo = roundedCube(S * 0.97);
+  g.pal.forEach((col, c) => { const m = new THREE.InstancedMesh(geo, kupMat(col), Math.max(1, cnt[c])); m.castShadow = true; m.receiveShadow = true; m.instanceMatrix.setUsage(THREE.DynamicDrawUsage); cubeMeshes.push(m); world.add(m); });
 }
 let dirty = true;
 function updateCubes(dt) {
-  let k = 0, moving = false;
+  const kc = g.pal.map(() => 0); let moving = false;
   for (let i = 0; i < F * F; i++) {
     const x = g.cells[i], p = cellXZ(i), f = FALL[i];
     let off = 0; if (f) { f.v += 22 * dt; f.off = Math.max(0, f.off - f.v * dt); off = f.off; if (f.off <= 0) delete FALL[i]; else moving = true; }
     for (let y = 0; y < x.st.length && y < 8; y++) {
       const claimed = y < x.pend, bob = claimed ? 0.96 : 1;
-      _v.set(p.x, cubeY(y) + off, p.z); _s.setScalar(bob); _m.compose(_v, _q.identity(), _s); cubeMesh.setMatrixAt(k, _m);
-      _c.set(g.pal[x.st[y]]); if (y === x.pend) _c.multiplyScalar(1.08); cubeMesh.setColorAt(k, _c); k++;
+      const c = x.st[y], M = cubeMeshes[c]; if (!M || kc[c] >= M.count) continue;
+      _v.set(p.x, cubeY(y) + off, p.z); _s.setScalar(bob); _m.compose(_v, _q.identity(), _s); M.setMatrixAt(kc[c]++, _m);
     }
   }
-  for (; k < cubeMesh.count; k++) { _s.setScalar(0); _m.compose(_v.set(0, -5, 0), _q, _s); cubeMesh.setMatrixAt(k, _m); }
-  cubeMesh.instanceMatrix.needsUpdate = true; if (cubeMesh.instanceColor) cubeMesh.instanceColor.needsUpdate = true;
+  cubeMeshes.forEach((M, c) => { for (let k = kc[c]; k < M.count; k++) { _s.setScalar(0); _m.compose(_v.set(0, -5, 0), _q.identity(), _s); M.setMatrixAt(k, _m); } M.instanceMatrix.needsUpdate = true; });
   for (let n = DEB.length - 1; n >= 0; n--) { const d = DEB[n]; d.t += dt; d.v.y -= 20 * dt; d.m.position.addScaledVector(d.v, dt); d.m.rotation.x += d.w.x * dt; d.m.rotation.z += d.w.z * dt;
-    if (d.m.position.y < 0.5) { d.m.position.y = 0.5; d.v.y = Math.abs(d.v.y) * 0.35; d.v.x *= 0.7; d.v.z *= 0.7; }
+    const fl = Math.abs(d.m.position.x) < F / 2 && Math.abs(d.m.position.z) < F / 2 ? PLAT_H + 0.48 : 0.48; if (d.m.position.y < fl && d.v.y < 0) { d.m.position.y = fl; d.v.y = Math.abs(d.v.y) * 0.35; d.v.x *= 0.7; d.v.z *= 0.7; }
     const f = d.t > 1.1 ? Math.max(0, 1 - (d.t - 1.1) / 0.4) : 1; d.m.scale.setScalar(f); if (d.t > 1.5) { world.remove(d.m); DEB.splice(n, 1); } else moving = true; }
   dirty = moving;
 }
 function crateDebris(i, col) {
-  const p = cellXZ(i), m = new THREE.Mesh(roundedCube(S * 0.96), new THREE.MeshStandardMaterial({ map: CRATETX, color: g.pal[col], roughness: 0.45 }));
+  const p = cellXZ(i), m = new THREE.Mesh(roundedCube(S * 0.97), kupMat(g.pal[col]));
   m.position.set(p.x, cubeY(0), p.z); m.castShadow = true; world.add(m);
   // disari dogru (atisin geldigi yone) firlar
   const dx = p.x === 0 ? 1 : Math.sign(p.x), dz = p.z === 0 ? 1 : Math.sign(p.z), sd = Math.random() < 0.5 ? -1 : 1;
@@ -212,7 +216,7 @@ function pofiMesh(col) { const o = kupPofi(); kupColor(o, col); o.holder.scale.s
 function pofiFor(s) { let p = pofis.get(s); if (!p) { p = pofiMesh(g.pal[s.c]); pofis.set(s, p); world.add(p.holder); } return p; }
 function updatePofis(dt) {
   for (const s of g.belt) {
-    const p = pofiFor(s), tp = YPM.trackPos(g, s.d), ent = Math.min(1, s.d / 0.8);
+    const p = pofiFor(s), tp = vpos(s.d), ent = Math.min(1, s.d / 0.8);
     p.holder.position.set(tp.x, Math.abs(Math.sin(g.t * 12 + s.id)) * 0.08, tp.z);
     p.holder.rotation.y = [Math.PI, Math.PI / 2, 0, -Math.PI / 2][tp.side];   // yuzu platforma donuk
     p.holder.scale.setScalar(0.85 * (0.4 + 0.6 * ent));
@@ -226,7 +230,7 @@ function updatePofis(dt) {
 const SHOT_GEO = new THREE.SphereGeometry(0.14, 12, 10);
 function updateShots() {
   for (const sh of g.shots) {
-    let o = SHOTS.get(sh); if (!o) { const p = YPM.trackPos(g, sh.s.d); o = { m: new THREE.Mesh(SHOT_GEO, new THREE.MeshBasicMaterial({ color: g.pal[sh.c] })), from: new THREE.Vector3(p.x, 0.75, p.z) }; SHOTS.set(sh, o); world.add(o.m); }
+    let o = SHOTS.get(sh); if (!o) { const p = vpos(sh.s.d); o = { m: new THREE.Mesh(SHOT_GEO, new THREE.MeshBasicMaterial({ color: g.pal[sh.c] })), from: new THREE.Vector3(p.x, 0.75, p.z) }; SHOTS.set(sh, o); world.add(o.m); }
     const q = cellXZ(sh.i), k = Math.min(1, sh.t / 0.2), to = new THREE.Vector3(q.x, cubeY(0), q.z);
     o.m.position.lerpVectors(o.from, to, k); o.m.position.y += Math.sin(k * Math.PI) * 0.6; o.seen = 1;
   }
@@ -234,16 +238,34 @@ function updateShots() {
 }
 
 // ---------------- kamera ----------------
+// sahne resmi ekranda: genislige gore olcekli, ust kenara dayali; cam platformun dort kosesi resimdeki yerine gelecek sekilde
+// kamera (yukseklik, uzaklik, egim, gorus acisi) sayisal olarak cozulur. Bant (zemin y=0) ayni kameradan geri hesaplanir.
+let IS = 1, IX = 0;
+function solveCam(W, H) {
+  const G = IMG.glass, a = F / 2, tgt = [[IX + G.tl * IS, G.ty * IS], [IX + G.tr * IS, G.ty * IS], [IX + G.bl * IS, G.by * IS], [IX + G.br * IS, G.by * IS]];
+  const pts = [new THREE.Vector3(-a, PLAT_H, -a), new THREE.Vector3(a, PLAT_H, -a), new THREE.Vector3(-a, PLAT_H, a), new THREE.Vector3(a, PLAT_H, a)];
+  const P = [14, 14, 0.75, 34], step = [3, 3, 0.15, 6], v = new THREE.Vector3();
+  const apply = (q) => { cam.fov = q[3]; cam.position.set(0, q[0], q[1]); cam.rotation.set(-q[2], 0, 0); cam.updateProjectionMatrix(); cam.updateMatrixWorld(); };
+  const err = (q) => { if (q[3] < 8 || q[3] > 80 || q[1] < 1) return 1e12; apply(q); let e = 0; for (let k = 0; k < 4; k++) { v.copy(pts[k]).project(cam); const x = (v.x * 0.5 + 0.5) * W, y = (-v.y * 0.5 + 0.5) * H; e += (x - tgt[k][0]) ** 2 + (y - tgt[k][1]) ** 2; } return e; };
+  let best = err(P);
+  for (let it = 0; it < 60; it++) { let imp = false;
+    for (let k = 0; k < 4; k++) for (const sg of [1, -1]) { const q = P.slice(); q[k] += sg * step[k]; const e = err(q); if (e < best) { best = e; P[k] = q[k]; imp = true; } }
+    if (!imp) { for (let k = 0; k < 4; k++) step[k] *= 0.5; if (step[3] < 1e-3) break; } }
+  apply(P);
+  // bandin orta cizgisi: resim noktasindan zemine (y=0) isin
+  const rc = new THREE.Raycaster(), pl = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0), hit = new THREE.Vector3();
+  const ground = (px, py) => { rc.setFromCamera(new THREE.Vector2(((IX + px * IS) / W) * 2 - 1, -((py * IS) / H) * 2 + 1), cam); return rc.ray.intersectPlane(pl, hit) ? hit.clone() : null; };
+  const B = IMG.belt, f = ground(600, B.f), b = ground(600, B.b), l = ground(B.l, B.my), r = ground(B.r, B.my);
+  VB = { hx: l && r ? (r.x - l.x) / 2 : a + 1.2, zf: f ? f.z : a + 1.2, zb: b ? b.z : -a - 1.2 };
+  return Math.sqrt(best / 4);
+}
+// motor yolundaki konum -> resimdeki banda oturan dunya konumu
+function vpos(d) { const p = YPM.trackPos(g, d), h = F / 2 + YPM.M; return { x: p.x / h * VB.hx, z: VB.zb + (p.z + h) / (2 * h) * (VB.zf - VB.zb), side: p.side }; }
 function fit() {
   const W = innerWidth, H = innerHeight; ren.setPixelRatio(Math.min(2, devicePixelRatio || 1)); ren.setSize(W, H, false);
-  cam.aspect = W / H;
-  const h = F / 2 + YPM.M + 0.6, ang = (+Q.get('ang') || 16) * Math.PI / 180;   // yolun disi ekrana sigsin
-  const vf = cam.fov * Math.PI / 180, hf = 2 * Math.atan(Math.tan(vf / 2) * cam.aspect);
-  const dist = h * 1.02 / Math.tan(hf / 2) + h;
-  const cy = 2.2;
-  cam.position.set(0, cy + Math.sin(ang) * dist, Math.cos(ang) * dist); cam.lookAt(0, cy, 0);
-  // alt panel icin sahneyi biraz yukari al
-  cam.setViewOffset(W, H, 0, H * 0.05, W, H); cam.updateProjectionMatrix();
+  cam.aspect = W / H; IS = Math.min(W / IMG.w, (H - 150) / 1700); IX = (W - IMG.w * IS) / 2;
+  const bg = $('bg'); if (bg) { bg.style.width = IMG.w * IS + 'px'; bg.style.height = IMG.h * IS + 'px'; bg.style.left = IX + 'px'; }
+  if (g) cam.err = solveCam(W, H);
 }
 addEventListener('resize', () => { fit(); });
 
