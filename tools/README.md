@@ -182,3 +182,14 @@ node tools/gorev-ayar.js tools/out/gorev/levels-ham.json                        
 Bot artık görev kartını kendisi geçer, ana görev bitince Pofi'nin kalan resmi toplamasını bekler. `--url` sayfa adresine parametre ekler, `--ham` ham sonuçları `levels-ham.json` olarak yazar.
 
 Bandın hiç geçmediği şeritler (bandın bitiş noktasından girişe kadar olan sol alt kısım) artık "açık" sayılmaz (`laneOk`): bot ve son tur uzatması ulaşılamayan küpü hedef sanıp takılmıyordu.
+
+## Katlı küp (v3.17, Faz 1 — sadece bölüm 121 ve 122)
+Bir hücrede 1–5 küp üst üste durur. Veri: `g.stk[hücre] = [{c: renk, hp: dayanıklılık}, …]` (ilk eleman en üstteki kat; rengi `g.grid` ile aynı). Kod: `beta/index.html` içinde `v3.17 KATLI KUP` bloğu.
+
+- **Vuruş:** Pofi sadece en üst katın rengindeyse vurur (mevcut renk kuralı, `g.grid` hep üst katın rengidir). Her isabet üst katın dayanıklılığından 1 düşer; kat bitince alttaki kat üste çıkar ve hücrenin rengi değişir. Hücre son kat gidene kadar dolu kalır, atış hattı kapalıdır. Sandık patlaması her hücreden bir kat alır; mıknatıs katlı hücreyi çekmez; Süper Pofi bütün katları birden temizler.
+- **Mermi:** kuyruk `obPeel` soyma sırasında katları da sayar (alttaki katın rengi, üst kat bittikten sonra sırasına göre kuyruğa girer); `obQueue`, `obInit`, `obRem` bütün katların dayanıklılığını toplar. Toplam mermi = toplam kat dayanıklılığı.
+- **Görünüm:** her kat ayrı bir dilim olarak çizilir (5 kat = normal küpün 1,9 katı yükseklik; arka satırı kapatmaz). Üst kat biraz küçük çizilir, kümenin çevresinde sıradaki katın renginde çerçeve ve kat sayısı rozeti (`×3`) vardır.
+- **Bölümler:** `MS_P[121]` (2 katlı, tek renk, 2 adet 3×3 küme, `seed` ile çözülebilir kuyruk), `MS_P[122]` (3 katlı, her kat farklı renk, 2 adet 2×2 küme + 2 sandık, ana görev "bütün katlı küpleri kır"). Bu iki bölümde eski dev küpler (`specialUnits`) yok. Yerleştirme: `MP.stk = {n, k, L, mix, hp}`.
+- **Kayıt:** oyun anı kaydına `stk` eklendi (eski kayıtlar aynen açılır). 121–122'nin v3.16'dan kalan yarım oyunu farklı düzende olduğu için açılmaz, bölüm baştan başlar; ana ilerleme, yıldız ve coin kaydı değişmedi.
+- **Geri dönüş:** GitHub'da `yedek/v3.16` dalı v3.16'nın tam kopyasıdır.
+- **Test:** `node tools/tests/katli-test.js http://127.0.0.1:8765/beta/ [--eski http://127.0.0.1:8765/<eski kopya>/]` — renk/kat sırası, mermi denkliği (her adımda), kayıt-geri yükleme, eski biçimli kayıt ve isteğe bağlı olarak 1–1000 bölümün eski sürümle aynı kaldığı.
