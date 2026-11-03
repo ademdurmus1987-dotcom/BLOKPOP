@@ -10,13 +10,16 @@ const MIME={'.html':'text/html; charset=utf-8','.js':'text/javascript','.json':'
 const srv=http.createServer((q,r)=>{let p=decodeURIComponent(q.url.split('?')[0]);if(p.endsWith('/'))p+='index.html';const f=path.join(ROOT,p);fs.readFile(f,(e,b)=>{if(e){r.writeHead(404);r.end();return;}r.writeHead(200,{'Content-Type':MIME[path.extname(f)]||'application/octet-stream'});r.end(b);});});
 (async()=>{
 await new Promise((res)=>srv.listen(0,'127.0.0.1',res));const base='http://127.0.0.1:'+srv.address().port;
-const br=await chromium.launch({args:['--use-gl=angle','--use-angle=swiftshader','--enable-unsafe-swiftshader','--mute-audio']});
+const br=await chromium.launch(Object.assign({args:['--use-gl=angle','--use-angle=swiftshader','--enable-unsafe-swiftshader','--mute-audio']},process.env.BLOKPOP_CHROME?{executablePath:process.env.BLOKPOP_CHROME}:{}));
 const ctx=await br.newContext({viewport:{width:390,height:844},deviceScaleFactor:+(A.dpr||1),isMobile:true,hasTouch:true,locale:'tr-TR',serviceWorkers:'block'});
 const pg=await ctx.newPage();const errs=[];pg.on('pageerror',(e)=>errs.push(e.message));pg.on('console',(m)=>{if(m.type()==='error')errs.push('console: '+m.text());});
 await pg.goto(base+'/'+DIR+'/index.html'+(A.q||''),{waitUntil:'load'});
 await pg.waitForFunction(()=>window.BP&&window.BlokpopUI&&document.querySelector('#btnPlay')&&!document.querySelector('#btnPlay').classList.contains('hidden'),null,{timeout:60000});
 await pg.click('#btnPlay',{force:true});await pg.waitForSelector('[data-act="playCur"]',{state:'visible',timeout:30000});await pg.waitForTimeout(600);
-await pg.click('[data-act="playCur"]',{force:true});await pg.waitForFunction(()=>window.BP&&BP.G&&BP.G.state,null,{timeout:30000});
+await pg.click('[data-act="playCur"]',{force:true});
+// v3.16: gorev karti
+await pg.waitForFunction(()=>(window.BP&&BP.G&&BP.G.state)||document.querySelector('#msCard.on'),null,{timeout:30000});if(await pg.$('#msCard.on'))await pg.click('#msCard [data-act="msGo"]',{force:true});
+await pg.waitForFunction(()=>window.BP&&BP.G&&BP.G.state,null,{timeout:30000});
 if(A.shots){
   fs.mkdirSync(A.shots,{recursive:true});
   for(const L of A.levels.split(',').map(Number)){

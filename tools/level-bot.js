@@ -166,13 +166,16 @@ const PLAY = ([L, style, seed, maxT, useNeed]) => {
     }
     if (did) launches++;
     for (let k = 0; k < STEP && g.state === 'play'; k++) { BP.update(DT); t += DT; }
+    // v3.16: ana gorev bitince kalan resmi Pofi toplar (super durumu), bitene kadar ilerlet
+    while (g.state === 'super' && t < maxT + 60) { BP.update(DT); t += DT; }
     const full = g.bench.length > 0 && g.bench.every((s) => !!s);
     if (full && !wasFull) benchFull++;
     wasFull = full;
   }
   let pct = 0;
   try { pct = g.state === 'win' ? 100 : Math.max(0, Math.min(100, Math.floor((1 - g.remPx / g.total) * 100))); } catch (e) {}
-  return { L, style, win: g.state === 'win', state: g.state, pct, t: Math.round(t), launches, benchFull, forced, N, colors: cols.size, units, timeout: g.state === 'play' };
+  const mi = g.mi, ms = mi ? { s: mi.sends, t: Math.round(mi.t), pk: g.peak, cb: g.maxCombo, ch: mi.chainMax, ti: mi.ting, of: mi.ordFail, fo: mi.firstOk, why: mi.why, main: mi.main.t, stars: g.result ? g.result.stars : 0, mis: g.result && g.result.mis ? g.result.mis.map((x) => x.ok).join('') : '' } : null;
+  return { L, style, win: g.state === 'win', state: g.state, pct, t: Math.round(t), launches, benchFull, forced, N, colors: cols.size, units, timeout: g.state === 'play', ms };
 };
 
 // ------------------------------------------------------------------ calisan (bir tarayici)
@@ -186,12 +189,15 @@ async function worker(id, base, jobs, results, progress) {
     const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true, locale: 'tr-TR', serviceWorkers: 'block' });
     const pg = await ctx.newPage();
     pg.on('pageerror', (e) => console.log('  [sayfa hatasi] ' + e.message));
-    await pg.goto(base + '/' + (DIR ? DIR + '/' : '') + 'index.html' + (mode !== 'normal' ? '?mod=' + mode : ''), { waitUntil: 'load' });
+    await pg.goto(base + '/' + (DIR ? DIR + '/' : '') + 'index.html' + (mode !== 'normal' ? '?mod=' + mode : '') + (A.url ? (mode !== 'normal' ? '&' : '?') + A.url : ''), { waitUntil: 'load' });
     await pg.waitForFunction(() => window.BP && window.BlokpopUI && document.querySelector('#btnPlay') && !document.querySelector('#btnPlay').classList.contains('hidden'), null, { timeout: 60000 });
     await pg.click('#btnPlay', { force: true });
     await pg.waitForSelector('[data-act="playCur"]', { state: 'visible', timeout: 30000 });
     await pg.waitForTimeout(800);
     await pg.click('[data-act="playCur"]', { force: true });
+    // v3.16: bolum oncesi gorev karti acildiysa "Goreve basla"
+    await pg.waitForFunction(() => (window.BP && BP.G && BP.G.state) || document.querySelector('#msCard.on'), null, { timeout: 30000 });
+    if (await pg.$('#msCard.on')) { await pg.click('#msCard [data-act="msGo"]', { force: true }); }
     await pg.waitForFunction(() => window.BP && BP.G && BP.G.state, null, { timeout: 30000 });
     const pm = await pg.evaluate(() => (BP.build ? 'insa' : BP.paint ? 'boya' : 'normal'));
     if (pm !== mode) throw new Error('mod acilamadi: ' + mode + ' (oyun: ' + pm + ')');
@@ -371,6 +377,7 @@ function report(by, secs) {
   }
   const by = aggregate(results);
   const files = MODES.map((m) => writeCsv(by, m));
+  if (A.ham === 'true') fs.writeFileSync(path.join(OUT, 'levels-ham.json'), JSON.stringify(results));
   files.push(report(by, (Date.now() - t0) / 1000));
   console.log('Bitti. Dosyalar:\n  ' + files.map((f) => path.relative(ROOT, f)).join('\n  '));
 })().catch((e) => { console.error(e); process.exit(1); });

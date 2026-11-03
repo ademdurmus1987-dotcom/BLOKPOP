@@ -160,3 +160,25 @@ node tools/tests/ob-check.js --shots ekran --levels 12,16,21 --wait 3200   # ekr
 node tools/ob-ayar.js --from 12 --to 1000 --tries 3 --yaz   # bot doğrulaması + gerekirse hafifletme (OB_TUNE)
 ```
 Oyunda deneme: `?obk=ice,cage,crate,frozen` (bu türleri zorla), `?ob=0` (engelleri kapat).
+
+## Görev sistemi (v3.16, Patlat modu)
+Her Patlat bölümünden önce **görev kartı** açılır (oyun alanının üstünde değil, ayrı ekran). "Göreve Başla"ya basılmadan oyun başlamaz. Kartın içeriği bölümü kuru çalıştırıp (`BP.msInfo(L)`) gerçek veriden okunur: resim, engeller ve sayıları, ana görev, bonus görevler, ödül. Kaldığı yerden devam eden oyunda kart açılmaz. Kod: `beta/index.html` içinde `v3.16 GOREV SISTEMI` (motor) ve `v3.16 GOREV KARTI` (arayüz).
+
+- **Pilot bölümler 101–120** (`MS_P`): her birinin teması, başlığı, strateji ipucu, engel düzeni (`m`, `q`, `tp`, `cnt`) ve görevleri elle tasarlandı. Yıldız = ana görev (1) + başarılan bonus görevler (en fazla 3). Canlandırma / Süper Pofi kullanılırsa en fazla 2 yıldız (eski kural).
+- **Diğer bölümler**: ana görev "Resmi tamamla", kartta 3 yıldız kuralı (tezgâhta en fazla 2 Pofi) gösterilir; yıldız hesabı değişmedi.
+- **Ana görev türleri**: `clear` resmi tamamla · `break` bir engel türünün hepsini kır (bitince kalan resmi Pofi toplar) · `rescue` bebek Pofi'yi kurtar · `boss` boss'u yen · `time` süre dolmadan bitir (dolarsa kayıp, devam: +25 sn) · `sends` en fazla N gönderim (hak bitince kayıp, devam: +4 hak).
+- **Bonus türleri**: `sends`, `time`, `peak` (tezgâh), `combo`, `chain` (tek patlamada zincirlenen sandık), `order` (numaralı zincirleri sırayla kır), `first` (bir engel türünü resmin yarısı bitmeden temizle), `ting` (kalkana çarpma sınırı).
+- **Boss**: dev zırhlı küp (`unit armor` + `boss`), bölgesi boss rengine boyanır, mermi `obQueue` ile denklenir. Canı her eşiğe inince etrafına nötr buz kalkanı örer (mermi dengesi değişmez). Can çubuğu ve gözler 2B çizilir.
+- **Oyun içi gösterge**: üstte küçük hap (`#msHud`): kırılan/toplam, kalan süre, kalan hak, boss canı. Kart oyunun üstünde tekrar açılmaz.
+- Kazanma ekranında görev listesi (✓/✗). Kayıt: görev durumu `snapshot.mi` içinde; boss buz kalkanları da geri yüklenir.
+- Deneme: `?ms=0` (görevleri ve pilot düzeni kapat), `?msnolim=1` (süre/hak kaybını kapat, ölçüm için).
+
+Ölçüm ve doğrulama:
+```
+node tools/level-bot.js --mode normal --from 101 --to 120 --tries 5 --url msnolim=1 --ham --out tools/out/gorev-olcum   # sınırsız ölçüm
+node tools/level-bot.js --mode normal --from 101 --to 120 --tries 5 --ham --out tools/out/gorev                        # gerçek kurallar
+node tools/gorev-ayar.js tools/out/gorev/levels-ham.json                                                               # rapor: tools/out/gorev-rapor.md
+```
+Bot artık görev kartını kendisi geçer, ana görev bitince Pofi'nin kalan resmi toplamasını bekler. `--url` sayfa adresine parametre ekler, `--ham` ham sonuçları `levels-ham.json` olarak yazar.
+
+Bandın hiç geçmediği şeritler (bandın bitiş noktasından girişe kadar olan sol alt kısım) artık "açık" sayılmaz (`laneOk`): bot ve son tur uzatması ulaşılamayan küpü hedef sanıp takılmıyordu.
