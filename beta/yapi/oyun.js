@@ -99,7 +99,7 @@ const KARE = (t) => t === 'harabe';
 const MOD = {};
 // v5.4: Adem'in yeni Tripo modelleri (4 Kas 2026): ahsap kup sandigin, kirmizi patlayici kup ficinin, metal kup celigin yerine;
 // cizgili platform, top ve top arabasi. Anahtar -> dosya adi.
-const MFILE = { kup: 'kup_metal', metal: 'kup_metal', ahsap: 'kup_ahsap', kirmizi: 'kup_kirmizi', sandik: 'kup_ahsap', fici: 'varil', tugla: 'kup_tas', tas: 'kup_tas', buz: 'buz_silindir', altin: 'kup_altin', ahsapmetal: 'kup_ahsap_metal', piramitTas: 'piramit_tas', kabak: 'bal_kabagi', platform_ahsap: 'platform_ahsap', platform_tas: 'platform_tas', platform_sirk: 'platform_sirk', platform_2: 'platform_2', platform_3: 'platform_3', top: 'top_mermisi', topcu: 'top_arabasi',
+const MFILE = { kup: 'kup_metal', metal: 'kup_metal', ahsap: 'kup_ahsap', kirmizi: 'kup_kirmizi', sandik: 'kup_ahsap', fici: 'varil', tugla: 'kup_tas', tas: 'kup_tas', buz: 'buz_silindir', altin: 'kup_altin', ahsapmetal: 'kup_ahsap_metal', piramitTas: 'piramit_tas', kabak: 'bal_kabagi', platform_ahsap: 'platform_ahsap', platform_tas: 'platform_tas', platform_sirk: 'platform_sirk', platform_2: 'platform_2', platform_3: 'platform_3', platform_4: 'platform_4', top: 'top_mermisi', topcu: 'top_arabasi',
   // v6.4: (Adem) benim dokularim/boyam yok: ozel bloklar da Tripo modeli, orijinal renginde
   celik: 'kup_metal', bomba: 'fici', hediye: 'sandik', yildiz: 'kup_altin', jole: 'kup_kirmizi', cam: 'kup' };
 const V1FILE = new Set(['kup', 'sandik', 'fici', 'platform_ahsap', 'platform_tas']);   // ilk Tripo modelleri (?v=1)
@@ -290,9 +290,9 @@ TX.fici_yan.wrapS = THREE.RepeatWrapping; TX.fici_yan.repeat.set(2, 1);
 const KIND = {
   sandik: { mass: 0.6, f: 0.6, r: 0.15 },
   metal: { mass: 1.3, f: 0.62, r: 0.12 }, ahsap: { mass: 0.8, f: 0.62, r: 0.15 }, kirmizi: { mass: 1, f: 0.62, r: 0.15 },
-  tas: { mass: 1.8, f: 0.75, r: 0.08 }, ahsapmetal: { mass: 1.1, f: 0.65, r: 0.12 }, piramitTas: { mass: 1, f: 0.7, r: 0.08 }, kabak: { mass: 0.7, f: 0.55, r: 0.2 },   // v6.2   // v6.1: Adem'in kup modelleri, orijinal renkleri
-  tugla: { mass: 2.4, f: 0.85, r: 0.1 },
-  celik: { mass: 5, f: 0.7, r: 0.05 },
+  tas: { mass: 1.1, f: 0.7, r: 0.08 }, ahsapmetal: { mass: 1.1, f: 0.65, r: 0.12 }, piramitTas: { mass: 0.8, f: 0.7, r: 0.08 }, kabak: { mass: 0.7, f: 0.55, r: 0.2 },   // v6.2   // v6.1: Adem'in kup modelleri, orijinal renkleri
+  tugla: { mass: 1.4, f: 0.75, r: 0.1 },   // v6.11: (Adem) karli koyde kaya kupler gecilmiyordu
+  celik: { mass: 2.6, f: 0.7, r: 0.05 },
   buz: { mass: 1, f: 0.12, r: 0.1, kir: 7 },
   jole: { mass: 0.8, f: 0.6, r: 0.95, kir: 9 },
   cam: { mass: 0.9, f: 0.5, r: 0.1, kir: 5 },                  // bu hizla carpinca kirilir
@@ -582,7 +582,7 @@ const TEMALAR = [['cayir1', 'ahsap'], ['cayir2', 'ahsap'], ['sahil1', 'mercan'],
 // Yapi bolumunun tek fonu ve platformu (Adem 4 Kas 2026): col harabesi resmi + kare tas platform. Eski temalar yukarida duruyor.
 const TEMA_YAPI = ['cayir4', 'sirk'];
 // v6.1: fon her 3 bolumde bir degisir: cayir, karli koy, sahil. Zemin lekesi ve toz rengi fona uyar.
-const FONLAR = [{ f: 'cayir4', dirt: ['176,128,82', '160,112,70', '120,92,50'], toz: '#d9c3a0' }, { f: 'kar3', dirt: ['236,242,252', '222,232,248', '200,214,236'], toz: '#ffffff' }, { f: 'sahil3', dirt: ['240,214,160', '228,198,140', '210,180,120'], toz: '#f3dfb4' }];
+const FONLAR = [{ f: 'cayir4', dirt: ['176,128,82', '160,112,70', '120,92,50'], toz: '#d9c3a0' }, { f: 'kar3', bs: 'auto 135%', bp: '50% 100%', dirt: ['236,242,252', '222,232,248', '200,214,236'], toz: '#ffffff' }, { f: 'sahil3', dirt: ['240,214,160', '228,198,140', '210,180,120'], toz: '#f3dfb4' }];
 function fonOf(L) { return FONLAR[Math.floor((L - 1) / 3) % FONLAR.length]; }   // v5.4: Adem'in cayir resmi + cizgili Tripo platformu (harabe kodu duruyor)
 // v6.1: bolum tasarimindaki renkler artik boya degil; renk ailesine gore Adem'in kup modeline (orijinal rengiyle) ya da cam sekle donusur.
 // Sutun tepeleri cogunlukla cam tepe sekli (kure, piramit, koni, kristal...), govdenin bir kismi cam yigin sekli olur. Bolume gore sabit.
@@ -629,7 +629,7 @@ world.addContactMaterial(new CANNON.ContactMaterial(PM.cube, PM.cube, { friction
 world.addContactMaterial(new CANNON.ContactMaterial(PM.cube, PM.plat, { friction: 0.45, restitution: 0 }));
 world.addContactMaterial(new CANNON.ContactMaterial(PM.ball, PM.cube, { friction: 0.2, restitution: 0.25 }));
 world.addContactMaterial(new CANNON.ContactMaterial(PM.ball, PM.plat, { friction: 0.3, restitution: 0.3 }));
-const platBody = new CANNON.Body({ mass: 0, material: PM.plat }); world.addBody(platBody);
+const platBody = new CANNON.Body({ mass: 0, material: PM.plat }); platBody.collisionFilterGroup = 4; world.addBody(platBody);   // v6.11: mermi (grup 2) platforma carpmaz
 { const gb = new CANNON.Body({ mass: 0, material: PM.plat }); gb.addShape(new CANNON.Plane()); gb.quaternion.setFromEuler(-Math.PI / 2, 0, 0); gb.position.y = GY; world.addBody(gb); }
 const CUBESHAPE = new CANNON.Box(new CANNON.Vec3(S / 2, S / 2, S / 2)), FICISHAPE = new CANNON.Cylinder(FR, FR, S, 16);
 
@@ -653,7 +653,7 @@ function buildLevel() {
   R = Math.max(3.4, R + 0.3); RZ = R; TOPY = 0; for (const c of list) TOPY = Math.max(TOPY, (c[1] + 1) * S);
   if (TEMA_YAPI[1] === 'sirk') {   // dikdortgen masa: yapinin her yanindan ~yarim kup bosluk
     let mx = 0, mz = 0; for (const [i, , k] of list) { mx = Math.max(mx, Math.abs(i - ci) * S + S / 2); mz = Math.max(mz, Math.abs(k - ck) * S + S / 2); }
-    R = Math.max(3.6, mx + S * 0.75); RZ = Math.max(2.6, mz + S * 0.7); const kare = Y.don || fonOf(LV).f.startsWith('kar'); if (kare) R = RZ = Math.max(R, RZ); setSirk(R, RZ, kare ? 'platform_3' : 'platform_2');   // v6.6: Adem'in platformlari   // v6.5: yapinin her yaninda genis kenar; donen platform kare
+    R = Math.max(3.6, mx + S * 0.75); RZ = Math.max(2.6, mz + S * 0.7); const kare = Y.don || fonOf(LV).f.startsWith('kar'); if (kare) R = RZ = Math.max(R, RZ); setSirk(R, RZ, kare ? 'platform_3' : fonOf(LV).f.startsWith('sahil') ? 'platform_2' : 'platform_4');   // v6.6: Adem'in platformlari   // v6.5: yapinin her yaninda genis kenar; donen platform kare
     DIRT.scale.set(R * 1.5, RZ * 2.2, 1);
   }
   stage.scale.set(R / R0, 1, RZ / R0);
@@ -683,7 +683,7 @@ function buildLevel() {
   syncMeshes();
   g = { don: Y.don || 0, L: LV, ad: Y.ad, total: cubes.length, left: cubes.length, shots: shotsFor(cubes.length, Y), max: shotsFor(cubes.length, Y), state: 'play', t: 0, busy: 0, quiet: 0, combo: null, armed: false, bonus: 0, gold: 0 };
   FUSE.length = 0;
-  const tm = TEMA_YAPI, fo = fonOf(LV); $('bg').style.backgroundImage = 'url(fon/' + fo.f + '.webp?v=2)'; setPlat(tm[1]); setDirt(fo);
+  const tm = TEMA_YAPI, fo = fonOf(LV); $('bg').style.backgroundImage = 'url(fon/' + fo.f + '.webp?v=2)'; $('bg').style.backgroundSize = fo.bs || ''; $('bg').style.backgroundPosition = fo.bp || ''; setPlat(tm[1]); setDirt(fo);   // v6.11: (Adem) karli koyde platform koyun icinde duruyordu: fon buyuyup koy yukari, platformun arkasina alindi
   const nm = $('nm'); nm.innerHTML = '<div class="rb1"><small>BÖLÜM ' + LV + '</small><b>' + Y.ad + '</b></div>'; nm.classList.remove('on'); void nm.offsetWidth; nm.classList.add('on'); $('hint').style.opacity = 1;
   hud(true);
 }
@@ -834,10 +834,11 @@ function shoot(target) {
   // 0.9 yukaridan asmali, yoksa kenara carpip geri seker
   const dv = target.clone().sub(st), gy = world.gravity.y, sz = st.x * Math.sin(YAW) + st.z * Math.cos(YAW), tz = target.x * Math.sin(YAW) + target.z * Math.cos(YAW), edge = Math.min(1, Math.max(0, (sz - RZ) / Math.max(0.01, sz - tz)));
   let T = Math.max(0.08, dv.length() / 62);   // v6.10: (Adem) mermi daha da hizli (v6.9: 44)   // v6.5: biraz yavas, top gozle takip edilir   // v6.1: her yone ayni hiz (~44 birim/sn): yukari da asagi da ayni guc
-  for (; T < 2.2; T += 0.02) { const te = edge * T, vy = dv.y / T - 0.5 * gy * T; if (st.y + vy * te + 0.5 * gy * te * te > BR + 0.12) break; }
+  // v6.11: (Adem) alt siralara atis kavise girip yavasliyordu, karli koyde kare platformun kenarina takilip hic gitmiyordu:
+  // mermi platforma carpmaz (carpisma filtresi), her hedefe duz ve ayni hizla gider
   const v = new CANNON.Vec3(dv.x / T, dv.y / T - 0.5 * gy * T, dv.z / T);
   const col = PF.col || '#3d9bff';
-  const body = new CANNON.Body({ mass: 11, material: PM.ball, linearDamping: 0.01, allowSleep: false }); body.addShape(new CANNON.Sphere(BR));
+  const body = new CANNON.Body({ mass: 11, material: PM.ball, linearDamping: 0.01, allowSleep: false }); body.addShape(new CANNON.Sphere(BR)); body.collisionFilterGroup = 2; body.collisionFilterMask = ~4;
   body.position.set(st.x, st.y, st.z); body.velocity.copy(v); world.addBody(body);
   const tg = topGeo(), mesh = tg ? new THREE.Mesh(tg, topMat()) : new THREE.Mesh(BALLGEO, new THREE.MeshStandardMaterial({ color: col, roughness: 0.15, metalness: 0.1, emissive: col, emissiveIntensity: 0.45 })); mesh.castShadow = true; scene.add(mesh);
   const halo = new THREE.Sprite(new THREE.SpriteMaterial({ map: SOFT, color: '#ffe6ff', transparent: true, opacity: 0.55, blending: THREE.AdditiveBlending, depthWrite: false })); halo.scale.setScalar(BR * 4.2); halo.visible = false; mesh.add(halo);
@@ -1290,7 +1291,7 @@ function fit() {
     for (let it = 0; it < 30; it++) { const by = (lo + hi) / 2; TC.holder.position.set(0, by, cam.position.z - dc); TC.holder.rotation.y = Math.PI; TC.holder.updateMatrixWorld(true);
       const m = trunkTip(V); if (m.project(cam).y > -0.6) hi = by; else lo = by; }
     TC.by = (lo + hi) / 2; TC.holder.position.y = TC.by;
-    const ph = Math.max(0.2, (TC.by - GY) / k); TC.pad.scale.y = ph; TC.pad.position.y = -ph / 2; TC.rim2.position.y = -ph + 0.12;
+    const ph = Math.max(0.2, (TC.by - GY) / TC.k); TC.pad.scale.y = ph; TC.pad.position.y = -ph / 2; TC.rim2.position.y = -ph + 0.12;
   }
   cam.userData.base = cam.position.clone();
 }
