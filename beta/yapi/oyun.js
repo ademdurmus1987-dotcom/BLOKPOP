@@ -624,7 +624,7 @@ const world = new CANNON.World({ gravity: new CANNON.Vec3(0, -24, 0) });
 world.broadphase = new CANNON.SAPBroadphase(world); world.allowSleep = true; world.solver.iterations = 14; world.solver.tolerance = 0.0005;
 // ozel malzemelerin kendi Material'i var; onlarla carpismada surtunme/sekme iki tarafin carpimidir (cannon-es)
 const PM = { cube: new CANNON.Material({ friction: 0.62, restitution: 0.2 }), ball: new CANNON.Material({ friction: 0.45, restitution: 0.5 }), plat: new CANNON.Material({ friction: 0.65, restitution: 0.25 }) };
-world.addContactMaterial(new CANNON.ContactMaterial(PM.cube, PM.cube, { friction: 0.8, restitution: 0.02 }));   // v6.6: daha tutunur
+world.addContactMaterial(new CANNON.ContactMaterial(PM.cube, PM.cube, { friction: 0.48, restitution: 0.03 }));   // v6.7: eski 0.38, biraz daha tutunur
 world.addContactMaterial(new CANNON.ContactMaterial(PM.cube, PM.plat, { friction: 0.4, restitution: 0.05 }));
 world.addContactMaterial(new CANNON.ContactMaterial(PM.ball, PM.cube, { friction: 0.2, restitution: 0.25 }));
 world.addContactMaterial(new CANNON.ContactMaterial(PM.ball, PM.plat, { friction: 0.3, restitution: 0.3 }));
@@ -836,7 +836,7 @@ function shoot(target) {
   for (; T < 2.2; T += 0.02) { const te = edge * T, vy = dv.y / T - 0.5 * gy * T; if (st.y + vy * te + 0.5 * gy * te * te > BR + 0.12) break; }
   const v = new CANNON.Vec3(dv.x / T, dv.y / T - 0.5 * gy * T, dv.z / T);
   const col = PF.col || '#3d9bff';
-  const body = new CANNON.Body({ mass: 8, material: PM.ball, linearDamping: 0.01, allowSleep: false }); body.addShape(new CANNON.Sphere(BR));
+  const body = new CANNON.Body({ mass: 11, material: PM.ball, linearDamping: 0.01, allowSleep: false }); body.addShape(new CANNON.Sphere(BR));
   body.position.set(st.x, st.y, st.z); body.velocity.copy(v); world.addBody(body);
   const tg = topGeo(), mesh = tg ? new THREE.Mesh(tg, topMat()) : new THREE.Mesh(BALLGEO, new THREE.MeshStandardMaterial({ color: col, roughness: 0.15, metalness: 0.1, emissive: col, emissiveIntensity: 0.45 })); mesh.castShadow = true; scene.add(mesh);
   const halo = new THREE.Sprite(new THREE.SpriteMaterial({ map: SOFT, color: '#ffe6ff', transparent: true, opacity: 0.55, blending: THREE.AdditiveBlending, depthWrite: false })); halo.scale.setScalar(BR * 4.2); halo.visible = false; mesh.add(halo);
@@ -864,7 +864,7 @@ function impact(b) {
 }
 // v5.3: atis guclendi. Top kupe degdigi an cevresindeki kupler (yaklasik 1.6 kup yaricap) top yonunde itilir;
 // itis kupun merkezinin ustunden uygulandigi icin kup sadece kaymaz, devrilir. Agir malzeme (celik, tugla) daha az etkilenir.
-const BLAST = { r: S * 1.0, hiz: 2.8, yukari: 0.3 };   // v6.6: (Adem) kupler cok kolay deviriliyordu   // v6.3: test: ilk atis yapinin yarisini yikiyordu; simdi vurulan kirilir, yakindakiler sarsilir
+const BLAST = { r: S * 1.15, hiz: 5.2, yukari: 0.75 };   // v6.7: (Adem) eski guce yakin, biraz yumusak   // v6.6: (Adem) kupler cok kolay deviriliyordu   // v6.3: test: ilk atis yapinin yarisini yikiyordu; simdi vurulan kirilir, yakindakiler sarsilir
 const IMP = new CANNON.Vec3(), RP = new CANNON.Vec3();
 // v6.0: dogrudan vurulan kup parcalara ayrilir (Royal Smash'teki gibi). Agir malzeme (tugla, celik), kendi kirilma/patlama
 // kurali olanlar (cam, fici, bomba, recel kavanozu) parcalanmaz, sadece itilir.
@@ -905,13 +905,13 @@ function blast(b) {
     // top yonu + biraz merkezden disari + hafif yukari
     const rx = dist > 0.01 ? dx / dist : 0, rz = dist > 0.01 ? dz / dist : 0;
     IMP.set((d.x * 0.8 + rx * 0.3) * sp * m, (d.y * 0.5 + 0.12) * sp * m + BLAST.yukari * k * m, (d.z * 0.8 + rz * 0.3) * sp * m);
-    RP.set(0, S * 0.18, 0);   // merkezin ustu: devirme torku
+    RP.set(0, S * 0.27, 0);   // merkezin ustu: devirme torku
     c.body.wakeUp(); c.body.applyImpulse(IMP, RP);
   }
 }
 function updateBalls(dt) {
   for (let i = balls.length - 1; i >= 0; i--) {
-    const b = balls[i]; b.t += dt; if (b.blast) { blast(b); b.blast = null; } if (b.slow) { b.slow = false; b.body.velocity.scale(0.32, b.body.velocity); }   // ilk carpista enerjisini kaybeder, yapinin icinden gecip gitmez
+    const b = balls[i]; b.t += dt; if (b.blast) { blast(b); b.blast = null; } if (b.slow) { b.slow = false; b.body.velocity.scale(0.42, b.body.velocity); }   // ilk carpista enerjisini kaybeder, yapinin icinden gecip gitmez
     // v6.6: (hata) bu satir v6.3'ten beri yorumun icindeydi: top fizikte ucuyor ama gorunusu namlu onunde sabit kaliyordu
     if (b.hit) b.halo.material.opacity = Math.max(0, b.halo.material.opacity - dt * 2); b.mesh.position.copy(b.body.position); b.mesh.quaternion.copy(b.body.quaternion);
     // iz: arkasinda kuculen parlak toplar
