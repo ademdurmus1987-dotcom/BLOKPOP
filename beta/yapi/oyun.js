@@ -620,12 +620,13 @@ const LSIRA = (() => { const o = [], e = LEVELS.slice(); o.push(e.shift()); for 
 function levelOf(L) { return LSIRA[(L - 1) % LSIRA.length]; }
 
 // ---------------- fizik ----------------
-const world = new CANNON.World({ gravity: new CANNON.Vec3(0, -24, 0) });
+const KAGIR = 3;   // v6.8: (Adem) kupler hafif (kagit gibi) hissettiriyordu: tum kup kutleleri bu katsayiyla carpilir
+const world = new CANNON.World({ gravity: new CANNON.Vec3(0, -32, 0) });   // v6.8: (Adem) kupler agir dussun
 world.broadphase = new CANNON.SAPBroadphase(world); world.allowSleep = true; world.solver.iterations = 14; world.solver.tolerance = 0.0005;
 // ozel malzemelerin kendi Material'i var; onlarla carpismada surtunme/sekme iki tarafin carpimidir (cannon-es)
 const PM = { cube: new CANNON.Material({ friction: 0.62, restitution: 0.2 }), ball: new CANNON.Material({ friction: 0.45, restitution: 0.5 }), plat: new CANNON.Material({ friction: 0.65, restitution: 0.25 }) };
-world.addContactMaterial(new CANNON.ContactMaterial(PM.cube, PM.cube, { friction: 0.48, restitution: 0.03 }));   // v6.7: eski 0.38, biraz daha tutunur
-world.addContactMaterial(new CANNON.ContactMaterial(PM.cube, PM.plat, { friction: 0.4, restitution: 0.05 }));
+world.addContactMaterial(new CANNON.ContactMaterial(PM.cube, PM.cube, { friction: 0.48, restitution: 0 }));   // v6.7: eski 0.38, biraz daha tutunur
+world.addContactMaterial(new CANNON.ContactMaterial(PM.cube, PM.plat, { friction: 0.45, restitution: 0 }));
 world.addContactMaterial(new CANNON.ContactMaterial(PM.ball, PM.cube, { friction: 0.2, restitution: 0.25 }));
 world.addContactMaterial(new CANNON.ContactMaterial(PM.ball, PM.plat, { friction: 0.3, restitution: 0.3 }));
 const platBody = new CANNON.Body({ mass: 0, material: PM.plat }); world.addBody(platBody);
@@ -665,7 +666,7 @@ function buildLevel() {
   for (const [i, j, k, col] of list) {
     const kd = col[0] === '#' ? null : KIND[col], mg = fitCube(kd ? col : 'kup'), isF = col === 'fici' && !mg;
     const pm = kd ? (kd.pm || (kd.pm = new CANNON.Material({ friction: kd.f, restitution: kd.r }))) : PM.cube;
-    const body = new CANNON.Body({ mass: kd ? kd.mass : 1, material: pm, sleepSpeedLimit: 0.25, sleepTimeLimit: 0.4, linearDamping: 0.02, angularDamping: 0.06 });
+    const body = new CANNON.Body({ mass: (kd ? kd.mass : 1) * KAGIR, material: pm, sleepSpeedLimit: 0.25, sleepTimeLimit: 0.4, linearDamping: 0.03, angularDamping: 0.16 });   // v6.8: 3 kat agir, kolay donmez
     const isE = kd && kd.esya, gl = kd && kd.cam, kp = KEEP[col] && MOD[col] ? fitKeep(col) : null, ghh = gl ? glassInfo(gl).hh : kp ? MOD[col].dim.h : S;
     body.addShape(gl ? glassShape(gl) : kp ? keepShape(col) : isF || isE ? FICISHAPE : CUBESHAPE); body.position.set((i - ci) * S, ghh / 2 + j * (S + 0.002), (k - ck) * S);
     if (isE) body.quaternion.setFromEuler(0, (Math.random() - 0.5) * 0.5, 0);
@@ -817,7 +818,7 @@ function updatePofi(dt) {
 }
 
 // ---------------- toplar ----------------
-const BR = 0.6;   // v6.5: (Adem) 3B top mermisi net gorunsun.    // v6.2: top biraz buyudu, parlak ve isikli
+const BR = 0.47;   // v6.8: (Adem) biraz kucultuldu. v6.5: 3B top mermisi net gorunsun.    // v6.2: top biraz buyudu, parlak ve isikli
 const BALLGEO = new THREE.SphereGeometry(BR, 32, 20);
 const TRAILGEO = new THREE.SphereGeometry(0.16, 12, 8);
 function shoot(target) {
@@ -859,6 +860,7 @@ function topGeo() {
   g.translate(-c.x, -c.y, -c.z); g.scale(2 * BR / z.x, 2 * BR / z.y, 2 * BR / z.z); g.computeBoundingSphere(); return (TOPG = g);
 }
 function impact(b) {
+  buzz([40, 30, 25], 0);   // v6.8: (Adem) kupe carpinca titresim
   wakeAll(); g.busy = 2.5; shake = Math.min(0.5, shake + 0.3);
   const p = new THREE.Vector3().copy(b.body.position); hitFlash(p); burst(p, '#fff3a0', 12, 8); sfx('hit');
 }
@@ -1014,7 +1016,7 @@ function land(c) {
   }
   const t0 = TOZ; TOZ = z.toz; dust(p.x, GY, p.z, zn === 'kar' ? 1.7 : 1.2); TOZ = t0;
   if (z.halka) ripple(p.x, p.z, h);
-  sfx('thud', 3);
+  sfx('thud', 3); buzz(22, 90); shake = Math.max(shake, 0.07);   // v6.8: yere dusunce kisa titresim + hafif sarsinti
 }
 // suya dusen seyin cevresinde genisleyen beyaz halka
 const RIPGEO = new THREE.RingGeometry(0.82, 1, 48);
@@ -1046,7 +1048,8 @@ function confetti() {
     fx(m, 3.2 + Math.random() * 0.8, (o, k, dt) => { v.y = Math.max(-2.2, v.y - 9 * dt); v.x *= 1 - dt * 0.8; o.position.addScaledVector(v, dt); o.position.x += Math.sin(ph + k * 20) * dt * 0.8; o.rotation.x += w.x * dt; o.rotation.y += w.y * dt; o.material.opacity = k > 0.85 ? (1 - k) / 0.15 : 1; });
   }
 }
-function buzz(ms) { try { if (navigator.vibrate) navigator.vibrate(ms); } catch (e) {} }
+let lastBuzz = 0;
+function buzz(ms, gap) { const t = performance.now(); if (gap && t - lastBuzz < gap) return; lastBuzz = t; try { if (navigator.vibrate) navigator.vibrate(ms); } catch (e) {} }
 
 // ---------------- parcaciklar ----------------
 const PGEO = new THREE.BoxGeometry(0.22, 0.22, 0.22), parts = [];
