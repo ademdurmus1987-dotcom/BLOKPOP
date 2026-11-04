@@ -653,7 +653,8 @@ function buildLevel() {
   R = Math.max(3.4, R + 0.3); RZ = R; TOPY = 0; for (const c of list) TOPY = Math.max(TOPY, (c[1] + 1) * S);
   if (TEMA_YAPI[1] === 'sirk') {   // dikdortgen masa: yapinin her yanindan ~yarim kup bosluk
     let mx = 0, mz = 0; for (const [i, , k] of list) { mx = Math.max(mx, Math.abs(i - ci) * S + S / 2); mz = Math.max(mz, Math.abs(k - ck) * S + S / 2); }
-    R = Math.max(3.6, mx + S * 0.75); RZ = Math.max(2.6, mz + S * 0.7); const kare = Y.don || fonOf(LV).f.startsWith('kar'); if (kare) R = RZ = Math.max(R, RZ); setSirk(R, RZ, kare ? 'platform_3' : fonOf(LV).f.startsWith('sahil') ? 'platform_2' : 'platform_4');   // v6.6: Adem'in platformlari   // v6.5: yapinin her yaninda genis kenar; donen platform kare
+    // v6.12: (Adem) bolum 166'da kalan bloklar genis platformda yatip kaliyordu: kenar daraldi, kare platform sadece donen bolumde
+    R = Math.max(3.6, mx + S * 0.5); RZ = Math.max(2.4, mz + S * 0.45); const kare = Y.don; if (kare) R = RZ = Math.max(R, RZ); const karli = fonOf(LV).f.startsWith('kar'); setSirk(R, RZ, kare || karli ? 'platform_3' : fonOf(LV).f.startsWith('sahil') ? 'platform_2' : 'platform_4');   // v6.6: Adem'in platformlari   // v6.5: yapinin her yaninda genis kenar; donen platform kare
     DIRT.scale.set(R * 1.5, RZ * 2.2, 1);
   }
   stage.scale.set(R / R0, 1, RZ / R0);
@@ -923,6 +924,7 @@ function updateBalls(dt) {
       for (let j = 1; j <= n; j++) { const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: SOFT, color: '#e8e4dc', transparent: true, opacity: 0.35, depthWrite: false })); sp.position.lerpVectors(lp, pos, j / n); sp.scale.setScalar(BR * 1.3); scene.add(sp); b.trail.push({ m: sp, life: 0.2 }); }
       b.lp = pos.clone(); }
     for (let j = b.trail.length - 1; j >= 0; j--) { const p = b.trail[j]; p.life -= dt; const k = Math.max(0, p.life / 0.2); p.m.scale.setScalar(BR * 1.3 * (1.6 - 0.6 * k)); p.m.material.opacity = 0.35 * k; if (p.life <= 0) { scene.remove(p.m); p.m.material.dispose(); b.trail.splice(j, 1); } }
+    if (!b.pc && b.body.position.y > BR + 0.05) { b.pc = 1; b.body.collisionFilterMask = -1; }   // v6.12: (hata) top platformun icinden dusuyordu: platform hizasini asinca platforma carpar
     if (!b.sunk && b.body.position.y < GY + BR * 1.1) { b.sunk = 1; landFx(b.body.position.x, b.body.position.z, 0.7); world.removeBody(b.body); }
     if (b.sunk) { b.sunk += dt; b.mesh.position.y = GY + BR - Math.min(1, b.sunk / 0.5) * BR * 2.4; }
     else if (b.t > 1.2 && b.body.velocity.length() < 1.2) b.rest = (b.rest || 0) + dt;
@@ -946,14 +948,14 @@ const flashLight = new THREE.PointLight('#ffd6f0', 0, 16, 1.5); scene.add(flashL
 function muzzleFx(p, dir) {
   // pembe-beyaz parlama: hizla buyur ve soner; namlu onune isik; arkasindan yukari suzulen beyaz duman
   const a = spr('#ffd0ec', true, 1); a.position.copy(p).addScaledVector(dir, 0.4);
-  fx(a, 0.32, (o, k) => { o.scale.setScalar(1.2 + k * 3.4); o.material.opacity = (1 - k) ** 1.5; });
+  fx(a, 0.22, (o, k) => { o.scale.setScalar(0.6 + k * 1.4); o.material.opacity = 0.8 * (1 - k) ** 1.5; });   // v6.12: kucuk parlama, topu saklamaz
   const c = spr('#ffffff', true, 1); c.position.copy(p);
-  fx(c, 0.14, (o, k) => { o.scale.setScalar(0.8 + k * 2); o.material.opacity = 1 - k; });
+  fx(c, 0.1, (o, k) => { o.scale.setScalar(0.4 + k * 0.8); o.material.opacity = 0.8 * (1 - k); });
   flashLight.position.copy(p); flashLight.intensity = 60;
   for (let i = 0; i < 7; i++) {
-    const m = spr('#f4f0f6', false, 0.7), v = dir.clone().multiplyScalar(1.5 + Math.random() * 2.5).add(new THREE.Vector3((Math.random() - 0.5) * 1.6, 0.6 + Math.random() * 1.2, (Math.random() - 0.5) * 1.6));
+    const m = spr('#f4f0f6', false, 0.35), v = dir.clone().multiplyScalar(-0.5 - Math.random() * 1).add(new THREE.Vector3((Math.random() - 0.5) * 1.6, 0.6 + Math.random() * 1.2, (Math.random() - 0.5) * 1.6));
     m.position.copy(p); const s0 = 0.5 + Math.random() * 0.4;
-    fx(m, 0.6 + Math.random() * 0.4, (o, k, dt) => { o.position.addScaledVector(v, dt); v.multiplyScalar(1 - dt * 3); o.scale.setScalar(s0 + k * 2.2); o.material.opacity = 0.7 * (1 - k); });
+    fx(m, 0.6 + Math.random() * 0.4, (o, k, dt) => { o.position.addScaledVector(v, dt); v.multiplyScalar(1 - dt * 3); o.scale.setScalar(s0 * 0.6 + k * 1.1); o.material.opacity = 0.35 * (1 - k); });   // v6.12: ince duman, namlunun arkasina/yukari suzulur
   }
 }
 function hitFlash(p) {
