@@ -19,7 +19,8 @@ const R0 = 6.1;          // platform modelinin yaricapi
 let R = R0, TOPY = 6;              // bu bolumdeki yaricap: yapinin hemen disi, itilen kup kenardan dussun
 const GY = -4.0;         // zemin: platform kisa bir direk ustunde durur, dusen kupler direk dibindeki zeminde yuvarlanir
 const PT = 1.1;          // platform tablasinin kalinligi (ust yuzey y=0)
-const POFI = new THREE.Vector3(2.3, GY, 9.6);     // Pofi kaidesiz, cimende durur; direkli platforma yukari atar   // Pofi'nin ayak yeri (z bolume gore platformun onune konur)
+const POFI = new THREE.Vector3(0, GY, 9.6);   // v5.3: Pofi ortada (Adem: kenarda durmasin)
+//     // Pofi kaidesiz, cimende durur; direkli platforma yukari atar   // Pofi'nin ayak yeri (z bolume gore platformun onune konur)
 const GONE_Y = -0.45;    // bunun altina inen kup platformdan dusmus sayilir
 
 // ---------------- cizim ----------------
@@ -76,12 +77,12 @@ const PL = {};
 // dokular resmin kendisinden kesildi (doku/plat/harabe_*). Tabla stage icinde (bolume gore buyur), direk disarida.
 const HQ = {};
 {
-  const ld = (n, rx, ry) => { const x = PTL.load('doku/plat/harabe_' + n + '.webp?v=2'); x.colorSpace = THREE.SRGBColorSpace; x.anisotropy = 8; if (rx) { x.wrapS = x.wrapT = THREE.RepeatWrapping; x.repeat.set(rx, ry || 1); } return x; };
+  const ld = (n, rx, ry) => { const x = PTL.load('doku/plat/harabe_' + n + '.webp?v=3'); x.colorSpace = THREE.SRGBColorSpace; x.anisotropy = 8; if (rx) { x.wrapS = x.wrapT = THREE.RepeatWrapping; x.repeat.set(rx, ry || 1); } return x; };
   // resimdeki gibi acik renkli boyali tas: dokunun kendisi biraz isik da verir, golgede kahverengiye bogulmaz
   const mk = (tx, c, e, r) => new THREE.MeshStandardMaterial({ map: tx, color: c, emissive: '#ffffff', emissiveMap: tx, emissiveIntensity: e, roughness: r });
   const top = mk(ld('ust'), '#ffffff', 0.12, 0.82);
   const yan = mk(ld('yan'), '#ffe6d2', 0.45, 0.85);
-  const dir = mk(ld('direk', 1, 1), '#ffe2cc', 0.4, 0.9);
+  const dir = mk(ld('direk', 1, 1), '#fff2e6', 0.35, 0.9);
   const alt = new THREE.MeshStandardMaterial({ color: '#8a6a5a', roughness: 0.95 });
   HQ.slab = new THREE.Mesh(new THREE.BoxGeometry(2 * R0, PT, 2 * R0), [yan, yan, top, alt, yan, yan]); HQ.slab.position.y = -PT / 2;
   HQ.slab.castShadow = HQ.slab.receiveShadow = true; stage.add(HQ.slab);
@@ -415,12 +416,12 @@ const CUBESHAPE = new CANNON.Box(new CANNON.Vec3(S / 2, S / 2, S / 2)), FICISHAP
 
 // ---------------- oyun durumu ----------------
 let LV = 1, g = null;
-const cubes = [], balls = [];
+const cubes = [], balls = [], CUBE_OF = new Map();
 function clearLevel() {
   for (const c of cubes) { world.removeBody(c.body); scene.remove(c.mesh); }
   for (const b of balls) { world.removeBody(b.body); scene.remove(b.mesh); }
   for (const d of DEB) scene.remove(d.m); for (const s of SPL) scene.remove(s.m);
-  cubes.length = 0; balls.length = 0; DEB.length = 0; SPL.length = 0;
+  CUBE_OF.clear(); cubes.length = 0; balls.length = 0; DEB.length = 0; SPL.length = 0;
 }
 function buildLevel() {
   clearLevel();
@@ -450,7 +451,7 @@ function buildLevel() {
       if (!g || !g.armed || c.out || c.fuse != null || (c.gone && !kd.esya)) return;   // dusen kavanoz yerde de kirilir
       if (Math.abs(e.contact.getImpactVelocityAlongNormal()) > (kd.kir || 3.2)) { c.fuse = 0; FUSE.push(c); }
     });
-    cubes.push(c);
+    cubes.push(c); CUBE_OF.set(body, c);
   }
   syncMeshes();
   g = { L: LV, ad: Y.ad, total: cubes.length, left: cubes.length, shots: Y.top, max: Y.top, state: 'play', t: 0, busy: 0, quiet: 0, combo: null, armed: false, bonus: 0, gold: 0 };
@@ -540,8 +541,9 @@ function updatePofi(dt) {
 }
 
 // ---------------- toplar ----------------
-const BALLGEO = new THREE.SphereGeometry(0.42, 32, 20);
-const TRAILGEO = new THREE.SphereGeometry(0.24, 12, 8);
+const BR = 0.27;   // v5.3: top kucultuldu (0.42 cok iriydi)
+const BALLGEO = new THREE.SphereGeometry(BR, 32, 20);
+const TRAILGEO = new THREE.SphereGeometry(0.16, 12, 8);
 function shoot(target) {
   if (!g || g.state !== 'play' || g.shots <= 0) return false;
   const now = g.t; if (g.lastShot && now - g.lastShot < 0.32) return false;
@@ -552,15 +554,16 @@ function shoot(target) {
   // yay: v = (hedef - baslangic)/T - g*T/2. En kisa ucus suresi secilir ama top platformun on kenarini (z = R) en az
   // 0.9 yukaridan asmali, yoksa kenara carpip geri seker
   const dv = target.clone().sub(st), gy = world.gravity.y, edge = Math.min(1, Math.max(0, (st.z - R) / Math.max(0.01, st.z - target.z)));
-  let T = Math.max(0.24, Math.min(0.5, dv.length() / 44));
+  let T = Math.max(0.2, Math.min(0.4, dv.length() / 62));   // v5.3: daha hizli, daha duz atis
   for (; T < 2.2; T += 0.03) { const te = edge * T, vy = dv.y / T - 0.5 * gy * T; if (st.y + vy * te + 0.5 * gy * te * te > 0.9) break; }
   const v = new CANNON.Vec3(dv.x / T, dv.y / T - 0.5 * gy * T, dv.z / T);
   const col = PF.col || '#3d9bff';
-  const body = new CANNON.Body({ mass: 38, material: PM.ball, linearDamping: 0.01, allowSleep: false }); body.addShape(new CANNON.Sphere(0.42));
+  const body = new CANNON.Body({ mass: 38, material: PM.ball, linearDamping: 0.01, allowSleep: false }); body.addShape(new CANNON.Sphere(BR));
   body.position.set(st.x, st.y, st.z); body.velocity.copy(v); world.addBody(body);
   const mesh = new THREE.Mesh(BALLGEO, new THREE.MeshStandardMaterial({ color: col, roughness: 0.15, metalness: 0.1, emissive: col, emissiveIntensity: 0.45 })); mesh.castShadow = true; scene.add(mesh);
-  const b = { body, mesh, t: 0, hit: false, trail: [], col };
-  body.addEventListener('collide', (e) => { if (b.hit) return; b.hit = true; impact(b, e); });
+  const b = { body, mesh, t: 0, hit: false, trail: [], col, dir: new THREE.Vector3(v.x, v.y, v.z).normalize() };
+  // ilk kupe carpista vurus dalgasi: carpisma adimin icinde gelir, itis adimdan sonra yapilir (b.blast)
+  body.addEventListener('collide', (e) => { if (b.hit) return; const c = CUBE_OF.get(e.body); if (!c) return; b.hit = true; b.blast = new THREE.Vector3().copy(body.position); impact(b, e); });
   balls.push(b);
   g.combo = { n: 0, t: 0, shown: 0 };
   burst(st, col, 8, 4); sfx('shoot'); hud();
@@ -571,9 +574,27 @@ function impact(b) {
   wakeAll(); g.busy = 2.5; shake = Math.min(0.5, shake + 0.32);
   burst(new THREE.Vector3().copy(b.body.position), '#fff3a0', 18, 9); sfx('hit');
 }
+// v5.3: atis guclendi. Top kupe degdigi an cevresindeki kupler (yaklasik 1.6 kup yaricap) top yonunde itilir;
+// itis kupun merkezinin ustunden uygulandigi icin kup sadece kaymaz, devrilir. Agir malzeme (celik, tugla) daha az etkilenir.
+const BLAST = { r: S * 1.6, hiz: 11, yukari: 2.2 };
+const IMP = new CANNON.Vec3(), RP = new CANNON.Vec3();
+function blast(b) {
+  const p = b.blast, d = b.dir.clone(); d.y = Math.max(-0.2, Math.min(0.25, d.y)); d.normalize();
+  for (const c of cubes) {
+    if (c.gone || c.out) continue;
+    const q = c.body.position, dx = q.x - p.x, dy = q.y - p.y, dz = q.z - p.z, dist = Math.hypot(dx, dy, dz);
+    if (dist > BLAST.r) continue;
+    const k = 1 - dist / BLAST.r, m = c.body.mass, sp = BLAST.hiz * (0.35 + 0.65 * k) / Math.max(1, m * 0.55);
+    // top yonu + biraz merkezden disari + hafif yukari
+    const rx = dist > 0.01 ? dx / dist : 0, rz = dist > 0.01 ? dz / dist : 0;
+    IMP.set((d.x * 0.8 + rx * 0.3) * sp * m, (d.y * 0.5 + 0.12) * sp * m + BLAST.yukari * k * m, (d.z * 0.8 + rz * 0.3) * sp * m);
+    RP.set(0, S * 0.32, 0);   // merkezin ustu: devirme torku
+    c.body.wakeUp(); c.body.applyImpulse(IMP, RP);
+  }
+}
 function updateBalls(dt) {
   for (let i = balls.length - 1; i >= 0; i--) {
-    const b = balls[i]; b.t += dt; b.mesh.position.copy(b.body.position); b.mesh.quaternion.copy(b.body.quaternion);
+    const b = balls[i]; b.t += dt; if (b.blast) { blast(b); b.blast = null; } b.mesh.position.copy(b.body.position); b.mesh.quaternion.copy(b.body.quaternion);
     // iz: arkasinda kuculen parlak toplar
     if (b.t < 1.5) { const tr = new THREE.Mesh(TRAILGEO, new THREE.MeshBasicMaterial({ color: b.col, transparent: true, opacity: 0.55, depthWrite: false })); tr.position.copy(b.mesh.position); scene.add(tr); b.trail.push({ m: tr, life: 0.28 }); }
     for (let j = b.trail.length - 1; j >= 0; j--) { const p = b.trail[j]; p.life -= dt; const k = Math.max(0, p.life / 0.28); p.m.scale.setScalar(k); p.m.material.opacity = 0.55 * k; if (p.life <= 0) { scene.remove(p.m); p.m.material.dispose(); b.trail.splice(j, 1); } }
