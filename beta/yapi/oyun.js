@@ -1,4 +1,4 @@
-// BLOKPOP Yapi v3 (prototip) - v6.3: kayitli (sentezlenip mp3'e basilmis) sesler, yeni yazilar ve bolum bandi, atis dengesi. v6.2: 7 yeni model, platform kameraya duz bakar, top arabasi yerlesimi/olcusu yeniden, top ve kirilma gorunumu, atis/yikilma dengesi. v6.1: cam sekiller, her sey kirilir, boyama yok (Adem'in model renkleri), duz/esit atis, temiz platform ayagi, fon degisimi. v6.0: Royal Smash kalitesi icin atis/kirilma/ses/efekt yenilendi, kamera hafif yandan. v5.5: Pofi yok; onden bakis, altta yakindan buyuk top arabasi, metal kupler boyali. v5.4: cayir fonu + Adem'in Tripo modelleri (cizgili platform, top arabasi, top, ahsap/kirmizi/metal kupler). Direk ustundeki platformda iri metal kuplerden bir yapi; altta Pofi durur.
+// BLOKPOP Yapi v3 (prototip) - v6.4: cam sekiller ve boyali dokular yok, tum bloklar Tripo modeli orijinal renginde; top parlamasi yok; yuksek genis kuleler. v6.3: kayitli (sentezlenip mp3'e basilmis) sesler, yeni yazilar ve bolum bandi, atis dengesi. v6.2: 7 yeni model, platform kameraya duz bakar, top arabasi yerlesimi/olcusu yeniden, top ve kirilma gorunumu, atis/yikilma dengesi. v6.1: cam sekiller, her sey kirilir, boyama yok (Adem'in model renkleri), duz/esit atis, temiz platform ayagi, fon degisimi. v6.0: Royal Smash kalitesi icin atis/kirilma/ses/efekt yenilendi, kamera hafif yandan. v5.5: Pofi yok; onden bakis, altta yakindan buyuk top arabasi, metal kupler boyali. v5.4: cayir fonu + Adem'in Tripo modelleri (cizgili platform, top arabasi, top, ahsap/kirmizi/metal kupler). Direk ustundeki platformda iri metal kuplerden bir yapi; altta Pofi durur.
 // Oyuncu yapida bir yere dokunur, Pofi hortumuyla oraya top atar. Kupler gercek fizikle (cannon-es) devrilir, platformdan
 // dusen her kup sayilir. Hepsi dusunce bolum biter; toplar biterse kaybedilir.
 import * as THREE from '../three.module.min.js';
@@ -99,15 +99,18 @@ const KARE = (t) => t === 'harabe';
 const MOD = {};
 // v5.4: Adem'in yeni Tripo modelleri (4 Kas 2026): ahsap kup sandigin, kirmizi patlayici kup ficinin, metal kup celigin yerine;
 // cizgili platform, top ve top arabasi. Anahtar -> dosya adi.
-const MFILE = { kup: 'kup_metal', metal: 'kup_metal', ahsap: 'kup_ahsap', kirmizi: 'kup_kirmizi', sandik: 'kup_ahsap', fici: 'varil', tugla: 'kup_tas', tas: 'kup_tas', buz: 'buz_silindir', altin: 'kup_altin', ahsapmetal: 'kup_ahsap_metal', piramitTas: 'piramit_tas', kabak: 'bal_kabagi', platform_ahsap: 'platform_ahsap', platform_tas: 'platform_tas', platform_sirk: 'platform_sirk', top: 'top', topcu: 'top_arabasi' };
-const NEWM = new Set(['kup', 'metal', 'ahsap', 'kirmizi', 'sandik', 'platform_sirk', 'top', 'topcu', 'fici', 'tugla', 'tas', 'buz', 'altin', 'ahsapmetal', 'piramitTas', 'kabak']);
+const MFILE = { kup: 'kup_metal', metal: 'kup_metal', ahsap: 'kup_ahsap', kirmizi: 'kup_kirmizi', sandik: 'kup_ahsap', fici: 'varil', tugla: 'kup_tas', tas: 'kup_tas', buz: 'buz_silindir', altin: 'kup_altin', ahsapmetal: 'kup_ahsap_metal', piramitTas: 'piramit_tas', kabak: 'bal_kabagi', platform_ahsap: 'platform_ahsap', platform_tas: 'platform_tas', platform_sirk: 'platform_sirk', top: 'top', topcu: 'top_arabasi',
+  // v6.4: (Adem) benim dokularim/boyam yok: ozel bloklar da Tripo modeli, orijinal renginde
+  celik: 'kup_metal', bomba: 'fici', hediye: 'sandik', yildiz: 'kup_altin', jole: 'kup_kirmizi', cam: 'kup' };
+const V1FILE = new Set(['kup', 'sandik', 'fici', 'platform_ahsap', 'platform_tas']);   // ilk Tripo modelleri (?v=1)
+const NEWM = new Set(['kup', 'metal', 'ahsap', 'kirmizi', 'sandik', 'platform_sirk', 'top', 'topcu', 'fici', 'tugla', 'tas', 'buz', 'altin', 'ahsapmetal', 'piramitTas', 'kabak', 'celik', 'bomba', 'hediye', 'yildiz', 'jole', 'cam']);
 const GLBP = {};   // ayni dosya iki anahtarda (kup, celik) bir kez yuklenir
 const modelReady = Promise.all(Object.keys(MFILE).map((n) => new Promise((res) => {
-  const url = 'model/' + MFILE[n] + '.glb?v=' + (NEWM.has(n) ? 2 : 1);
+  const url = 'model/' + MFILE[n] + '.glb?v=' + (V1FILE.has(MFILE[n]) ? 1 : 2);
   (GLBP[url] || (GLBP[url] = new Promise((ok) => new GLTFLoader().load(url, ok, undefined, () => ok(null))))).then((gl) => {
     if (!gl) return res();
     let m = null; gl.scene.updateMatrixWorld(true); gl.scene.traverse((o) => { if (o.isMesh && !m) m = o; });
-    if (m) { const geo = m.geometry.clone().applyMatrix4(m.matrixWorld); geo.computeBoundingBox(); MOD[n] = { geo, mat: m.material }; if (!NEWM.has(n) && (n === 'sandik' || n === 'fici')) m.material.color.multiplyScalar(1.35); if (['kup', 'metal', 'ahsap', 'kirmizi', 'sandik', 'tas', 'tugla', 'ahsapmetal', 'altin', 'fici', 'buz', 'piramitTas', 'kabak'].includes(n) && !m.material.envMap) { m.material.envMap = ENV; m.material.envMapIntensity = 0.9; } }
+    if (m) { const geo = m.geometry.clone().applyMatrix4(m.matrixWorld); geo.computeBoundingBox(); MOD[n] = { geo, mat: m.material }; if (!m.material.envMap && !/^platform|^topcu$/.test(n)) { m.material.envMap = NENV; m.material.envMapIntensity = 1; } }   // v6.4: renk degismez; sadece Tripo onizlemesindeki gibi notr (beyaz-gri) ortam isigi
     res();
   });
 })));
@@ -329,6 +332,15 @@ const ENV = (() => {
     x.fillStyle = gr; x.fillRect(0, 0, w, h);
     const blob = (cx, cy, rx, ry, a) => { x.save(); x.translate(cx, cy); x.scale(1, ry / rx); const g2 = x.createRadialGradient(0, 0, 0, 0, 0, rx); g2.addColorStop(0, 'rgba(255,255,255,' + a + ')'); g2.addColorStop(1, 'rgba(255,255,255,0)'); x.fillStyle = g2; x.beginPath(); x.arc(0, 0, rx, 0, 6.283); x.fill(); x.restore(); };
     blob(150, 70, 70, 50, 1); blob(380, 80, 50, 40, 0.7); blob(260, 40, 120, 30, 0.5);
+  });
+  t.mapping = THREE.EquirectangularReflectionMapping;
+  const pm = new THREE.PMREMGenerator(ren), e = pm.fromEquirectangular(t).texture; pm.dispose(); return e;
+})();
+// v6.4: Adem'in modelleri icin renksiz ortam isigi (stüdyo gibi: ustte beyaz, altta gri). Modelin rengini degistirmez, koyulugunu acar.
+const NENV = (() => {
+  const t = canvasTex(512, 256, (x, w, h) => {
+    const gr = x.createLinearGradient(0, 0, 0, h); gr.addColorStop(0, '#ffffff'); gr.addColorStop(0.5, '#d8d8d8'); gr.addColorStop(1, '#7a7a7a');
+    x.fillStyle = gr; x.fillRect(0, 0, w, h); x.fillStyle = 'rgba(255,255,255,0.9)'; x.fillRect(w * 0.15, h * 0.12, w * 0.18, h * 0.2); x.fillRect(w * 0.62, h * 0.1, w * 0.2, h * 0.16);
   });
   t.mapping = THREE.EquirectangularReflectionMapping;
   const pm = new THREE.PMREMGenerator(ren), e = pm.fromEquirectangular(t).texture; pm.dispose(); return e;
@@ -581,12 +593,22 @@ function convertLevel(list, L) {
   return list.map(([i, j, k, col]) => {
     if (col[0] !== '#') return [i, j, k, col];
     const a = rnd3(L, Math.round(i * 2), j, Math.round(k * 2)), b = rnd3(L + 99, Math.round(i * 2), j, Math.round(k * 2));
-    if (top[i + ',' + k] === j && a < 0.62) return [i, j, k, b < 0.4 ? MTEPE[Math.floor(b / 0.4 * MTEPE.length)] : 'g_' + GTEPE[Math.floor((b - 0.4) / 0.6 * GTEPE.length)]];
-    if (a < 0.22) return [i, j, k, 'g_' + GYIG[Math.floor(b * GYIG.length)]];
+    if (top[i + ',' + k] === j && a < 0.3) return [i, j, k, MTEPE[Math.floor(b * MTEPE.length)]];   // v6.4: cam sekiller kaldirildi
     return [i, j, k, COLFAM[col] || 'metal'];
   });
 }
-function levelOf(L) { return LEVELS[(L - 1) % LEVELS.length]; }
+// v6.4: referans oyundaki gibi yuksek ve sik kuleler (renkler COLFAM ile Adem'in modellerine doner). Eski bolumlerin arasina girer.
+const KULELER = [
+  { ad: 'Renkli Kule', top: 0, bg: 1, make: () => box([], 0, 4, 0, 9, 0, 1, (i) => [C.kir, C.mav, C.sar, C.mav, C.kir][i]) },
+  { ad: 'Çizgili Kule', top: 0, bg: 1, make: () => box([], 0, 4, 0, 10, 0, 1, (i, j) => (Math.floor(j / 2) % 2 ? (i % 2 ? C.sar : C.kir) : (i % 2 ? C.mav : C.tur))) },
+  { ad: 'Barut Kulesi', top: 0, bg: 1, make: () => box([], 0, 4, 0, 10, 0, 1, (i, j, k) => (i === 2 && k === 1 && (j === 2 || j === 7) ? 'fici' : j % 4 === 3 ? C.sar : i === 2 ? C.mav : C.kir)) },
+  { ad: 'Gökdelen', top: 0, bg: 1, make: () => { const o = box([], 0, 5, 0, 3, 0, 1, (i, j) => (j === 3 ? C.sar : C.kir)); box(o, 1, 4, 4, 11, 0, 1, (i, j) => (j === 11 && (i === 2 || i === 3) ? 'altin' : (i + j) % 2 ? C.mav : C.tur)); return o; } },
+  { ad: 'Kale Kulesi', top: 0, bg: 1, make: () => box([], 0, 4, 0, 8, 0, 2, (i, j, k) => (i > 0 && i < 4 && k === 1 ? (j === 0 ? 'fici' : null) : (i + k + j) % 3 === 0 ? C.sar : j < 4 ? C.mor : C.kir)).filter((c) => c[3]) },
+  { ad: 'Dev Kule', top: 0, bg: 1, make: () => box([], 0, 5, 0, 10, 0, 1, (i, j, k) => (j === 10 && (i === 2 || i === 3) ? 'altin' : [C.kir, C.sar, C.mav][(i + Math.floor(j / 3)) % 3])) }
+];
+// sira: 1. bolum Recel Rafi, sonra her eski bolumden sonra bir kule
+const LSIRA = (() => { const o = [], e = LEVELS.slice(); o.push(e.shift()); for (let i = 0; i < Math.max(e.length, KULELER.length); i++) { if (KULELER[i]) o.push(KULELER[i]); if (e[i]) o.push(e[i]); } return o; })();
+function levelOf(L) { return LSIRA[(L - 1) % LSIRA.length]; }
 
 // ---------------- fizik ----------------
 const world = new CANNON.World({ gravity: new CANNON.Vec3(0, -24, 0) });
@@ -794,7 +816,7 @@ function shoot(target) {
   const body = new CANNON.Body({ mass: 12, material: PM.ball, linearDamping: 0.01, allowSleep: false }); body.addShape(new CANNON.Sphere(BR));
   body.position.set(st.x, st.y, st.z); body.velocity.copy(v); world.addBody(body);
   const tg = topGeo(), mesh = tg ? new THREE.Mesh(tg, topMat()) : new THREE.Mesh(BALLGEO, new THREE.MeshStandardMaterial({ color: col, roughness: 0.15, metalness: 0.1, emissive: col, emissiveIntensity: 0.45 })); mesh.castShadow = true; scene.add(mesh);
-  const halo = new THREE.Sprite(new THREE.SpriteMaterial({ map: SOFT, color: '#ffe6ff', transparent: true, opacity: 0.55, blending: THREE.AdditiveBlending, depthWrite: false })); halo.scale.setScalar(BR * 4.2); mesh.add(halo);
+  const halo = new THREE.Sprite(new THREE.SpriteMaterial({ map: SOFT, color: '#ffe6ff', transparent: true, opacity: 0.55, blending: THREE.AdditiveBlending, depthWrite: false })); halo.scale.setScalar(BR * 4.2); halo.visible = false; mesh.add(halo);
   const b = { body, mesh, halo, t: 0, hit: false, trail: [], col, dir: new THREE.Vector3(v.x, v.y, v.z).normalize(), sp: Math.hypot(v.x, v.y, v.z) };
   body.angularVelocity.set(-v.z * 0.9, 0, v.x * 0.9);   // ucarken one dogru donsun
   // ilk kupe carpista vurus dalgasi: carpisma adimin icinde gelir, itis adimdan sonra yapilir (b.blast)
@@ -807,7 +829,7 @@ function shoot(target) {
 }
 let TOPG = null, TOPM = null;
 // v6.2: yildizli top malzemesi daha canli (kendi isigi + yansima) ve etrafinda yumusak bir hale
-function topMat() { if (TOPM) return TOPM; const m = MOD.top.mat.clone(); m.envMap = ENV; m.envMapIntensity = 1.4; m.roughness = Math.min(m.roughness, 0.25); m.metalness = 0.2; m.emissive = new THREE.Color('#ffffff'); m.emissiveMap = m.map; m.emissiveIntensity = 0.35; return (TOPM = m); }
+function topMat() { return (TOPM = MOD.top.mat); }   // v6.4: (Adem) topun kendi rengi, ek parlama yok
 function topGeo() {
   if (TOPG || !MOD.top) return TOPG;
   const g = MOD.top.geo.clone(), b = g.boundingBox, c = b.getCenter(new THREE.Vector3()), z = b.getSize(new THREE.Vector3());
