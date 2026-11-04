@@ -17,8 +17,9 @@ const save = () => { try { localStorage.setItem(SKEY, JSON.stringify(SV)); } cat
 const S = 1.55;          // kup kenari (iri)
 const R0 = 6.1;          // platform modelinin yaricapi
 let R = R0, TOPY = 6;              // bu bolumdeki yaricap: yapinin hemen disi, itilen kup kenardan dussun
-const GY = -1.7;         // zemin: alcak platform buna oturur, dusen kupler burada yuvarlanir
-const POFI = new THREE.Vector3(0, -0.9, 9.6);   // Pofi'nin ayak yeri (z bolume gore platformun onune konur)
+const GY = -4.0;         // zemin: platform kisa bir direk ustunde durur, dusen kupler direk dibindeki zeminde yuvarlanir
+const PT = 1.1;          // platform tablasinin kalinligi (ust yuzey y=0)
+const POFI = new THREE.Vector3(2.3, GY, 9.6);     // Pofi kaidesiz, cimende durur; direkli platforma yukari atar   // Pofi'nin ayak yeri (z bolume gore platformun onune konur)
 const GONE_Y = -0.45;    // bunun altina inen kup platformdan dusmus sayilir
 
 // ---------------- cizim ----------------
@@ -55,9 +56,11 @@ function platMats(t) {
 const stage = new THREE.Group(), pedG = new THREE.Group(); scene.add(stage, pedG);
 const PL = {};
 {
-  const g1 = new THREE.CylinderGeometry(R0, R0, 1.1, 72), g2 = new THREE.CylinderGeometry(R0 * 0.9, R0 * 0.95, -GY - 1.1, 72);
+  const g1 = new THREE.CylinderGeometry(R0, R0, 1.1, 72), g2 = new THREE.CylinderGeometry(1.05, 1.3, -GY - PT, 40);
   PL.top = new THREE.Mesh(g1); PL.top.position.y = -0.55; PL.top.receiveShadow = PL.top.castShadow = true; stage.add(PL.top);
-  PL.base = new THREE.Mesh(g2); PL.base.position.y = (GY - 1.1) / 2; PL.base.receiveShadow = true; stage.add(PL.base);
+  // kisa direk ve zemine oturan ayak: platform buyuyunce direk kalinlasmasin diye stage disinda
+  PL.base = new THREE.Mesh(g2); PL.base.position.y = (GY - PT) / 2; PL.base.receiveShadow = PL.base.castShadow = true; scene.add(PL.base);
+  PL.foot = new THREE.Mesh(new THREE.CylinderGeometry(1.9, 2.15, 0.35, 48)); PL.foot.position.y = GY + 0.175; PL.foot.receiveShadow = true; scene.add(PL.foot);
   PL.ring = new THREE.Mesh(new THREE.TorusGeometry(R0, 0.13, 12, 96)); PL.ring.rotation.x = Math.PI / 2; stage.add(PL.ring);
   PL.ring2 = PL.ring.clone(); PL.ring2.position.y = -1.1; stage.add(PL.ring2);
   const ph = POFI.y - GY;
@@ -101,16 +104,17 @@ const PLM = {};
 function platModel(t) {
   if (PLM[t] !== undefined) return PLM[t];
   const n = 'platform_' + t; if (!MOD[n]) return (PLM[t] = null);
-  const big = new THREE.Mesh(fitPlat(n, R0, GY), MOD[n].mat), ped = new THREE.Mesh(fitPlat(n, 1.55, GY - POFI.y), MOD[n].mat);
+  const big = new THREE.Mesh(fitPlat(n, R0, -PT), MOD[n].mat), ped = new THREE.Mesh(fitPlat(n, 1.55, GY - POFI.y), MOD[n].mat);
   big.receiveShadow = ped.receiveShadow = true; big.castShadow = true; big.visible = ped.visible = false; stage.add(big); pedG.add(ped);
   return (PLM[t] = { big, ped });
 }
 function setPlat(t) {
   const m = platMats(t), pm = platModel(t);
   for (const k in PLM) if (PLM[k]) PLM[k].big.visible = PLM[k].ped.visible = k === t;
-  for (const o of [PL.top, PL.base, PL.ring, PL.ring2, PL.ped, PL.pr]) o.visible = !pm;
-  PL.top.material = [m.side, m.top, m.alt]; PL.base.material = [m.alt, m.alt, m.alt]; PL.ring.material = PL.ring2.material = PL.pr.material = m.halka;
+  for (const o of [PL.top, PL.ring, PL.ring2, PL.ped, PL.pr]) o.visible = !pm;
+  PL.top.material = [m.side, m.top, m.alt]; PL.base.material = PL.foot.material = [m.side, m.top, m.alt]; PL.ring.material = PL.ring2.material = PL.pr.material = m.halka;
   PL.ped.material = [m.side, m.top, m.alt];
+  if (POFI.y - GY < 0.2) { PL.ped.visible = PL.pr.visible = false; if (pm) pm.ped.visible = false; }
 }
 setPlat('ahsap');
 // renkli kup modeli: gri metal doku kupun rengiyle carpilir, hafif kendi isigi
@@ -351,7 +355,7 @@ function box(o, i0, i1, j0, j1, k0, k1, col) { for (let j = j0; j <= j1; j++) fo
 // zorluk egrisi: bolum ilerledikce top sayisi azalir, yapilar agirlasir (tugla/celik) ve ozel bloklar artar.
 // renk (#...) yerine malzeme adi da yazilabilir: sandik, tugla, celik, buz, jole, cam, fici, bomba, altin, hediye, yildiz
 const LEVELS = [
-  { ad: 'Reçel Rafı', top: 7, tema: ['mutfak', 'seker'], make: () => { const o = box([], 0, 4, 0, 0, 0, 1, (i) => [C.kir, C.tur, C.sar, C.yes, C.mav][i]);
+  { ad: 'Reçel Rafı', top: 7, tema: ['cayir1', 'seker'], make: () => { const o = box([], 0, 4, 0, 0, 0, 1, (i) => [C.kir, C.tur, C.sar, C.yes, C.mav][i]);
     box(o, 0, 4, 1, 1, 0, 1, (i, j, k) => (k === 1 && (i === 1 || i === 3) ? 'recel' : k === 1 ? C.mor : C.tur)); box(o, 0, 4, 2, 2, 0, 1, C.sar);
     o.push([1, 3, 1, 'recel'], [2, 3, 1, 'hediye'], [3, 3, 1, 'recel'], [0, 3, 0, 'recel'], [4, 3, 0, 'recel']); return o; } },
   { ad: 'Renkli Duvar', top: 8, bg: 1, make: () => { const o = box([], 0, 5, 0, 3, 0, 1, (i, j) => (j < 2 ? ((i + j) % 4 === 1 ? C.sar : C.kir) : (i % 3 === 1 && j === 3 ? C.sar : C.tur))); o.push([2.5, 4, 0.5, 'hediye']); return o; } },
@@ -405,8 +409,8 @@ function buildLevel() {
   R = Math.max(3.4, R + 0.3); TOPY = 0; for (const c of list) TOPY = Math.max(TOPY, (c[1] + 1) * S);
   stage.scale.set(R / R0, 1, R / R0);
   while (platBody.shapes.length) platBody.removeShape(platBody.shapes[0]);
-  platBody.addShape(new CANNON.Cylinder(R, R, -GY, 32), new CANNON.Vec3(0, GY / 2, 0));
-  POFI.z = R + 3.6; pedG.position.copy(POFI); PF.holder.position.copy(POFI); fit();
+  platBody.addShape(new CANNON.Cylinder(R, R, PT, 32), new CANNON.Vec3(0, -PT / 2, 0)); platBody.addShape(new CANNON.Cylinder(1.05, 1.3, -GY - PT, 16), new CANNON.Vec3(0, (GY - PT) / 2, 0));
+  POFI.z = R + 5.6; pedG.position.copy(POFI); PF.holder.position.copy(POFI); fit();
   for (const [i, j, k, col] of list) {
     const kd = col[0] === '#' ? null : KIND[col], mg = fitCube(kd ? col : 'kup'), isF = col === 'fici' && !mg;
     const pm = kd ? (kd.pm || (kd.pm = new CANNON.Material({ friction: kd.f, restitution: kd.r }))) : PM.cube;
@@ -524,7 +528,7 @@ function shoot(target) {
   // 0.9 yukaridan asmali, yoksa kenara carpip geri seker
   const dv = target.clone().sub(st), gy = world.gravity.y, edge = Math.min(1, Math.max(0, (st.z - R) / Math.max(0.01, st.z - target.z)));
   let T = Math.max(0.24, Math.min(0.5, dv.length() / 44));
-  for (; T < 1.2; T += 0.03) { const te = edge * T, vy = dv.y / T - 0.5 * gy * T; if (st.y + vy * te + 0.5 * gy * te * te > 0.9) break; }
+  for (; T < 2.2; T += 0.03) { const te = edge * T, vy = dv.y / T - 0.5 * gy * T; if (st.y + vy * te + 0.5 * gy * te * te > 0.9) break; }
   const v = new CANNON.Vec3(dv.x / T, dv.y / T - 0.5 * gy * T, dv.z / T);
   const col = PF.col || '#3d9bff';
   const body = new CANNON.Body({ mass: 38, material: PM.ball, linearDamping: 0.01, allowSleep: false }); body.addShape(new CANNON.Sphere(0.42));
@@ -704,9 +708,9 @@ function fit() {
   const W = innerWidth, H = innerHeight; ren.setSize(W, H, false); cam.aspect = W / H;
   cam.fov = 38; const hf = 2 * Math.atan(Math.tan(cam.fov * Math.PI / 360) * cam.aspect);
   // yatayda platform, dikeyde yapinin tepesinden Pofi'nin ayagina kadar sigsin
-  const y0 = POFI.y - 1.2, y1 = TOPY + 1.4, tg = new THREE.Vector3(0, (y0 + y1) / 2 + 0.6, POFI.z * 0.25);
+  const y0 = Math.min(POFI.y, GY) - 0.6, y1 = TOPY + 1.4, tg = new THREE.Vector3(0, (y0 + y1) / 2 + 0.6, POFI.z * 0.25);
   const d = Math.max(14, (R + 0.6) / Math.tan(hf / 2), ((y1 - y0) / 2) / Math.tan(cam.fov * Math.PI / 360) * 1.05);
-  const dir = new THREE.Vector3(0, 0.36, 1).normalize();
+  const dir = new THREE.Vector3(0, 0.27, 1).normalize();
   cam.position.copy(tg).addScaledVector(dir, d); cam.lookAt(tg); cam.updateProjectionMatrix();
   cam.userData.base = cam.position.clone();
 }
