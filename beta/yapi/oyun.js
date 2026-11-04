@@ -620,7 +620,7 @@ const LSIRA = (() => { const o = [], e = LEVELS.slice(); o.push(e.shift()); for 
 function levelOf(L) { return LSIRA[(L - 1) % LSIRA.length]; }
 
 // ---------------- fizik ----------------
-const KAGIR = 3;   // v6.8: (Adem) kupler hafif (kagit gibi) hissettiriyordu: tum kup kutleleri bu katsayiyla carpilir
+const KAGIR = 2;   // v6.9: 3 cok zordu   // v6.8: (Adem) kupler hafif (kagit gibi) hissettiriyordu: tum kup kutleleri bu katsayiyla carpilir
 const world = new CANNON.World({ gravity: new CANNON.Vec3(0, -32, 0) });   // v6.8: (Adem) kupler agir dussun
 world.broadphase = new CANNON.SAPBroadphase(world); world.allowSleep = true; world.solver.iterations = 14; world.solver.tolerance = 0.0005;
 // ozel malzemelerin kendi Material'i var; onlarla carpismada surtunme/sekme iki tarafin carpimidir (cannon-es)
@@ -833,7 +833,7 @@ function shoot(target) {
   // yay: v = (hedef - baslangic)/T - g*T/2. En kisa ucus suresi secilir ama top platformun on kenarini (z = R) en az
   // 0.9 yukaridan asmali, yoksa kenara carpip geri seker
   const dv = target.clone().sub(st), gy = world.gravity.y, sz = st.x * Math.sin(YAW) + st.z * Math.cos(YAW), tz = target.x * Math.sin(YAW) + target.z * Math.cos(YAW), edge = Math.min(1, Math.max(0, (sz - RZ) / Math.max(0.01, sz - tz)));
-  let T = Math.max(0.16, dv.length() / 32);   // v6.5: biraz yavas, top gozle takip edilir   // v6.1: her yone ayni hiz (~44 birim/sn): yukari da asagi da ayni guc
+  let T = Math.max(0.12, dv.length() / 44);   // v6.9: (Adem) mermi daha hizli   // v6.5: biraz yavas, top gozle takip edilir   // v6.1: her yone ayni hiz (~44 birim/sn): yukari da asagi da ayni guc
   for (; T < 2.2; T += 0.02) { const te = edge * T, vy = dv.y / T - 0.5 * gy * T; if (st.y + vy * te + 0.5 * gy * te * te > BR + 0.12) break; }
   const v = new CANNON.Vec3(dv.x / T, dv.y / T - 0.5 * gy * T, dv.z / T);
   const col = PF.col || '#3d9bff';
