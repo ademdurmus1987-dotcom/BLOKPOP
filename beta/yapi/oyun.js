@@ -1,4 +1,4 @@
-// BLOKPOP Yapi v3 (prototip) - direk ustundeki yuvarlak platformda iri metal kuplerden bir yapi; altta Pofi durur.
+// BLOKPOP Yapi v3 (prototip) - v5.2: col harabesi fonu + kare tas platform. Direk ustundeki platformda iri metal kuplerden bir yapi; altta Pofi durur.
 // Oyuncu yapida bir yere dokunur, Pofi hortumuyla oraya top atar. Kupler gercek fizikle (cannon-es) devrilir, platformdan
 // dusen her kup sayilir. Hepsi dusunce bolum biter; toplar biterse kaybedilir.
 import * as THREE from '../three.module.min.js';
@@ -30,8 +30,8 @@ ren.outputColorSpace = THREE.SRGBColorSpace; ren.toneMapping = THREE.ACESFilmicT
 ren.shadowMap.enabled = true; ren.shadowMap.type = THREE.PCFSoftShadowMap;
 const scene = new THREE.Scene();
 const cam = new THREE.PerspectiveCamera(40, 1, 0.5, 200);
-scene.add(new THREE.HemisphereLight(0xfff6e8, 0x6a7a5a, 1.25));
-const sun = new THREE.DirectionalLight(0xfff0d0, 2.6); sun.position.set(-8, 18, 10); sun.castShadow = true;
+scene.add(new THREE.HemisphereLight(0xffeedd, 0x8a5a40, 1.25));   // gun batimi tonu (harabe fonu)
+const sun = new THREE.DirectionalLight(0xffdcae, 2.6); sun.position.set(-8, 18, 10); sun.castShadow = true;
 sun.shadow.mapSize.set(1024, 1024); Object.assign(sun.shadow.camera, { left: -14, right: 14, top: 16, bottom: -14, near: 2, far: 60 }); sun.shadow.bias = -0.0005; sun.shadow.normalBias = 0.03;
 scene.add(sun);
 const rim = new THREE.DirectionalLight(0xcfe0ff, 0.9); rim.position.set(9, 6, -8); scene.add(rim);
@@ -72,6 +72,25 @@ const PL = {};
   const sh = new THREE.Mesh(new THREE.PlaneGeometry(R0 * 2.7, R0 * 2.7), bm); sh.rotation.x = -Math.PI / 2; sh.position.y = GY + 0.02; stage.add(sh);
   const sh2 = new THREE.Mesh(new THREE.PlaneGeometry(4.4, 4.4), bm); sh2.rotation.x = -Math.PI / 2; sh2.position.y = GY - POFI.y + 0.02; pedG.add(sh2);
 }
+// harabe temasi (Adem'in col harabesi resmi): kare tas tabla, ustunde oyuk izgara; kare tas direk ve ayak.
+// dokular resmin kendisinden kesildi (doku/plat/harabe_*). Tabla stage icinde (bolume gore buyur), direk disarida.
+const HQ = {};
+{
+  const ld = (n, rx, ry) => { const x = PTL.load('doku/plat/harabe_' + n + '.webp?v=2'); x.colorSpace = THREE.SRGBColorSpace; x.anisotropy = 8; if (rx) { x.wrapS = x.wrapT = THREE.RepeatWrapping; x.repeat.set(rx, ry || 1); } return x; };
+  // resimdeki gibi acik renkli boyali tas: dokunun kendisi biraz isik da verir, golgede kahverengiye bogulmaz
+  const mk = (tx, c, e, r) => new THREE.MeshStandardMaterial({ map: tx, color: c, emissive: '#ffffff', emissiveMap: tx, emissiveIntensity: e, roughness: r });
+  const top = mk(ld('ust'), '#ffffff', 0.12, 0.82);
+  const yan = mk(ld('yan'), '#ffe6d2', 0.45, 0.85);
+  const dir = mk(ld('direk', 1, 1), '#ffe2cc', 0.4, 0.9);
+  const alt = new THREE.MeshStandardMaterial({ color: '#8a6a5a', roughness: 0.95 });
+  HQ.slab = new THREE.Mesh(new THREE.BoxGeometry(2 * R0, PT, 2 * R0), [yan, yan, top, alt, yan, yan]); HQ.slab.position.y = -PT / 2;
+  HQ.slab.castShadow = HQ.slab.receiveShadow = true; stage.add(HQ.slab);
+  const ph = -GY - PT;
+  HQ.col = new THREE.Mesh(new THREE.BoxGeometry(2.7, ph, 2.7), [dir, dir, alt, alt, dir, dir]); HQ.col.position.y = -PT - ph / 2;
+  HQ.col.castShadow = HQ.col.receiveShadow = true; scene.add(HQ.col);
+  HQ.foot = new THREE.Mesh(new THREE.BoxGeometry(3.5, 0.3, 3.5), [yan, yan, alt, alt, yan, yan]); HQ.foot.position.y = GY + 0.15; HQ.foot.receiveShadow = true; scene.add(HQ.foot);
+}
+const KARE = (t) => t === 'harabe';
 // ---------------- Tripo modelleri (model/*.glb) ----------------
 // Adem'in Gemini resimlerinden Tripo'da yapilan gercek 3B modeller (kucultulmus: ~6 bin ucgen kup, ~25 bin platform).
 // Renkli kup, sandik ve fici modeli kupun yerine gecer; ahsap ve tas temalarinda platform da model olur.
@@ -109,6 +128,9 @@ function platModel(t) {
   return (PLM[t] = { big, ped });
 }
 function setPlat(t) {
+  const kare = KARE(t); for (const k in HQ) HQ[k].visible = kare;
+  if (kare) { for (const k in PLM) if (PLM[k]) PLM[k].big.visible = PLM[k].ped.visible = false; for (const o of [PL.top, PL.ring, PL.ring2, PL.ped, PL.pr, PL.base, PL.foot]) o.visible = false; return; }
+  PL.base.visible = PL.foot.visible = true;
   const m = platMats(t), pm = platModel(t);
   for (const k in PLM) if (PLM[k]) PLM[k].big.visible = PLM[k].ped.visible = k === t;
   for (const o of [PL.top, PL.ring, PL.ring2, PL.ped, PL.pr]) o.visible = !pm;
@@ -293,7 +315,7 @@ function makeJar() {
 // ucusan parcalar (cam, kapak, recel topagi): basit kinematik; platformun ustune ya da zemine duser, sonra kuculup kaybolur
 const DEB = [], SPL = [];
 const rndV = (k) => new THREE.Vector3((Math.random() - 0.5) * k, (Math.random() - 0.5) * k, (Math.random() - 0.5) * k);
-function floorAt(x, z) { return x * x + z * z < R * R ? 0 : GY; }
+function floorAt(x, z) { return (KARE(TEMA_YAPI[1]) ? Math.abs(x) < R && Math.abs(z) < R : x * x + z * z < R * R) ? 0 : GY; }
 function debris(m, pos, vel, spin, life, kind, h, sr) { m.position.copy(pos); scene.add(m); DEB.push({ m, v: vel, w: spin, life, kind, s: m.scale.clone(), h, sr }); }
 let SPLMAT = null;
 const SPLGEO = new THREE.PlaneGeometry(2, 2);
@@ -374,6 +396,8 @@ const LEVELS = [
 // her bolumun arka plani (Adem'in Gemini resimleri, fon/*.webp) ve ona uyan platform temasi
 const TEMALAR = [['cayir1', 'ahsap'], ['cayir2', 'ahsap'], ['sahil1', 'mercan'], ['col', 'tas'], ['orman', 'tas'], ['kar1', 'buz'],
   ['kar2', 'buz'], ['uzay', 'neon'], ['deniz', 'mercan'], ['sahil2', 'ahsap'], ['seker', 'seker'], ['cayir3', 'ahsap']];
+// Yapi bolumunun tek fonu ve platformu (Adem 4 Kas 2026): col harabesi resmi + kare tas platform. Eski temalar yukarida duruyor.
+const TEMA_YAPI = ['harabe', 'harabe'];
 function levelOf(L) { return LEVELS[(L - 1) % LEVELS.length]; }
 
 // ---------------- fizik ----------------
@@ -409,7 +433,8 @@ function buildLevel() {
   R = Math.max(3.4, R + 0.3); TOPY = 0; for (const c of list) TOPY = Math.max(TOPY, (c[1] + 1) * S);
   stage.scale.set(R / R0, 1, R / R0);
   while (platBody.shapes.length) platBody.removeShape(platBody.shapes[0]);
-  platBody.addShape(new CANNON.Cylinder(R, R, PT, 32), new CANNON.Vec3(0, -PT / 2, 0)); platBody.addShape(new CANNON.Cylinder(1.05, 1.3, -GY - PT, 16), new CANNON.Vec3(0, (GY - PT) / 2, 0));
+  if (KARE(TEMA_YAPI[1])) { platBody.addShape(new CANNON.Box(new CANNON.Vec3(R, PT / 2, R)), new CANNON.Vec3(0, -PT / 2, 0)); platBody.addShape(new CANNON.Box(new CANNON.Vec3(1.35, (-GY - PT) / 2, 1.35)), new CANNON.Vec3(0, (GY - PT) / 2, 0)); }
+  else { platBody.addShape(new CANNON.Cylinder(R, R, PT, 32), new CANNON.Vec3(0, -PT / 2, 0)); platBody.addShape(new CANNON.Cylinder(1.05, 1.3, -GY - PT, 16), new CANNON.Vec3(0, (GY - PT) / 2, 0)); }
   POFI.z = R + 5.6; pedG.position.copy(POFI); PF.holder.position.copy(POFI); fit();
   for (const [i, j, k, col] of list) {
     const kd = col[0] === '#' ? null : KIND[col], mg = fitCube(kd ? col : 'kup'), isF = col === 'fici' && !mg;
@@ -430,7 +455,7 @@ function buildLevel() {
   syncMeshes();
   g = { L: LV, ad: Y.ad, total: cubes.length, left: cubes.length, shots: Y.top, max: Y.top, state: 'play', t: 0, busy: 0, quiet: 0, combo: null, armed: false, bonus: 0, gold: 0 };
   FUSE.length = 0;
-  const tm = Y.tema || TEMALAR[(LV - 1) % TEMALAR.length]; $('bg').style.backgroundImage = 'url(fon/' + tm[0] + '.webp)'; setPlat(tm[1]);
+  const tm = TEMA_YAPI; $('bg').style.backgroundImage = 'url(fon/' + tm[0] + '.webp)'; setPlat(tm[1]);
   $('nm').textContent = Y.ad; $('hint').style.opacity = 1;
   hud(true);
 }
