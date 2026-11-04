@@ -293,8 +293,8 @@ const KIND = {
   buz: { mass: 1, f: 0.12, r: 0.1, kir: 7 },
   jole: { mass: 0.8, f: 0.6, r: 0.95, kir: 9 },
   cam: { mass: 0.9, f: 0.5, r: 0.1, kir: 5 },                  // bu hizla carpinca kirilir
-  fici: { mass: 0.8, f: 0.6, r: 0.15, boom: 3.2, guc: 26 },   // patlama yaricapi (kup cinsinden) ve itis hizi
-  bomba: { mass: 1.2, f: 0.6, r: 0.1, boom: 4.4, guc: 38 },
+  fici: { mass: 0.8, f: 0.6, r: 0.15, boom: 2.3, guc: 15 },   // v6.3: testte tek patlama 63 blogun 44'unu yikiyordu   // patlama yaricapi (kup cinsinden) ve itis hizi
+  bomba: { mass: 1.2, f: 0.6, r: 0.1, boom: 3.2, guc: 22 },
   altin: { mass: 1.6, f: 0.6, r: 0.1 },
   hediye: { mass: 0.7, f: 0.6, r: 0.15 },
   yildiz: { mass: 0.9, f: 0.6, r: 0.15 },
@@ -1025,7 +1025,7 @@ function explode(p, kd) {
     const m = o.body.mass, dv = kd.guc * (0.35 + 0.65 * k) / Math.max(1, m * 0.6);
     o.body.applyImpulse(new CANNON.Vec3(V2.x * dv * m, V2.y * dv * m, V2.z * dv * m));
     o.body.angularVelocity.set((Math.random() - 0.5) * 8, (Math.random() - 0.5) * 8, (Math.random() - 0.5) * 8);
-    const ok = o.kind && KIND[o.kind]; if (ok && (ok.boom || ok.kir) && o.fuse == null && L < RR * 0.85) { o.fuse = ok.boom ? 0.14 + Math.random() * 0.08 : 0.02; FUSE.push(o); }
+    const ok = o.kind && KIND[o.kind]; if (ok && (ok.boom || ok.kir) && o.fuse == null && L < RR * 0.6) { o.fuse = ok.boom ? 0.14 + Math.random() * 0.08 : 0.02; FUSE.push(o); }
   }
 }
 function updateCubes(dt) {
