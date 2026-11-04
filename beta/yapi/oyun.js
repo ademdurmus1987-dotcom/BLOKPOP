@@ -964,13 +964,17 @@ function breakBlock(c, dir, n) {
   if (!c.gone) knock(c, true); else { c.out = true; world.removeBody(c.body); scene.remove(c.mesh); }
   shatter(p, bColor(c), dir || new THREE.Vector3(0, 0.3, -1), bMat(c), n, bChunk(c)); sfx('kir', c.kind);
 }
+const KIRILGAN = new Set(['ahsap', 'sandik', 'kirmizi', 'hediye', 'buz', 'cam', 'kabak', 'jole']);
 function blast(b) {
   const c0 = b.hc;
   if (c0 && !c0.gone && !c0.out) {
     // v6.14: (Adem) kupler atistan kirilana kadar fizik kuralina uysun: vurulan kup aninda parcalanmaz, top onu gercekten iter;
     // sadece yere dusunce kirilir. Fici/bomba vurulunca patlar.
+    // v6.15: (Adem) vurulunca mantiga uygun olan kirilir: tahta sandik, kirmizi tahta kasa, buz, cam, kabak, jole, hediye kutusu.
+    // Metal, celik, tas, tugla, altin ve tas piramit kirilmaz, sadece itilir (yere dusunce kirilir).
     if (KIND[c0.kind] && KIND[c0.kind].boom && c0.fuse == null) { c0.fuse = 0; FUSE.push(c0); }
-    else sfx(c0.kind === 'celik' || c0.kind === 'metal' ? 'metal' : 'kir', c0.kind);
+    else if (KIRILGAN.has(c0.kind)) breakBlock(c0, b.dir, 14);
+    else sfx(c0.kind === 'celik' || c0.kind === 'metal' || c0.kind === 'altin' ? 'metal' : 'kir', c0.kind);
     buzz(28);
   }
   const p = b.blast, d = b.dir.clone(); d.y = Math.max(-0.2, Math.min(0.25, d.y)); d.normalize();
