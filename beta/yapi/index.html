@@ -32,7 +32,7 @@ html,body{margin:0;height:100%;overflow:hidden;background:#7cc6ff;font-family:va
 .topc small,.lvp,.ib{font-family:var(--disp)!important;letter-spacing:.3px}
 .topc b{font-family:var(--disp)!important;font-weight:400!important}
 .lvp b{font-weight:400}
-#nm{position:fixed;left:50%;top:32%;transform:translate(-50%,-50%);z-index:6;pointer-events:none;text-align:center;opacity:0;white-space:nowrap}
+#nm{position:fixed;left:50%;top:auto;bottom:calc(var(--sab) + 120px);transform:translate(-50%,-50%);z-index:6;pointer-events:none;text-align:center;opacity:0;white-space:nowrap}
 #nm.on{animation:ban 2.1s cubic-bezier(.2,1.4,.4,1) forwards}
 #nm .rb1{position:relative;display:inline-block;padding:10px 34px 12px;background:linear-gradient(180deg,#ff5a6e,#c8143a);border:4px solid #6a0a22;border-radius:14px;box-shadow:0 6px 0 #6a0a22,inset 0 3px 0 rgba(255,255,255,.45)}
 #nm .rb1:before,#nm .rb1:after{content:"";position:absolute;top:14px;width:26px;height:100%;background:#a8102e;border:4px solid #6a0a22;z-index:-1}
@@ -90,6 +90,6 @@ html,body{margin:0;height:100%;overflow:hidden;background:#7cc6ff;font-family:va
 <div id="praise"></div>
 <div class="modal" id="modal"><div class="card" id="card"></div></div>
 <div id="load">Yükleniyor…</div>
-<script type="module" src="oyun.js?v=21"></script>
+<script type="module" src="oyun.js?v=22"></script>
 </body>
 </html>
