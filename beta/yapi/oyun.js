@@ -731,6 +731,8 @@ function addCubes(Y, list, ctr) {
       if (Math.abs(e.contact.getImpactVelocityAlongNormal()) > (kd.kir || 3.2)) { c.fuse = 0; FUSE.push(c); }
     });
     cubes.push(c); CUBE_OF.set(body, c);
+    // v6.14: (Adem) dusen kup yere degdigi an kirilsin, sekip sonradan patlamasin: zemine/ayaga (sabit govde) temas aninda isaretlenir
+    body.addEventListener('collide', (e) => { if (c.gone && !c.landed && e.body.mass === 0 && c.body.position.y < -1.5) c.yer = true; });
   }
   syncMeshes();
   g = { don: Y.don || 0, L: LV, ad: Y.ad, total: cubes.length, left: cubes.length, shots: shotsFor(cubes.length, Y), max: shotsFor(cubes.length, Y), state: 'play', t: 0, busy: 0, quiet: 0, combo: null, armed: false, bonus: 0, gold: 0 };
@@ -755,7 +757,7 @@ function slide(dt) {
   for (let n = 0; n < PLS.length; n++) {
     const q = PLS[n]; if (!q.kay) continue;
     q.ph += dt * q.kay.h; const nx = q.x + q.kay.a * Math.sin(q.ph), dx = nx - q.cx; q.cx = nx; if (!dx) continue;
-    q.body.position.x += dx; q.body.aabbNeedsUpdate = true; if (q.mesh) q.mesh.position.x += dx; q.leg.position.x += dx;
+    q.body.position.x += dx; q.body.aabbNeedsUpdate = true; if (q.mesh) q.mesh.position.x += dx;
     for (const c of cubes) { if (c.pi !== n || c.gone || c.out) continue; c.body.position.x += dx; c.body.aabbNeedsUpdate = true; }
   }
 }
@@ -908,7 +910,7 @@ function shoot(target) {
   // mermi platforma carpmaz (carpisma filtresi), her hedefe duz ve ayni hizla gider
   const v = new CANNON.Vec3(dv.x / T, dv.y / T - 0.5 * gy * T, dv.z / T);
   const col = PF.col || '#3d9bff';
-  const body = new CANNON.Body({ mass: 9, material: PM.ball, linearDamping: 0.01, allowSleep: false }); body.addShape(new CANNON.Sphere(BR)); body.collisionFilterGroup = 2; body.collisionFilterMask = ~4;
+  const body = new CANNON.Body({ mass: 5, material: PM.ball, linearDamping: 0.01, allowSleep: false }); body.addShape(new CANNON.Sphere(BR)); body.collisionFilterGroup = 2; body.collisionFilterMask = ~4;
   body.position.set(st.x, st.y, st.z); body.velocity.copy(v); world.addBody(body);
   const tg = topGeo(), mesh = tg ? new THREE.Mesh(tg, topMat()) : new THREE.Mesh(BALLGEO, new THREE.MeshStandardMaterial({ color: col, roughness: 0.15, metalness: 0.1, emissive: col, emissiveIntensity: 0.45 })); mesh.castShadow = true; scene.add(mesh);
   const halo = new THREE.Sprite(new THREE.SpriteMaterial({ map: SOFT, color: '#ffe6ff', transparent: true, opacity: 0.55, blending: THREE.AdditiveBlending, depthWrite: false })); halo.scale.setScalar(BR * 4.2); halo.visible = false; mesh.add(halo);
@@ -937,7 +939,7 @@ function impact(b) {
 }
 // v5.3: atis guclendi. Top kupe degdigi an cevresindeki kupler (yaklasik 1.6 kup yaricap) top yonunde itilir;
 // itis kupun merkezinin ustunden uygulandigi icin kup sadece kaymaz, devrilir. Agir malzeme (celik, tugla) daha az etkilenir.
-const BLAST = { r: S * 1.05, hiz: 4, yukari: 0.5 };   // v6.7: (Adem) eski guce yakin, biraz yumusak   // v6.6: (Adem) kupler cok kolay deviriliyordu   // v6.3: test: ilk atis yapinin yarisini yikiyordu; simdi vurulan kirilir, yakindakiler sarsilir
+const BLAST = { r: S * 1.05, hiz: 0, yukari: 0 };   // v6.14: yapay itme dalgasi kapali (sadece gercek carpisma)   // v6.7: (Adem) eski guce yakin, biraz yumusak   // v6.6: (Adem) kupler cok kolay deviriliyordu   // v6.3: test: ilk atis yapinin yarisini yikiyordu; simdi vurulan kirilir, yakindakiler sarsilir
 const IMP = new CANNON.Vec3(), RP = new CANNON.Vec3();
 // v6.0: dogrudan vurulan kup parcalara ayrilir (Royal Smash'teki gibi). Agir malzeme (tugla, celik), kendi kirilma/patlama
 // kurali olanlar (cam, fici, bomba, recel kavanozu) parcalanmaz, sadece itilir.
@@ -965,9 +967,11 @@ function breakBlock(c, dir, n) {
 function blast(b) {
   const c0 = b.hc;
   if (c0 && !c0.gone && !c0.out) {
-    if (!NOSHAT.has(c0.kind)) { breakBlock(c0, b.dir, 16); buzz(28); }
-    else if (KIND[c0.kind] && KIND[c0.kind].boom && c0.fuse == null) { c0.fuse = 0; FUSE.push(c0); }
-    else sfx('metal');   // celik: kirilmaz, cinlar
+    // v6.14: (Adem) kupler atistan kirilana kadar fizik kuralina uysun: vurulan kup aninda parcalanmaz, top onu gercekten iter;
+    // sadece yere dusunce kirilir. Fici/bomba vurulunca patlar.
+    if (KIND[c0.kind] && KIND[c0.kind].boom && c0.fuse == null) { c0.fuse = 0; FUSE.push(c0); }
+    else sfx(c0.kind === 'celik' || c0.kind === 'metal' ? 'metal' : 'kir', c0.kind);
+    buzz(28);
   }
   const p = b.blast, d = b.dir.clone(); d.y = Math.max(-0.2, Math.min(0.25, d.y)); d.normalize();
   for (const c of cubes) {
@@ -984,7 +988,7 @@ function blast(b) {
 }
 function updateBalls(dt) {
   for (let i = balls.length - 1; i >= 0; i--) {
-    const b = balls[i]; b.t += dt; if (b.blast) { blast(b); b.blast = null; } if (b.slow) { b.slow = false; b.body.velocity.scale(0.42, b.body.velocity); }   // ilk carpista enerjisini kaybeder, yapinin icinden gecip gitmez
+    const b = balls[i]; b.t += dt; if (b.blast) { blast(b); b.blast = null; } if (b.slow) { b.slow = false; }   // ilk carpista enerjisini kaybeder, yapinin icinden gecip gitmez
     // v6.6: (hata) bu satir v6.3'ten beri yorumun icindeydi: top fizikte ucuyor ama gorunusu namlu onunde sabit kaliyordu
     if (b.hit) b.halo.material.opacity = Math.max(0, b.halo.material.opacity - dt * 2); b.mesh.position.copy(b.body.position); b.mesh.quaternion.copy(b.body.quaternion);
     // iz: arkasinda kuculen parlak toplar
@@ -1208,7 +1212,7 @@ function updateCubes(dt) {
     const p = c.body.position;
     if (!c.gone && p.y < GONE_Y) knock(c, false);
     if (c.landed === true) { landTick(c, dt); continue; }
-    if (c.gone && !c.landed && c.kind !== 'recel' && p.y < GY + (c.h || S) * 0.55) { land(c); continue; }
+    if (c.gone && !c.landed && c.kind !== 'recel' && (c.yer || p.y < GY + (c.h || S) * 0.55)) { land(c); continue; }
     if (c.gone && !c.landed && c.kind === 'recel' && p.y < GY + (c.h || S) * 0.62) { c.landed = 2; dust(p.x, GY, p.z, 1); }
     if (c.gone) { c.gt = (c.gt || 0) + dt; if (c.gt > 1.4) { const k = Math.max(0, 1 - (c.gt - 1.4) / 0.4); c.mesh.scale.setScalar(k); if (k <= 0) { c.out = true; world.removeBody(c.body); scene.remove(c.mesh); continue; } } }
     if (SPL.length && !c.gone && !c.sticky && p.y > 0 && p.y < S * 0.75) for (const s of SPL) if (s.y > -0.5 && (p.x - s.x) ** 2 + (p.z - s.z) ** 2 < (s.r + S * 0.3) ** 2) { c.sticky = true; c.body.linearDamping = 0.9; c.body.angularDamping = 0.95; break; }   // recel lekesine basan yapisir
@@ -1219,7 +1223,7 @@ function updateCubes(dt) {
   g.busy = Math.max(0, g.busy - dt);
   if (g.combo) { g.combo.t += dt; const n = g.combo.n;
     const lv = n >= 24 ? 3 : n >= 12 ? 2 : n >= 5 ? 1 : 0;
-    if (n > (g.combo.fl || 0) && g.combo.t > 0.35) { const at = g.combo.at || [innerWidth / 2, innerHeight * 0.45]; floatText('+' + (n - (g.combo.fl || 0)), at[0], at[1]); g.combo.fl = n; }
+    if (n > (g.combo.fl || 0) && g.combo.t > 0.35) { const at = g.combo.at || [innerWidth / 2, innerHeight * 0.45]; g.combo.fl = n; }
     if (lv > g.combo.shown) { g.combo.shown = lv; praise(['', 'Süper!', 'Harika!', 'Efsane!'][lv], n + ' blok', lv === 3); }
     if (g.combo.t > 3) g.combo = null; }
   if (g.state === 'play') {
@@ -1309,7 +1313,8 @@ function hud(reset) {
   setNum('kc', g.left, !reset); setNum('tc', g.shots, !reset);
   $('pb').style.width = Math.round(100 * (1 - g.left / g.total)) + '%';
 }
-function praise(t, s, big) { const p = $('praise'); p.innerHTML = ''; void p.offsetWidth; p.innerHTML = '<div class="p' + (big ? ' big' : '') + '"><b>' + t + '</b>' + (s ? '<i>' + s + '</i>' : '') + '</div>'; }
+function praise(t, s, big) { return;   // v6.14: (Adem) Harika/Super/Efsane/BOOM yazilari istenmiyor
+ const p = $('praise'); p.innerHTML = ''; void p.offsetWidth; p.innerHTML = '<div class="p' + (big ? ' big' : '') + '"><b>' + t + '</b>' + (s ? '<i>' + s + '</i>' : '') + '</div>'; }
 function floatText(t, x, y, cls) { const e = document.createElement('div'); e.className = 'fl' + (cls ? ' ' + cls : ''); e.textContent = t; e.style.left = x + 'px'; e.style.top = y + 'px'; document.body.appendChild(e); setTimeout(() => e.remove(), 1050); }
 function modal(h) { $('card').innerHTML = h; $('modal').classList.add('on'); }
 function closeModal() { $('modal').classList.remove('on'); }
