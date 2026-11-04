@@ -1,4 +1,4 @@
-// BLOKPOP Yapi v3 (prototip) - v5.5: Pofi yok; onden bakis, altta yakindan buyuk top arabasi, metal kupler boyali. v5.4: cayir fonu + Adem'in Tripo modelleri (cizgili platform, top arabasi, top, ahsap/kirmizi/metal kupler). Direk ustundeki platformda iri metal kuplerden bir yapi; altta Pofi durur.
+// BLOKPOP Yapi v3 (prototip) - v6.0: Royal Smash kalitesi icin atis/kirilma/ses/efekt yenilendi, kamera hafif yandan. v5.5: Pofi yok; onden bakis, altta yakindan buyuk top arabasi, metal kupler boyali. v5.4: cayir fonu + Adem'in Tripo modelleri (cizgili platform, top arabasi, top, ahsap/kirmizi/metal kupler). Direk ustundeki platformda iri metal kuplerden bir yapi; altta Pofi durur.
 // Oyuncu yapida bir yere dokunur, Pofi hortumuyla oraya top atar. Kupler gercek fizikle (cannon-es) devrilir, platformdan
 // dusen her kup sayilir. Hepsi dusunce bolum biter; toplar biterse kaybedilir.
 import * as THREE from '../three.module.min.js';
@@ -505,7 +505,7 @@ function buildLevel() {
     cubes.push(c); CUBE_OF.set(body, c);
   }
   syncMeshes();
-  g = { L: LV, ad: Y.ad, total: cubes.length, left: cubes.length, shots: Y.top, max: Y.top, state: 'play', t: 0, busy: 0, quiet: 0, combo: null, armed: false, bonus: 0, gold: 0 };
+  g = { L: LV, ad: Y.ad, total: cubes.length, left: cubes.length, shots: Math.ceil(Y.top * 1.5), max: Math.ceil(Y.top * 1.5), state: 'play', t: 0, busy: 0, quiet: 0, combo: null, armed: false, bonus: 0, gold: 0 };
   FUSE.length = 0;
   const tm = TEMA_YAPI; $('bg').style.backgroundImage = 'url(fon/' + tm[0] + '.webp)'; setPlat(tm[1]);
   $('nm').textContent = Y.ad; $('hint').style.opacity = 1;
@@ -585,7 +585,7 @@ function makeCannon() {
   // namlu ucu: govdenin ust kismindaki (y > %60) noktalarin iki x ucundan hangisi daha yuksekse namlu odur (ayaklar alcakta)
   const pa = g.attributes.position, ym = g.boundingBox.max.y; let x0 = 1e9, x1 = -1e9;
   for (let i = 0; i < pa.count; i++) if (pa.getY(i) > ym * 0.6) { x0 = Math.min(x0, pa.getX(i)); x1 = Math.max(x1, pa.getX(i)); }
-  TC.h = g.boundingBox.max.y; const band = (x1 - x0) * 0.08, A = new THREE.Vector3(), B = new THREE.Vector3(); let na = 0, nb = 0;
+  TC.h = g.boundingBox.max.y; TC.w = g.boundingBox.max.z - g.boundingBox.min.z; const band = (x1 - x0) * 0.08, A = new THREE.Vector3(), B = new THREE.Vector3(); let na = 0, nb = 0;
   for (let i = 0; i < pa.count; i++) { const y = pa.getY(i); if (y < ym * 0.45) continue; const x = pa.getX(i);
     if (x < x0 + band) { A.x += x; A.y += y; A.z += pa.getZ(i); na++; } else if (x > x1 - band) { B.x += x; B.y += y; B.z += pa.getZ(i); nb++; } }
   if (na) A.divideScalar(na); if (nb) B.divideScalar(nb);
@@ -601,9 +601,9 @@ function makeCannon() {
 }
 function updateCannon(dt) {
   if (!TC.gun) return;
-  TC.rec = Math.max(0, TC.rec - dt * 4);
+  TC.rec = Math.max(0, TC.rec - dt * 3.2);
   let d = TC.aimYaw - TC.yaw; d = Math.atan2(Math.sin(d), Math.cos(d)); TC.yaw += d * Math.min(1, dt * 14); TC.holder.rotation.y = TC.yaw;
-  const k = Math.sin(Math.min(1, TC.rec) * Math.PI); TC.gun.position.z = -k * 0.45; TC.gun.rotation.x = -k * 0.12;
+  const r = TC.rec, k = r > 0.75 ? (1 - r) / 0.25 : r / 0.75; TC.gun.position.z = -k * 0.85; TC.gun.rotation.x = -k * 0.14; TC.gun.scale.set(1 + k * 0.06, 1 - k * 0.08, 1 + k * 0.06);   // v6.0: sert, hizli geri tepme
 }
 const TIP = new THREE.Vector3();
 function trunkTip(out) {
@@ -630,7 +630,7 @@ const BALLGEO = new THREE.SphereGeometry(BR, 32, 20);
 const TRAILGEO = new THREE.SphereGeometry(0.16, 12, 8);
 function shoot(target) {
   if (!g || g.state !== 'play' || g.shots <= 0) return false;
-  const now = g.t; if (g.lastShot && now - g.lastShot < 0.32) return false;
+  const now = g.t; if (g.lastShot && now - g.lastShot < 0.22) return false;   // v6.0: daha seri
   g.lastShot = now; g.shots--; g.armed = true; PF.rec = 1;
   PF.aimYaw = Math.atan2(target.x - POFI.x, target.z - POFI.z);
   PF.holder.rotation.y = PF.yaw = PF.aimYaw;   // atis aninda hedefe donuk olsun ki top hortumdan ciksin
@@ -638,20 +638,20 @@ function shoot(target) {
   const st = trunkTip(TIP).clone();
   // yay: v = (hedef - baslangic)/T - g*T/2. En kisa ucus suresi secilir ama top platformun on kenarini (z = R) en az
   // 0.9 yukaridan asmali, yoksa kenara carpip geri seker
-  const dv = target.clone().sub(st), gy = world.gravity.y, edge = Math.min(1, Math.max(0, (st.z - RZ) / Math.max(0.01, st.z - target.z)));
-  let T = Math.max(0.2, Math.min(0.4, dv.length() / 62));   // v5.3: daha hizli, daha duz atis
+  const dv = target.clone().sub(st), gy = world.gravity.y, sz = st.x * Math.sin(YAW) + st.z * Math.cos(YAW), tz = target.x * Math.sin(YAW) + target.z * Math.cos(YAW), edge = Math.min(1, Math.max(0, (sz - RZ) / Math.max(0.01, sz - tz)));
+  let T = Math.max(0.16, Math.min(0.3, dv.length() / 74));   // v6.0: Royal Smash gibi neredeyse dumduz ve cok hizli
   for (; T < 2.2; T += 0.03) { const te = edge * T, vy = dv.y / T - 0.5 * gy * T; if (st.y + vy * te + 0.5 * gy * te * te > 0.9) break; }
   const v = new CANNON.Vec3(dv.x / T, dv.y / T - 0.5 * gy * T, dv.z / T);
   const col = PF.col || '#3d9bff';
   const body = new CANNON.Body({ mass: 38, material: PM.ball, linearDamping: 0.01, allowSleep: false }); body.addShape(new CANNON.Sphere(BR));
   body.position.set(st.x, st.y, st.z); body.velocity.copy(v); world.addBody(body);
   const tg = topGeo(), mesh = tg ? new THREE.Mesh(tg, MOD.top.mat) : new THREE.Mesh(BALLGEO, new THREE.MeshStandardMaterial({ color: col, roughness: 0.15, metalness: 0.1, emissive: col, emissiveIntensity: 0.45 })); mesh.castShadow = true; scene.add(mesh);
-  const b = { body, mesh, t: 0, hit: false, trail: [], col, dir: new THREE.Vector3(v.x, v.y, v.z).normalize() };
+  const b = { body, mesh, t: 0, hit: false, trail: [], col, dir: new THREE.Vector3(v.x, v.y, v.z).normalize(), sp: Math.hypot(v.x, v.y, v.z) };
   // ilk kupe carpista vurus dalgasi: carpisma adimin icinde gelir, itis adimdan sonra yapilir (b.blast)
-  body.addEventListener('collide', (e) => { if (b.hit) return; const c = CUBE_OF.get(e.body); if (!c) return; b.hit = true; b.blast = new THREE.Vector3().copy(body.position); impact(b, e); });
+  body.addEventListener('collide', (e) => { if (b.hit) return; const c = CUBE_OF.get(e.body); if (!c) return; b.hit = true; b.hc = c; b.blast = new THREE.Vector3().copy(body.position); impact(b, e); });
   balls.push(b);
   g.combo = { n: 0, t: 0, shown: 0 };
-  burst(st, col, 8, 4); sfx('shoot'); hud();
+  muzzleFx(st, b.dir); sfx('shoot'); buzz(18); shake = Math.max(shake, 0.14); hud();
   $('hint').style.opacity = 0;
   return true;
 }
@@ -662,14 +662,23 @@ function topGeo() {
   g.translate(-c.x, -c.y, -c.z); g.scale(2 * BR / z.x, 2 * BR / z.y, 2 * BR / z.z); g.computeBoundingSphere(); return (TOPG = g);
 }
 function impact(b) {
-  wakeAll(); g.busy = 2.5; shake = Math.min(0.5, shake + 0.32);
-  burst(new THREE.Vector3().copy(b.body.position), '#fff3a0', 18, 9); sfx('hit');
+  wakeAll(); g.busy = 2.5; shake = Math.min(0.5, shake + 0.3);
+  const p = new THREE.Vector3().copy(b.body.position); hitFlash(p); burst(p, '#fff3a0', 12, 8); sfx('hit');
 }
 // v5.3: atis guclendi. Top kupe degdigi an cevresindeki kupler (yaklasik 1.6 kup yaricap) top yonunde itilir;
 // itis kupun merkezinin ustunden uygulandigi icin kup sadece kaymaz, devrilir. Agir malzeme (celik, tugla) daha az etkilenir.
-const BLAST = { r: S * 1.6, hiz: 11, yukari: 2.2 };
+const BLAST = { r: S * 1.8, hiz: 13, yukari: 2.4 };   // v6.0: daha guclu
 const IMP = new CANNON.Vec3(), RP = new CANNON.Vec3();
+// v6.0: dogrudan vurulan kup parcalara ayrilir (Royal Smash'teki gibi). Agir malzeme (tugla, celik), kendi kirilma/patlama
+// kurali olanlar (cam, fici, bomba, recel kavanozu) parcalanmaz, sadece itilir.
+const NOSHAT = new Set(['tugla', 'celik', 'cam', 'fici', 'bomba', 'recel', 'buz', 'jole']);
+const KCOL = { sandik: '#9a6532', hediye: '#3d7bff', yildiz: '#b878ff', altin: '#ffd23f' };
 function blast(b) {
+  const c0 = b.hc;
+  if (c0 && !c0.gone && !c0.out && !NOSHAT.has(c0.kind) && b.sp > 14) {
+    const p0 = new THREE.Vector3().copy(c0.body.position), col = c0.kind ? KCOL[c0.kind] || '#cccccc' : c0.col;
+    knock(c0, true); shatter(p0, col, b.dir); sfx('shatter'); buzz(28);
+  }
   const p = b.blast, d = b.dir.clone(); d.y = Math.max(-0.2, Math.min(0.25, d.y)); d.normalize();
   for (const c of cubes) {
     if (c.gone || c.out) continue;
@@ -687,11 +696,88 @@ function updateBalls(dt) {
   for (let i = balls.length - 1; i >= 0; i--) {
     const b = balls[i]; b.t += dt; if (b.blast) { blast(b); b.blast = null; } b.mesh.position.copy(b.body.position); b.mesh.quaternion.copy(b.body.quaternion);
     // iz: arkasinda kuculen parlak toplar
-    if (b.t < 1.5) { const tr = new THREE.Mesh(TRAILGEO, new THREE.MeshBasicMaterial({ color: b.col, transparent: true, opacity: 0.55, depthWrite: false })); tr.position.copy(b.mesh.position); scene.add(tr); b.trail.push({ m: tr, life: 0.28 }); }
-    for (let j = b.trail.length - 1; j >= 0; j--) { const p = b.trail[j]; p.life -= dt; const k = Math.max(0, p.life / 0.28); p.m.scale.setScalar(k); p.m.material.opacity = 0.55 * k; if (p.life <= 0) { scene.remove(p.m); p.m.material.dispose(); b.trail.splice(j, 1); } }
+    // v6.0: beyaz parlak iz - top hizliyken arkasinda ince bir isik cizgisi (araya ara noktalar eklenir ki kopuk gorunmesin)
+    if (b.t < 1.2) { const pos = b.mesh.position, lp = b.lp || pos.clone(), n = Math.min(6, Math.ceil(lp.distanceTo(pos) / 0.25));
+      for (let j = 1; j <= n; j++) { const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: SOFT, color: '#ffffff', transparent: true, opacity: 0.85, blending: THREE.AdditiveBlending, depthWrite: false })); sp.position.lerpVectors(lp, pos, j / n); sp.scale.setScalar(BR * 2.4); scene.add(sp); b.trail.push({ m: sp, life: 0.2 }); }
+      b.lp = pos.clone(); }
+    for (let j = b.trail.length - 1; j >= 0; j--) { const p = b.trail[j]; p.life -= dt; const k = Math.max(0, p.life / 0.2); p.m.scale.setScalar(BR * 2.4 * (0.25 + 0.75 * k)); p.m.material.opacity = 0.85 * k; if (p.life <= 0) { scene.remove(p.m); p.m.material.dispose(); b.trail.splice(j, 1); } }
     if (b.body.position.y < -16 || b.t > 7) { for (const p of b.trail) { scene.remove(p.m); p.m.material.dispose(); } world.removeBody(b.body); scene.remove(b.mesh); if (!MOD.top || b.mesh.material !== MOD.top.mat) b.mesh.material.dispose(); balls.splice(i, 1); }
   }
 }
+
+// ---------------- v6.0 efektler: namlu parlamasi, duman, vurus parlamasi, kup parcalari, toz, konfeti ----------------
+const SOFT = canvasTex(64, 64, (x, w, h) => { const gg = x.createRadialGradient(w / 2, h / 2, 0, w / 2, h / 2, w / 2); gg.addColorStop(0, 'rgba(255,255,255,1)'); gg.addColorStop(0.35, 'rgba(255,255,255,.75)'); gg.addColorStop(1, 'rgba(255,255,255,0)'); x.fillStyle = gg; x.fillRect(0, 0, w, h); });
+const FX = [];
+function spr(col, add, op) { const m = new THREE.Sprite(new THREE.SpriteMaterial({ map: SOFT, color: col, transparent: true, opacity: op, blending: add ? THREE.AdditiveBlending : THREE.NormalBlending, depthWrite: false })); scene.add(m); return m; }
+function fx(o, life, upd) { FX.push({ o, life, max: life, upd }); }
+function updateFX(dt) {
+  for (let i = FX.length - 1; i >= 0; i--) {
+    const f = FX[i]; f.life -= dt; const k = 1 - Math.max(0, f.life) / f.max; f.upd(f.o, k, dt);
+    if (f.life <= 0) { scene.remove(f.o); if (f.o.material && !f.o.userData.shared) f.o.material.dispose(); FX.splice(i, 1); }
+  }
+}
+const flashLight = new THREE.PointLight('#ffd6f0', 0, 16, 1.5); scene.add(flashLight);
+function muzzleFx(p, dir) {
+  // pembe-beyaz parlama: hizla buyur ve soner; namlu onune isik; arkasindan yukari suzulen beyaz duman
+  const a = spr('#ffd0ec', true, 1); a.position.copy(p).addScaledVector(dir, 0.4);
+  fx(a, 0.32, (o, k) => { o.scale.setScalar(1.2 + k * 3.4); o.material.opacity = (1 - k) ** 1.5; });
+  const c = spr('#ffffff', true, 1); c.position.copy(p);
+  fx(c, 0.14, (o, k) => { o.scale.setScalar(0.8 + k * 2); o.material.opacity = 1 - k; });
+  flashLight.position.copy(p); flashLight.intensity = 60;
+  for (let i = 0; i < 7; i++) {
+    const m = spr('#f4f0f6', false, 0.7), v = dir.clone().multiplyScalar(1.5 + Math.random() * 2.5).add(new THREE.Vector3((Math.random() - 0.5) * 1.6, 0.6 + Math.random() * 1.2, (Math.random() - 0.5) * 1.6));
+    m.position.copy(p); const s0 = 0.5 + Math.random() * 0.4;
+    fx(m, 0.6 + Math.random() * 0.4, (o, k, dt) => { o.position.addScaledVector(v, dt); v.multiplyScalar(1 - dt * 3); o.scale.setScalar(s0 + k * 2.2); o.material.opacity = 0.7 * (1 - k); });
+  }
+}
+function hitFlash(p) {
+  const a = spr('#ffffff', true, 1); a.position.copy(p);
+  fx(a, 0.16, (o, k) => { o.scale.setScalar(1.5 + k * 3); o.material.opacity = 1 - k; });
+  const r = spr('#ffe48a', true, 0.8); r.position.copy(p);
+  fx(r, 0.3, (o, k) => { o.scale.setScalar(2 + k * 4.5); o.material.opacity = 0.8 * (1 - k) ** 2; });
+}
+// kup parcalari: kucuk kutu ve kama parcalari, top yonunde ve disari dogru sacilir, doner, platforma/zemine sekip kuculerek kaybolur
+const SHGEO = [new THREE.BoxGeometry(1, 1, 1), new THREE.TetrahedronGeometry(0.75), new THREE.BoxGeometry(1, 0.45, 0.8)];
+const SHMAT = {};
+function shatter(p, col, dir) {
+  const mat = SHMAT[col] || (SHMAT[col] = new THREE.MeshStandardMaterial({ color: col, roughness: 0.38, metalness: 0.1, emissive: col, emissiveIntensity: 0.12 }));
+  for (let i = 0; i < 16; i++) {
+    const m = new THREE.Mesh(SHGEO[i % 3], mat), sz = S * (0.13 + Math.random() * 0.17); m.scale.setScalar(sz); m.castShadow = true; m.userData.shared = true;
+    m.position.set(p.x + (Math.random() - 0.5) * S * 0.7, p.y + (Math.random() - 0.5) * S * 0.7, p.z + (Math.random() - 0.5) * S * 0.7);
+    const out = m.position.clone().sub(p).normalize(), v = out.multiplyScalar(4 + Math.random() * 6).addScaledVector(dir, 5 + Math.random() * 6); v.y += 3 + Math.random() * 5;
+    const w = new THREE.Vector3((Math.random() - 0.5) * 18, (Math.random() - 0.5) * 18, (Math.random() - 0.5) * 18);
+    scene.add(m);
+    fx(m, 1.5 + Math.random() * 0.5, (o, k, dt) => {
+      v.y -= 24 * dt; o.position.addScaledVector(v, dt); o.rotation.x += w.x * dt; o.rotation.y += w.y * dt; o.rotation.z += w.z * dt;
+      const fl = floorAt(o.position.x, o.position.z) + sz * 0.4;
+      if (o.position.y < fl && o.position.y > fl - 1.2) { o.position.y = fl; if (v.y < 0) { v.y *= -0.35; v.x *= 0.6; v.z *= 0.6; w.multiplyScalar(0.6); } }
+      o.scale.setScalar(sz * (k > 0.75 ? (1 - k) / 0.25 : 1));
+    });
+  }
+  // renkli kirinti tozu
+  for (let i = 0; i < 10; i++) {
+    const m = spr(col, false, 0.9), v = new THREE.Vector3((Math.random() - 0.5) * 7, 2 + Math.random() * 5, (Math.random() - 0.5) * 7).addScaledVector(dir, 3);
+    m.position.copy(p);
+    fx(m, 0.5 + Math.random() * 0.3, (o, k, dt) => { v.y -= 14 * dt; o.position.addScaledVector(v, dt); o.scale.setScalar(0.35 + k * 0.5); o.material.opacity = 0.9 * (1 - k); });
+  }
+}
+function dust(x, y, z, s) {
+  for (let i = 0; i < 7; i++) {
+    const m = spr('#d9c3a0', false, 0.75), a = Math.random() * 6.283, v = new THREE.Vector3(Math.cos(a) * (1 + Math.random() * 2), 0.6 + Math.random() * 1.2, Math.sin(a) * (1 + Math.random() * 2));
+    m.position.set(x, y + 0.3, z); const s0 = (0.6 + Math.random() * 0.5) * s;
+    fx(m, 0.7 + Math.random() * 0.4, (o, k, dt) => { o.position.addScaledVector(v, dt); v.multiplyScalar(1 - dt * 2.5); o.scale.setScalar(s0 * (1 + k * 2)); o.material.opacity = 0.75 * (1 - k); });
+  }
+}
+const CONGEO = new THREE.PlaneGeometry(0.28, 0.16), CONCOL = ['#ff4256', '#ffd23f', '#3d7bff', '#2fcf73', '#ff6fcf', '#a25cff', '#22c8e8', '#ff9a1f'];
+function confetti() {
+  for (let i = 0; i < 170; i++) {
+    const m = new THREE.Mesh(CONGEO, new THREE.MeshBasicMaterial({ color: CONCOL[i % CONCOL.length], side: THREE.DoubleSide, transparent: true }));
+    m.position.set((Math.random() - 0.5) * R * 3, TOPY + 3 + Math.random() * 6, (Math.random() - 0.5) * 6); scene.add(m);
+    const v = new THREE.Vector3((Math.random() - 0.5) * 6, 4 + Math.random() * 6, (Math.random() - 0.5) * 3), w = new THREE.Vector3(Math.random() * 9, Math.random() * 9, Math.random() * 9), ph = Math.random() * 6;
+    fx(m, 3.2 + Math.random() * 0.8, (o, k, dt) => { v.y = Math.max(-2.2, v.y - 9 * dt); v.x *= 1 - dt * 0.8; o.position.addScaledVector(v, dt); o.position.x += Math.sin(ph + k * 20) * dt * 0.8; o.rotation.x += w.x * dt; o.rotation.y += w.y * dt; o.material.opacity = k > 0.85 ? (1 - k) / 0.15 : 1; });
+  }
+}
+function buzz(ms) { try { if (navigator.vibrate) navigator.vibrate(ms); } catch (e) {} }
 
 // ---------------- parcaciklar ----------------
 const PGEO = new THREE.BoxGeometry(0.22, 0.22, 0.22), parts = [];
@@ -762,6 +848,7 @@ function updateCubes(dt) {
     if (c.out) continue;
     const p = c.body.position;
     if (!c.gone && p.y < GONE_Y) knock(c, false);
+    if (c.gone && !c.landed && p.y < GY + S * 0.75) { c.landed = true; const vv = c.body.velocity.length(); dust(p.x, GY, p.z, Math.min(1.4, 0.5 + vv / 14)); if (vv > 3) sfx('thud', vv); }
     if (c.gone) { c.gt = (c.gt || 0) + dt; if (c.gt > 1.4) { const k = Math.max(0, 1 - (c.gt - 1.4) / 0.4); c.mesh.scale.setScalar(k); if (k <= 0) { c.out = true; world.removeBody(c.body); scene.remove(c.mesh); continue; } } }
     if (SPL.length && !c.gone && !c.sticky && p.y > 0 && p.y < S * 0.75) for (const s of SPL) if (s.y > -0.5 && (p.x - s.x) ** 2 + (p.z - s.z) ** 2 < (s.r + S * 0.3) ** 2) { c.sticky = true; c.body.linearDamping = 0.9; c.body.angularDamping = 0.95; break; }   // recel lekesine basan yapisir
     if (c.body.sleepState !== CANNON.Body.SLEEPING && c.body.velocity.lengthSquared() > 0.6) moving = true;
@@ -774,7 +861,7 @@ function updateCubes(dt) {
     if (lv > g.combo.shown) { g.combo.shown = lv; praise(['', 'Süper!', 'Harika!', 'EFSANE!'][lv], '+' + n + ' küp'); }
     if (g.combo.t > 3) g.combo = null; }
   if (g.state === 'play') {
-    if (g.left <= 0) { g.state = 'win'; setTimeout(win, 900); }
+    if (g.left <= 0) { g.state = 'win'; confetti(); sfx('win'); praise('Tebrikler!', 'Yapı yıkıldı'); setTimeout(win, 1600); }
     else if (g.shots <= 0 && !balls.length && g.busy <= 0) { g.quiet += dt; if (g.quiet > 1.2) { g.state = 'lose'; lose(); } }
     else g.quiet = 0;
   }
@@ -782,20 +869,50 @@ function updateCubes(dt) {
 
 // ---------------- ses (kucuk sentez) ----------------
 let AC = null;
+// v6.0: daha dolgun sentez sesler. Hepsi bir kompresor uzerinden cikar (ust uste binince patlamasin), her cagri hafif farkli perdede.
+let MASTER = null, NOISE = null, lastThud = 0;
+function out() {
+  if (MASTER) return MASTER;
+  const cp = AC.createDynamicsCompressor(); cp.threshold.value = -14; cp.ratio.value = 6; cp.attack.value = 0.003; cp.release.value = 0.15;
+  const gv = AC.createGain(); gv.gain.value = 0.9; gv.connect(cp); cp.connect(AC.destination);
+  NOISE = AC.createBuffer(1, AC.sampleRate * 1, AC.sampleRate); const d = NOISE.getChannelData(0); for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+  return (MASTER = gv);
+}
+function tone(type, f0, f1, t0, dur, vol, dst) {
+  const o = AC.createOscillator(), v = AC.createGain(); o.type = type; o.frequency.setValueAtTime(f0, t0); o.frequency.exponentialRampToValueAtTime(Math.max(20, f1), t0 + dur);
+  v.gain.setValueAtTime(0.0001, t0); v.gain.exponentialRampToValueAtTime(vol, t0 + 0.006); v.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+  o.connect(v); v.connect(dst || out()); o.start(t0); o.stop(t0 + dur + 0.02);
+}
+function noise(ft, fq, q, t0, dur, vol, sweep) {
+  const s = AC.createBufferSource(), f = AC.createBiquadFilter(), v = AC.createGain(); s.buffer = NOISE || (out(), NOISE);
+  f.type = ft; f.frequency.setValueAtTime(fq, t0); if (sweep) f.frequency.exponentialRampToValueAtTime(sweep, t0 + dur); f.Q.value = q;
+  v.gain.setValueAtTime(0.0001, t0); v.gain.exponentialRampToValueAtTime(vol, t0 + 0.004); v.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+  s.connect(f); f.connect(v); v.connect(out()); s.start(t0, Math.random() * 0.5); s.stop(t0 + dur + 0.02);
+}
 function sfx(k, n) {
-  if (!AC) return; const t = AC.currentTime, o = AC.createOscillator(), v = AC.createGain(); o.connect(v); v.connect(AC.destination);
-  if (k === 'shoot') { o.type = 'sine'; o.frequency.setValueAtTime(320, t); o.frequency.exponentialRampToValueAtTime(90, t + 0.18); v.gain.setValueAtTime(0.35, t); v.gain.exponentialRampToValueAtTime(0.001, t + 0.2); o.start(t); o.stop(t + 0.22); }
-  else if (k === 'hit') { o.type = 'triangle'; o.frequency.setValueAtTime(140, t); o.frequency.exponentialRampToValueAtTime(40, t + 0.25); v.gain.setValueAtTime(0.4, t); v.gain.exponentialRampToValueAtTime(0.001, t + 0.3); o.start(t); o.stop(t + 0.32);
-    const nb = AC.createBuffer(1, AC.sampleRate * 0.25, AC.sampleRate), d = nb.getChannelData(0); for (let i = 0; i < d.length; i++) d[i] = (Math.random() * 2 - 1) * (1 - i / d.length) ** 2;
-    const s = AC.createBufferSource(), f = AC.createBiquadFilter(), gv = AC.createGain(); f.type = 'lowpass'; f.frequency.value = 900; gv.gain.value = 0.5; s.buffer = nb; s.connect(f); f.connect(gv); gv.connect(AC.destination); s.start(t); }
-  else if (k === 'boom' || k === 'cam') { const B = k === 'boom'; o.type = B ? 'sine' : 'triangle'; o.frequency.setValueAtTime(B ? 90 : 1800, t); o.frequency.exponentialRampToValueAtTime(B ? 30 : 600, t + 0.4); v.gain.setValueAtTime(B ? 0.6 : 0.12, t); v.gain.exponentialRampToValueAtTime(0.001, t + 0.5); o.start(t); o.stop(t + 0.52);
-    const L = B ? 0.7 : 0.35, nb = AC.createBuffer(1, AC.sampleRate * L, AC.sampleRate), d = nb.getChannelData(0); for (let i = 0; i < d.length; i++) d[i] = (Math.random() * 2 - 1) * (1 - i / d.length) ** (B ? 1.5 : 3);
-    const s = AC.createBufferSource(), f = AC.createBiquadFilter(), gv = AC.createGain(); f.type = B ? 'lowpass' : 'highpass'; f.frequency.value = B ? 700 : 2500; gv.gain.value = B ? 0.9 : 0.4; s.buffer = nb; s.connect(f); f.connect(gv); gv.connect(AC.destination); s.start(t); }
-  else if (k === 'slap') { o.type = 'sine'; o.frequency.setValueAtTime(220, t); o.frequency.exponentialRampToValueAtTime(60, t + 0.15); v.gain.setValueAtTime(0.35, t); v.gain.exponentialRampToValueAtTime(0.001, t + 0.2); o.start(t); o.stop(t + 0.22);
-    const nb = AC.createBuffer(1, AC.sampleRate * 0.18, AC.sampleRate), d = nb.getChannelData(0); for (let i = 0; i < d.length; i++) d[i] = (Math.random() * 2 - 1) * (1 - i / d.length) ** 2;
-    const s = AC.createBufferSource(), f = AC.createBiquadFilter(), gv = AC.createGain(); f.type = 'lowpass'; f.frequency.value = 600; gv.gain.value = 0.6; s.buffer = nb; s.connect(f); f.connect(gv); gv.connect(AC.destination); s.start(t + 0.03); }
-  else if (k === 'bonus') { o.type = 'triangle'; o.frequency.setValueAtTime(660, t); o.frequency.setValueAtTime(990, t + 0.08); o.frequency.setValueAtTime(1320, t + 0.16); v.gain.setValueAtTime(0.18, t); v.gain.exponentialRampToValueAtTime(0.001, t + 0.35); o.start(t); o.stop(t + 0.36); }
-  else { o.type = 'square'; const f0 = 420 * Math.pow(1.06, Math.min(24, n || 1)); o.frequency.setValueAtTime(f0, t); o.frequency.exponentialRampToValueAtTime(f0 * 1.5, t + 0.06); v.gain.setValueAtTime(0.06, t); v.gain.exponentialRampToValueAtTime(0.001, t + 0.1); o.start(t); o.stop(t + 0.11); }
+  if (!AC) return; out(); const t = AC.currentTime + 0.005, r = 0.92 + Math.random() * 0.16;
+  if (k === 'shoot') {   // top atisi: derin "bum" + patlama hissi + kisa metal tik
+    tone('sine', 170 * r, 42, t, 0.32, 0.9); tone('triangle', 95 * r, 38, t, 0.22, 0.5);
+    noise('lowpass', 1600, 0.7, t, 0.22, 0.75, 180); noise('bandpass', 3200, 1.2, t, 0.05, 0.35);
+  } else if (k === 'hit') {   // kupe carpma: tok "takk"
+    noise('bandpass', 1900 * r, 3, t, 0.07, 0.8); tone('triangle', 420 * r, 140, t, 0.1, 0.55); tone('sine', 120, 55, t, 0.16, 0.5);
+  } else if (k === 'shatter') {   // parcalanma: citir citir kirilma kumesi + kucuk cin
+    for (let i = 0; i < 6; i++) { const tt = t + Math.random() * 0.09; noise('highpass', 2200 + Math.random() * 2500, 0.8, tt, 0.04 + Math.random() * 0.05, 0.45 + Math.random() * 0.3); }
+    noise('bandpass', 900 * r, 1.5, t, 0.14, 0.55); tone('sine', 2600 * r, 1900, t + 0.02, 0.12, 0.12); tone('sine', 3400 * r, 2600, t + 0.05, 0.1, 0.08);
+  } else if (k === 'thud') {   // yere dusme: yumusak "gum", hizla gucu artar; cok sik calmasin
+    if (t - lastThud < 0.06) return; lastThud = t; const g0 = Math.min(0.7, 0.18 + (n || 4) * 0.035);
+    tone('sine', 110 * r, 48, t, 0.16, g0); noise('lowpass', 420, 0.7, t, 0.12, g0 * 0.8);
+  } else if (k === 'boom') {   // fici/bomba patlamasi
+    tone('sine', 120, 28, t, 0.7, 1); noise('lowpass', 2400, 0.6, t, 0.8, 1, 120); noise('bandpass', 600, 0.8, t + 0.02, 0.45, 0.6);
+  } else if (k === 'cam') {   // cam kirilmasi
+    for (let i = 0; i < 9; i++) noise('highpass', 3500 + Math.random() * 3000, 1, t + Math.random() * 0.15, 0.05 + Math.random() * 0.08, 0.35);
+    tone('sine', 3100, 2400, t, 0.25, 0.1);
+  } else if (k === 'slap') { tone('sine', 220, 60, t, 0.2, 0.4); noise('lowpass', 700, 0.8, t + 0.02, 0.16, 0.6); }
+  else if (k === 'bonus') { [660, 990, 1320].forEach((f, i) => tone('triangle', f, f * 1.01, t + i * 0.07, 0.16, 0.22)); }
+  else if (k === 'win') { [523, 659, 784, 1047, 1319].forEach((f, i) => { tone('triangle', f, f, t + i * 0.09, 0.28, 0.25); tone('sine', f * 2, f * 2, t + i * 0.09, 0.2, 0.06); }); noise('highpass', 6000, 0.5, t + 0.45, 0.6, 0.15); }
+  else {   // kup dusunce kisa "pop", seri arttikca perde yukselir
+    const f0 = 420 * Math.pow(1.05, Math.min(24, n || 1)) * r; tone('square', f0, f0 * 1.5, t, 0.08, 0.05); tone('sine', f0 * 2, f0 * 2.4, t, 0.06, 0.08);
+  }
 }
 
 // ---------------- arayuz ----------------
@@ -841,23 +958,29 @@ glc.addEventListener('pointerdown', (e) => {
 
 // ---------------- kamera ----------------
 // platformun tamami ve altta Pofi ekrana sigar; dar (telefon) ekranda geriye cekilir
+const YAW = 12 * Math.PI / 180;   // v6.0: kule hafif yandan gorunsun (derinlik belli olsun), Royal Smash gibi
 function fit() {
-  // v5.5: resimdeki gibi onden, hafif yukaridan bakis; yapi ekranin buyuk kismini kaplar, top arabasi altta yakinda ve buyuk
+  // v6.0: Royal Smash orani: top arabasi ekran genisliginin ~%46'si, tepesi alttan ~%19'da; kamera onun arkasinda.
+  // Kamera yuksekligi bundan hesaplanir; sonra kamera, yapinin tamami (ust koseler dahil) sigana kadar geri cekilir.
+  // Top arabasi her zaman platformun en on kosesinden en az 3.5 birim onde (v5.5'te derin yapilarda platformun altina giriyordu).
   const W = innerWidth, H = innerHeight; ren.setSize(W, H, false); cam.aspect = W / H;
-  const HF = 50;   // yatay gorus acisi
+  const HF = 50;
   cam.fov = Math.max(42, Math.min(92, THREE.MathUtils.radToDeg(2 * Math.atan(Math.tan(HF * Math.PI / 360) / cam.aspect)))); cam.updateProjectionMatrix();
-  const pitch = 10 * Math.PI / 180, dir = new THREE.Vector3(0, Math.sin(pitch), Math.cos(pitch));
-  const tg = new THREE.Vector3(0, TOPY * 0.5 - 1.2, 0), V = new THREE.Vector3();
-  let d = 7;
-  for (; d < 70; d += 0.25) {
+  const pitch = 9 * Math.PI / 180, fw = new THREE.Vector3(Math.sin(YAW), 0, Math.cos(YAW));
+  const dir = new THREE.Vector3(fw.x * Math.cos(pitch), Math.sin(pitch), fw.z * Math.cos(pitch));
+  const thx = Math.tan(cam.fov * Math.PI / 360) * cam.aspect, thy = Math.tan(cam.fov * Math.PI / 360);
+  const cw = TC.w || 2.6, ch = TC.h || 2.6, dc = (cw / 2) / (0.46 * thx);   // top arabasinin kameraya ileri uzakligi
+  const hc = ch + dc * Math.tan(pitch + Math.atan(0.62 * thy));             // kameranin zeminden yuksekligi
+  const reach = R * Math.sin(YAW) + RZ * Math.cos(YAW), V = new THREE.Vector3(), tg = new THREE.Vector3();
+  const corners = []; for (const sx of [-1, 1]) for (const sz of [-1, 1]) corners.push([sx * (R + 0.3), TOPY + 0.3, sz * RZ], [sx * (R + 0.3), -0.4, sz * (RZ + 0.2)]);
+  let d = (reach + 3.5 + dc) / Math.cos(pitch);
+  for (; d < 120; d += 0.25) {
+    const cy = GY + hc; tg.set(0, cy - d * Math.sin(pitch), 0);
     cam.position.copy(tg).addScaledVector(dir, d); cam.lookAt(tg); cam.updateMatrixWorld(true);
-    const a = V.set(-(R + 0.4), TOPY + 0.3, -RZ).project(cam), top = a.y, ax = Math.abs(a.x), bx = Math.abs(V.set(R + 0.4, 0, RZ).project(cam).x);
-    if (top < 0.66 && ax < 0.94 && bx < 0.94) break;
+    if (corners.every(([x, y, z]) => { V.set(x, y, z).project(cam); return V.y < 0.6 && Math.abs(V.x) < 0.93 && V.z < 1; })) break;
   }
-  // top arabasi: tepesi ekranin alttan ~%19'unda dursun; kamera ile platform arasinda
-  const ch = TC.h || 2.6; let zc = cam.position.z - 2.5;
-  for (; zc > RZ + 2; zc -= 0.1) { if (V.set(0, GY + ch, zc).project(cam).y >= -0.6) break; }
-  TC.holder.position.set(0, GY, zc);
+  const cd = d * Math.cos(pitch) - dc;
+  TC.holder.position.set(fw.x * cd, GY, fw.z * cd);
   cam.userData.base = cam.position.clone();
 }
 addEventListener('resize', fit); fit();
@@ -867,7 +990,7 @@ let last = 0, shake = 0;
 function frame(ts) {
   const dt = Math.min(0.05, last ? (ts - last) / 1000 : 0.016); last = ts;
   if (g) { g.t += dt; world.step(1 / 120, dt, 8); updateFuse(dt); updateDebris(dt); syncMeshes(); updateBalls(dt); updateCubes(dt); if (KM.bomba) KM.bomba.emissiveIntensity = 0.45 + 0.4 * Math.sin(g.t * 8); }
-  updatePofi(dt); updateCannon(dt); updateParts(dt);
+  updatePofi(dt); updateCannon(dt); updateParts(dt); updateFX(dt); if (flashLight.intensity > 0) flashLight.intensity = Math.max(0, flashLight.intensity - dt * 400);
   if (shake > 0) { shake = Math.max(0, shake - dt * 1.4); cam.position.copy(cam.userData.base).add(new THREE.Vector3((Math.random() - 0.5) * shake, (Math.random() - 0.5) * shake, 0)); } else if (cam.userData.base) cam.position.copy(cam.userData.base);
   ren.render(scene, cam);
   if (!TEST) requestAnimationFrame(frame);
