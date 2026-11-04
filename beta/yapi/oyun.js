@@ -1,4 +1,4 @@
-// BLOKPOP Yapi v3 (prototip) - v6.2: 7 yeni model, platform kameraya duz bakar, top arabasi yerlesimi/olcusu yeniden, top ve kirilma gorunumu, atis/yikilma dengesi. v6.1: cam sekiller, her sey kirilir, boyama yok (Adem'in model renkleri), duz/esit atis, temiz platform ayagi, fon degisimi. v6.0: Royal Smash kalitesi icin atis/kirilma/ses/efekt yenilendi, kamera hafif yandan. v5.5: Pofi yok; onden bakis, altta yakindan buyuk top arabasi, metal kupler boyali. v5.4: cayir fonu + Adem'in Tripo modelleri (cizgili platform, top arabasi, top, ahsap/kirmizi/metal kupler). Direk ustundeki platformda iri metal kuplerden bir yapi; altta Pofi durur.
+// BLOKPOP Yapi v3 (prototip) - v6.3: kayitli (sentezlenip mp3'e basilmis) sesler, yeni yazilar ve bolum bandi, atis dengesi. v6.2: 7 yeni model, platform kameraya duz bakar, top arabasi yerlesimi/olcusu yeniden, top ve kirilma gorunumu, atis/yikilma dengesi. v6.1: cam sekiller, her sey kirilir, boyama yok (Adem'in model renkleri), duz/esit atis, temiz platform ayagi, fon degisimi. v6.0: Royal Smash kalitesi icin atis/kirilma/ses/efekt yenilendi, kamera hafif yandan. v5.5: Pofi yok; onden bakis, altta yakindan buyuk top arabasi, metal kupler boyali. v5.4: cayir fonu + Adem'in Tripo modelleri (cizgili platform, top arabasi, top, ahsap/kirmizi/metal kupler). Direk ustundeki platformda iri metal kuplerden bir yapi; altta Pofi durur.
 // Oyuncu yapida bir yere dokunur, Pofi hortumuyla oraya top atar. Kupler gercek fizikle (cannon-es) devrilir, platformdan
 // dusen her kup sayilir. Hepsi dusunce bolum biter; toplar biterse kaybedilir.
 import * as THREE from '../three.module.min.js';
@@ -650,11 +650,11 @@ function buildLevel() {
   g = { L: LV, ad: Y.ad, total: cubes.length, left: cubes.length, shots: shotsFor(cubes.length, Y), max: shotsFor(cubes.length, Y), state: 'play', t: 0, busy: 0, quiet: 0, combo: null, armed: false, bonus: 0, gold: 0 };
   FUSE.length = 0;
   const tm = TEMA_YAPI, fo = fonOf(LV); $('bg').style.backgroundImage = 'url(fon/' + fo.f + '.webp?v=2)'; setPlat(tm[1]); setDirt(fo);
-  $('nm').textContent = Y.ad; $('hint').style.opacity = 1;
+  const nm = $('nm'); nm.innerHTML = '<div class="rb1"><small>BÖLÜM ' + LV + '</small><b>' + Y.ad + '</b></div>'; nm.classList.remove('on'); void nm.offsetWidth; nm.classList.add('on'); $('hint').style.opacity = 1;
   hud(true);
 }
 // v6.1: top sayisi blok sayisina gore (her sey kirildigi icin yaklasik 5 bloga 1 top, en az 6, en cok 16)
-function shotsFor(n, Y) { return Math.max(6, Math.min(16, Math.round(n / 5) + 2)); }
+function shotsFor(n, Y) { return Math.max(7, Math.min(18, Math.round(n / 4.5) + 2)); }
 function syncMeshes() { for (const c of cubes) { c.mesh.position.copy(c.body.position); c.mesh.quaternion.copy(c.body.quaternion); } }
 function wakeAll() { for (const c of cubes) if (!c.out) c.body.wakeUp(); }
 
@@ -791,14 +791,14 @@ function shoot(target) {
   for (; T < 2.2; T += 0.02) { const te = edge * T, vy = dv.y / T - 0.5 * gy * T; if (st.y + vy * te + 0.5 * gy * te * te > BR + 0.12) break; }
   const v = new CANNON.Vec3(dv.x / T, dv.y / T - 0.5 * gy * T, dv.z / T);
   const col = PF.col || '#3d9bff';
-  const body = new CANNON.Body({ mass: 22, material: PM.ball, linearDamping: 0.01, allowSleep: false }); body.addShape(new CANNON.Sphere(BR));
+  const body = new CANNON.Body({ mass: 12, material: PM.ball, linearDamping: 0.01, allowSleep: false }); body.addShape(new CANNON.Sphere(BR));
   body.position.set(st.x, st.y, st.z); body.velocity.copy(v); world.addBody(body);
   const tg = topGeo(), mesh = tg ? new THREE.Mesh(tg, topMat()) : new THREE.Mesh(BALLGEO, new THREE.MeshStandardMaterial({ color: col, roughness: 0.15, metalness: 0.1, emissive: col, emissiveIntensity: 0.45 })); mesh.castShadow = true; scene.add(mesh);
   const halo = new THREE.Sprite(new THREE.SpriteMaterial({ map: SOFT, color: '#ffe6ff', transparent: true, opacity: 0.55, blending: THREE.AdditiveBlending, depthWrite: false })); halo.scale.setScalar(BR * 4.2); mesh.add(halo);
   const b = { body, mesh, halo, t: 0, hit: false, trail: [], col, dir: new THREE.Vector3(v.x, v.y, v.z).normalize(), sp: Math.hypot(v.x, v.y, v.z) };
   body.angularVelocity.set(-v.z * 0.9, 0, v.x * 0.9);   // ucarken one dogru donsun
   // ilk kupe carpista vurus dalgasi: carpisma adimin icinde gelir, itis adimdan sonra yapilir (b.blast)
-  body.addEventListener('collide', (e) => { if (b.hit) return; const c = CUBE_OF.get(e.body); if (!c) return; b.hit = true; b.hc = c; b.blast = new THREE.Vector3().copy(body.position); impact(b, e); });
+  body.addEventListener('collide', (e) => { if (b.hit) return; const c = CUBE_OF.get(e.body); if (!c) return; b.hit = true; b.hc = c; b.blast = new THREE.Vector3().copy(body.position); b.slow = true; impact(b, e); });
   balls.push(b);
   g.combo = { n: 0, t: 0, shown: 0 };
   muzzleFx(st, b.dir); sfx('shoot'); buzz(18); shake = Math.max(shake, 0.14); hud();
@@ -819,7 +819,7 @@ function impact(b) {
 }
 // v5.3: atis guclendi. Top kupe degdigi an cevresindeki kupler (yaklasik 1.6 kup yaricap) top yonunde itilir;
 // itis kupun merkezinin ustunden uygulandigi icin kup sadece kaymaz, devrilir. Agir malzeme (celik, tugla) daha az etkilenir.
-const BLAST = { r: S * 1.45, hiz: 10, yukari: 1.8 };   // v6.2: dengeli: vurulan blok kirilir, yanindakiler sarsilip devrilir
+const BLAST = { r: S * 1.2, hiz: 6, yukari: 0.9 };   // v6.3: test: ilk atis yapinin yarisini yikiyordu; simdi vurulan kirilir, yakindakiler sarsilir
 const IMP = new CANNON.Vec3(), RP = new CANNON.Vec3();
 // v6.0: dogrudan vurulan kup parcalara ayrilir (Royal Smash'teki gibi). Agir malzeme (tugla, celik), kendi kirilma/patlama
 // kurali olanlar (cam, fici, bomba, recel kavanozu) parcalanmaz, sadece itilir.
@@ -842,13 +842,14 @@ function bChunk(c) { const k = c.kind; return k && MOD[k] && NEWM.has(k) ? MOD[k
 function breakBlock(c, dir, n) {
   if (c.out) return; const p = new THREE.Vector3().copy(c.body.position), gl = c.kind && (c.kind.startsWith('g_') || c.kind === 'cam' || c.kind === 'buz' || c.kind === 'jole');
   if (!c.gone) knock(c, true); else { c.out = true; world.removeBody(c.body); scene.remove(c.mesh); }
-  shatter(p, bColor(c), dir || new THREE.Vector3(0, 0.3, -1), bMat(c), n, bChunk(c)); sfx(gl ? 'cam' : 'shatter');
+  shatter(p, bColor(c), dir || new THREE.Vector3(0, 0.3, -1), bMat(c), n, bChunk(c)); sfx('kir', c.kind);
 }
 function blast(b) {
   const c0 = b.hc;
   if (c0 && !c0.gone && !c0.out) {
     if (!NOSHAT.has(c0.kind)) { breakBlock(c0, b.dir, 16); buzz(28); }
     else if (KIND[c0.kind] && KIND[c0.kind].boom && c0.fuse == null) { c0.fuse = 0; FUSE.push(c0); }
+    else sfx('metal');   // celik: kirilmaz, cinlar
   }
   const p = b.blast, d = b.dir.clone(); d.y = Math.max(-0.2, Math.min(0.25, d.y)); d.normalize();
   for (const c of cubes) {
@@ -865,7 +866,7 @@ function blast(b) {
 }
 function updateBalls(dt) {
   for (let i = balls.length - 1; i >= 0; i--) {
-    const b = balls[i]; b.t += dt; if (b.blast) { blast(b); b.blast = null; } if (b.hit) b.halo.material.opacity = Math.max(0, b.halo.material.opacity - dt * 2); b.mesh.position.copy(b.body.position); b.mesh.quaternion.copy(b.body.quaternion);
+    const b = balls[i]; b.t += dt; if (b.blast) { blast(b); b.blast = null; } if (b.slow) { b.slow = false; b.body.velocity.scale(0.45, b.body.velocity); }   // ilk carpista enerjisini kaybeder, yapinin icinden gecip gitmez if (b.hit) b.halo.material.opacity = Math.max(0, b.halo.material.opacity - dt * 2); b.mesh.position.copy(b.body.position); b.mesh.quaternion.copy(b.body.quaternion);
     // iz: arkasinda kuculen parlak toplar
     // v6.0: beyaz parlak iz - top hizliyken arkasinda ince bir isik cizgisi (araya ara noktalar eklenir ki kopuk gorunmesin)
     if (b.t < 1.2) { const pos = b.mesh.position, lp = b.lp || pos.clone(), n = Math.min(6, Math.ceil(lp.distanceTo(pos) / 0.25));
@@ -989,12 +990,12 @@ let lastFl = 0;
 function screenAt(p, dy) { V.copy(p); V.y += dy || 0; V.project(cam); return [(V.x + 1) / 2 * innerWidth, (1 - V.y) / 2 * innerHeight]; }
 // kup gitti (dustu, kirildi ya da patladi): sayilir, ozel kuplerin odulu verilir; remove ise sahneden hemen kalkar
 function knock(c, remove) {
-  c.gone = true; g.left--; if (g.combo) { g.combo.n++; g.combo.t = 0; }
+  c.gone = true; g.left--; if (g.combo) { g.combo.n++; g.combo.t = 0; if (!g.combo.at) g.combo.at = screenAt(c.body.position, 0.3); }
   const p = c.body.position, at = screenAt(p, 0.3);
-  if (c.kind === 'hediye') { g.shots += 2; floatText('+2 top', at[0], at[1]); burst(new THREE.Vector3().copy(p), '#ffd23f', 16, 6); sfx('bonus'); }
-  else if (c.kind === 'altin') { g.gold++; floatText('Hazine!', at[0], at[1]); burst(new THREE.Vector3().copy(p), '#ffd23f', 20, 7); sfx('bonus'); }
-  else if (c.kind === 'yildiz') { g.bonus++; floatText('+1 ★', at[0], at[1]); burst(new THREE.Vector3().copy(p), '#c58bff', 20, 7); sfx('bonus'); }
-  else if (g.t - lastFl > 0.12) { lastFl = g.t; floatText('+1', at[0], at[1]); }
+  if (c.kind === 'hediye') { g.shots += 2; floatText('+2 Top', at[0], at[1], 'blue'); burst(new THREE.Vector3().copy(p), '#ffd23f', 16, 6); sfx('bonus'); }
+  else if (c.kind === 'altin') { g.gold++; floatText('Hazine!', at[0], at[1], 'gold'); burst(new THREE.Vector3().copy(p), '#ffd23f', 20, 7); sfx('bonus'); }
+  else if (c.kind === 'yildiz') { g.bonus++; floatText('+1 ★', at[0], at[1], 'gold'); burst(new THREE.Vector3().copy(p), '#c58bff', 20, 7); sfx('bonus'); }
+
   sfx('pop', g.combo ? g.combo.n : 1); hud();
   if (remove) { c.out = true; world.removeBody(c.body); scene.remove(c.mesh); }
 }
@@ -1015,7 +1016,7 @@ function explode(p, kd) {
   const RR = kd.boom * S;
   shake = Math.min(0.9, shake + (kd.boom > 4 ? 0.8 : 0.55)); boomLight.position.copy(p); boomLight.intensity = kd.boom > 4 ? 90 : 60;
   burst(p, '#ffb020', 30, 12); burst(p, '#ff4020', 20, 9); burst(p, '#5a4a40', 10, 6); sfx('boom');
-  praise(kd.boom > 4 ? 'KABOOM!' : 'BOOM!', '');
+  praise(kd.boom > 4 ? 'KABOOM!' : 'BOOM!', '', true);
   wakeAll(); g.busy = Math.max(g.busy, 2.5);
   for (const o of cubes) {
     if (o.gone || o.out) continue;
@@ -1043,10 +1044,11 @@ function updateCubes(dt) {
   g.busy = Math.max(0, g.busy - dt);
   if (g.combo) { g.combo.t += dt; const n = g.combo.n;
     const lv = n >= 24 ? 3 : n >= 12 ? 2 : n >= 5 ? 1 : 0;
-    if (lv > g.combo.shown) { g.combo.shown = lv; praise(['', 'Süper!', 'Harika!', 'EFSANE!'][lv], '+' + n + ' küp'); }
+    if (n > (g.combo.fl || 0) && g.combo.t > 0.35) { const at = g.combo.at || [innerWidth / 2, innerHeight * 0.45]; floatText('+' + (n - (g.combo.fl || 0)), at[0], at[1]); g.combo.fl = n; }
+    if (lv > g.combo.shown) { g.combo.shown = lv; praise(['', 'Süper!', 'Harika!', 'Efsane!'][lv], n + ' blok', lv === 3); }
     if (g.combo.t > 3) g.combo = null; }
   if (g.state === 'play') {
-    if (g.left <= 0) { g.state = 'win'; confetti(); sfx('win'); praise('Tebrikler!', 'Yapı yıkıldı'); setTimeout(win, 1600); }
+    if (g.left <= 0) { g.state = 'win'; confetti(); sfx('win'); praise('Harika!', 'Yapı yıkıldı', true); setTimeout(win, 1600); }
     else if (g.shots <= 0 && !balls.length && g.busy <= 0) { g.quiet += dt; if (g.quiet > 1.2) { g.state = 'lose'; lose(); } }
     else g.quiet = 0;
   }
@@ -1074,22 +1076,39 @@ function noise(ft, fq, q, t0, dur, vol, sweep) {
   v.gain.setValueAtTime(0.0001, t0); v.gain.exponentialRampToValueAtTime(vol, t0 + 0.004); v.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
   s.connect(f); f.connect(v); v.connect(out()); s.start(t0, Math.random() * 0.5); s.stop(t0 + dur + 0.02);
 }
-// v6.1: sesler sadelestirildi (Adem: cok karisik). Her olay tek katmanli kisa ses; ayni sesler cok sik calmaz; ayni anda en fazla 5 ses.
-const LAST = {}, GAP = { shoot: 0.08, hit: 0.08, shatter: 0.07, cam: 0.07, boom: 0.15, pop: 0.12, thud: 0.15 };
+// v6.3: sesler artik onceden uretilmis kayitlar (ses/*.mp3): katmanli, yankili; her olay icin 2-3 cesit, her calista perde hafif degisir.
+// Malzemeye gore kirilma: tahta, tas, metal, cam. Ayni ses cok sik calmaz, ayni anda en fazla 6 ses.
+const SFILES = { atis: 3, vurus: 3, tahta: 3, tas: 3, metal: 3, cam: 3, dusme: 3, patlama: 2, pop: 0, bonus: 0, kazan: 0, kaybet: 0, tik: 0 };
+const RAW = {}, BUF = {};
+for (const k in SFILES) { const n = SFILES[k] || 1; for (let i = 0; i < n; i++) { const f = SFILES[k] ? k + i : k; RAW[f] = fetch('ses/' + f + '.mp3?v=1').then((r) => r.arrayBuffer()).catch(() => null); } }
+function decodeAll() { for (const f in RAW) RAW[f].then((ab) => { if (ab && !BUF[f]) AC.decodeAudioData(ab.slice(0), (b) => { BUF[f] = b; }, () => {}); }); }
+const MATSND = { ahsap: 'tahta', sandik: 'tahta', ahsapmetal: 'tahta', kirmizi: 'tahta', hediye: 'tahta', kabak: 'tahta', recel: 'cam', tas: 'tas', tugla: 'tas', piramitTas: 'tas', metal: 'metal', celik: 'metal', altin: 'metal', fici: 'metal', yildiz: 'metal', cam: 'cam', buz: 'cam', jole: 'cam' };
+function matSnd(kind) { if (!kind) return 'tahta'; if (kind.startsWith('g_')) return 'cam'; return MATSND[kind] || 'tahta'; }
+const LAST = {}, GAP = { atis: 0.06, vurus: 0.06, tahta: 0.05, tas: 0.05, metal: 0.07, cam: 0.06, patlama: 0.12, pop: 0.09, dusme: 0.07 };
 let voices = [];
+function play(k, vol, rate) {
+  const n = SFILES[k], f = n ? k + Math.floor(Math.random() * n) : k, b = BUF[f]; if (!b) return;
+  const src = AC.createBufferSource(), g0 = AC.createGain(); src.buffer = b; src.playbackRate.value = rate || (0.95 + Math.random() * 0.1); g0.gain.value = vol;
+  src.connect(g0); g0.connect(out()); src.start();
+}
 function sfx(k, n) {
-  if (!AC) return; out(); const now = AC.currentTime, t = now + 0.005, r = 0.94 + Math.random() * 0.12;
-  if (GAP[k] && LAST[k] && now - LAST[k] < GAP[k]) return; LAST[k] = now;
-  voices = voices.filter((v) => v > now); if (voices.length >= 5 && k !== 'shoot' && k !== 'win') return; voices.push(now + 0.12);
-  if (k === 'shoot') { tone('sine', 150 * r, 45, t, 0.28, 0.85); noise('lowpass', 1300, 0.7, t, 0.16, 0.5, 200); }        // tok "bum"
-  else if (k === 'hit') { noise('bandpass', 1500 * r, 2.5, t, 0.08, 0.7); tone('sine', 160, 70, t, 0.1, 0.4); }          // "takk"
-  else if (k === 'shatter') { noise('highpass', 2600 * r, 0.9, t, 0.14, 0.45); tone('triangle', 520 * r, 220, t, 0.08, 0.2); }   // kirilma "citt"
-  else if (k === 'cam') { noise('highpass', 4200 * r, 1, t, 0.18, 0.4); tone('sine', 2900 * r, 2300, t, 0.14, 0.09); }  // cam kirilmasi "sinng"
-  else if (k === 'boom') { tone('sine', 110, 30, t, 0.6, 0.9); noise('lowpass', 1800, 0.6, t, 0.55, 0.8, 150); }
-  else if (k === 'slap') { tone('sine', 200, 60, t, 0.16, 0.35); }
-  else if (k === 'bonus') { [660, 990, 1320].forEach((f, i) => tone('triangle', f, f, t + i * 0.07, 0.14, 0.18)); }
-  else if (k === 'win') { [523, 659, 784, 1047].forEach((f, i) => tone('triangle', f, f, t + i * 0.1, 0.26, 0.22)); }
-  else { const f0 = 600 * Math.pow(1.04, Math.min(20, n || 1)) * r; tone('sine', f0, f0 * 1.3, t, 0.06, 0.07); }      // sayac "tik"
+  if (!AC) return; out(); const now = AC.currentTime;
+  const key = k === 'kir' ? matSnd(n) : k === 'shatter' ? 'tahta' : k;
+  if (GAP[key] && LAST[key] && now - LAST[key] < GAP[key]) return; LAST[key] = now;
+  voices = voices.filter((v) => v > now); if (voices.length >= 6 && k !== 'shoot' && k !== 'win' && k !== 'lose') return; voices.push(now + 0.15);
+  if (k === 'shoot') play('atis', 0.95);
+  else if (k === 'hit') play('vurus', 0.7);
+  else if (k === 'kir' || k === 'shatter') play(key, key === 'metal' ? 0.5 : 0.75);
+  else if (k === 'cam') play('cam', 0.6);
+  else if (k === 'metal') play('metal', 0.55);
+  else if (k === 'boom') play('patlama', 1);
+  else if (k === 'thud') play('dusme', Math.min(0.7, 0.25 + (n || 4) * 0.04));
+  else if (k === 'slap') play('dusme', 0.5, 0.8);
+  else if (k === 'bonus') play('bonus', 0.7);
+  else if (k === 'win') play('kazan', 0.8);
+  else if (k === 'lose') play('kaybet', 0.7);
+  else if (k === 'tik') play('tik', 0.5);
+  else play('pop', 0.35, 0.9 + Math.min(20, n || 1) * 0.035);   // sayac: seri arttikca perde yukselir
 }
 
 // ---------------- arayuz ----------------
@@ -1101,21 +1120,26 @@ function hud(reset) {
   setNum('kc', g.left, !reset); setNum('tc', g.shots, !reset);
   $('pb').style.width = Math.round(100 * (1 - g.left / g.total)) + '%';
 }
-function praise(t, s) { const p = $('praise'); p.innerHTML = '<div class="p g1">' + t + '<i>' + s + '</i></div>'; }
-function floatText(t, x, y) { const e = document.createElement('div'); e.className = 'fl'; e.textContent = t; e.style.left = x + 'px'; e.style.top = y + 'px'; document.body.appendChild(e); setTimeout(() => e.remove(), 950); }
+function praise(t, s, big) { const p = $('praise'); p.innerHTML = ''; void p.offsetWidth; p.innerHTML = '<div class="p' + (big ? ' big' : '') + '"><b>' + t + '</b>' + (s ? '<i>' + s + '</i>' : '') + '</div>'; }
+function floatText(t, x, y, cls) { const e = document.createElement('div'); e.className = 'fl' + (cls ? ' ' + cls : ''); e.textContent = t; e.style.left = x + 'px'; e.style.top = y + 'px'; document.body.appendChild(e); setTimeout(() => e.remove(), 1050); }
 function modal(h) { $('card').innerHTML = h; $('modal').classList.add('on'); }
 function closeModal() { $('modal').classList.remove('on'); }
 function win() {
   SV.max = Math.max(SV.max, LV + 1); save();
   const r = g.shots / g.max, st = Math.min(3, (r >= 0.4 ? 3 : r >= 0.15 ? 2 : 1) + g.bonus);
-  for (let i = 0; i < 4; i++) setTimeout(() => burst(new THREE.Vector3((Math.random() - 0.5) * 8, 4 + Math.random() * 4, 0), POFICOL[i % POFICOL.length], 30, 10), i * 180);
-  modal('<div class="tag">Yapı ' + LV + '</div><div class="stars">' + '★'.repeat(st) + '<span style="opacity:.25">' + '★'.repeat(3 - st) + '</span></div><h2>Yapı yıkıldı!</h2><p>' + g.shots + ' top arttı' + (g.gold ? ' · ' + g.gold + ' hazine' : '') + '</p><button class="btn" id="nx">Sonraki ▶</button>');
-  $('nx').onclick = () => start(LV + 1);
+  const stars = [0, 1, 2].map((i) => '<span' + (i < st ? '' : ' class="off"') + '>★</span>').join('');
+  modal('<div class="rib">Tebrikler!</div><div class="stars">' + stars + '</div><h2>Bölüm ' + LV + ' tamam</h2>' +
+    '<div class="stat"><div>KALAN TOP<b>' + g.shots + '</b></div><div>BLOK<b>' + g.total + '</b></div>' + (g.gold ? '<div>HAZİNE<b>' + g.gold + '</b></div>' : '') + '</div>' +
+    '<button class="btn" id="nx">Devam Et</button>');
+  for (let i = 0; i < st; i++) setTimeout(() => sfx('bonus'), 120 + i * 250);
+  $('nx').onclick = () => { sfx('tik'); start(LV + 1); };
 }
 function lose() {
-  modal('<div class="tag r">Yapı ' + LV + '</div><h2>Toplar bitti!</h2><p>' + g.left + ' küp kaldı.</p><button class="btn" id="rt">Tekrar dene</button><button class="btn o" id="rv">+3 top ile devam</button>');
-  $('rt').onclick = () => start(LV);
-  $('rv').onclick = () => { g.shots += 3; g.state = 'play'; g.quiet = 0; closeModal(); hud(); };
+  sfx('lose');
+  modal('<div class="rib r">Toplar bitti!</div><h2>' + g.left + ' blok kaldı</h2><p>Biraz daha kalmıştı, tekrar dene!</p>' +
+    '<button class="btn o" id="rv">+3 Top ile Devam</button><button class="btn" id="rt">Tekrar Dene</button>');
+  $('rt').onclick = () => { sfx('tik'); start(LV); };
+  $('rv').onclick = () => { sfx('tik'); g.shots += 3; g.state = 'play'; g.quiet = 0; closeModal(); hud(); };
 }
 $('re').onclick = () => start(LV);
 $('home').onclick = () => { location.href = '../'; };
@@ -1129,7 +1153,7 @@ function aimAt(cx, cy) {
   const p = new THREE.Vector3(); return ray.ray.intersectPlane(AIMPL, p) ? p : null;
 }
 glc.addEventListener('pointerdown', (e) => {
-  if (!AC) { try { AC = new (window.AudioContext || window.webkitAudioContext)(); } catch (x) {} }
+  if (!AC) { try { AC = new (window.AudioContext || window.webkitAudioContext)(); decodeAll(); } catch (x) {} } else if (AC.state === 'suspended') AC.resume();
   const p = aimAt(e.clientX, e.clientY); if (p) shoot(p);
 });
 
