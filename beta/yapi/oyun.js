@@ -1,4 +1,4 @@
-// BLOKPOP Yapi v3 (prototip) - v5.4: cayir fonu + Adem'in Tripo modelleri (cizgili platform, top arabasi, top, ahsap/kirmizi/metal kupler). Direk ustundeki platformda iri metal kuplerden bir yapi; altta Pofi durur.
+// BLOKPOP Yapi v3 (prototip) - v5.5: Pofi yok; onden bakis, altta yakindan buyuk top arabasi, metal kupler boyali. v5.4: cayir fonu + Adem'in Tripo modelleri (cizgili platform, top arabasi, top, ahsap/kirmizi/metal kupler). Direk ustundeki platformda iri metal kuplerden bir yapi; altta Pofi durur.
 // Oyuncu yapida bir yere dokunur, Pofi hortumuyla oraya top atar. Kupler gercek fizikle (cannon-es) devrilir, platformdan
 // dusen her kup sayilir. Hepsi dusunce bolum biter; toplar biterse kaybedilir.
 import * as THREE from '../three.module.min.js';
@@ -98,14 +98,17 @@ const KARE = (t) => t === 'harabe';
 const MOD = {};
 // v5.4: Adem'in yeni Tripo modelleri (4 Kas 2026): ahsap kup sandigin, kirmizi patlayici kup ficinin, metal kup celigin yerine;
 // cizgili platform, top ve top arabasi. Anahtar -> dosya adi.
-const MFILE = { kup: 'kup', sandik: 'kup_ahsap', fici: 'kup_kirmizi', celik: 'kup_metal', platform_ahsap: 'platform_ahsap', platform_tas: 'platform_tas', platform_sirk: 'platform_sirk', top: 'top', topcu: 'top_arabasi' };
-const NEWM = new Set(['sandik', 'fici', 'celik', 'platform_sirk', 'top', 'topcu']);
+const MFILE = { kup: 'kup_metal', sandik: 'kup_ahsap', fici: 'kup_kirmizi', celik: 'kup_metal', platform_ahsap: 'platform_ahsap', platform_tas: 'platform_tas', platform_sirk: 'platform_sirk', top: 'top', topcu: 'top_arabasi' };
+const NEWM = new Set(['kup', 'sandik', 'fici', 'celik', 'platform_sirk', 'top', 'topcu']);
+const GLBP = {};   // ayni dosya iki anahtarda (kup, celik) bir kez yuklenir
 const modelReady = Promise.all(Object.keys(MFILE).map((n) => new Promise((res) => {
-  new GLTFLoader().load('model/' + MFILE[n] + '.glb?v=' + (NEWM.has(n) ? 2 : 1), (gl) => {
+  const url = 'model/' + MFILE[n] + '.glb?v=' + (NEWM.has(n) ? 2 : 1);
+  (GLBP[url] || (GLBP[url] = new Promise((ok) => new GLTFLoader().load(url, ok, undefined, () => ok(null))))).then((gl) => {
+    if (!gl) return res();
     let m = null; gl.scene.updateMatrixWorld(true); gl.scene.traverse((o) => { if (o.isMesh && !m) m = o; });
     if (m) { const geo = m.geometry.clone().applyMatrix4(m.matrixWorld); geo.computeBoundingBox(); MOD[n] = { geo, mat: m.material }; if (!NEWM.has(n) && (n === 'sandik' || n === 'fici')) m.material.color.multiplyScalar(1.35); }
     res();
-  }, undefined, () => res());
+  });
 })));
 // kup modeli: kenari S olan, merkezi orijinde bir kupe olceklenir
 function fitCube(n) {
@@ -134,6 +137,16 @@ function fitPlatRect(n, rx, rz) {
   return g;
 }
 const SIRK = { mesh: null };
+// v5.5: platform direginin dibinde yuvarlak toprak alan (resimdeki gibi), cimene yumusak gecer
+const DIRT = (() => {
+  const t = canvasTex(256, 256, (x, w, h) => {
+    const gg = x.createRadialGradient(w / 2, h / 2, 0, w / 2, h / 2, w / 2); gg.addColorStop(0, 'rgba(176,128,82,1)'); gg.addColorStop(0.72, 'rgba(160,112,70,0.95)'); gg.addColorStop(0.86, 'rgba(120,92,50,0.55)'); gg.addColorStop(1, 'rgba(110,90,50,0)');
+    x.fillStyle = gg; x.fillRect(0, 0, w, h);
+    for (let i = 0; i < 260; i++) { const a = Math.random() * 6.283, r = Math.random() * w * 0.36; x.fillStyle = Math.random() < 0.5 ? 'rgba(90,60,30,.18)' : 'rgba(220,180,130,.18)'; x.beginPath(); x.ellipse(w / 2 + Math.cos(a) * r, h / 2 + Math.sin(a) * r, 2 + Math.random() * 9, 1 + Math.random() * 4, Math.random() * 3, 0, 6.283); x.fill(); }
+  });
+  const m = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), new THREE.MeshStandardMaterial({ map: t, transparent: true, depthWrite: false, roughness: 1 }));
+  m.rotation.x = -Math.PI / 2; m.position.y = GY + 0.015; m.receiveShadow = true; scene.add(m); return m;
+})();
 function setSirk(rx, rz) {
   if (SIRK.mesh) { scene.remove(SIRK.mesh); SIRK.mesh.geometry.dispose(); SIRK.mesh = null; }
   const geo = fitPlatRect('platform_sirk', rx, rz); if (!geo) return;
@@ -162,10 +175,23 @@ function setPlat(t) {
 setPlat('ahsap');
 // renkli kup modeli: gri metal doku kupun rengiyle carpilir, hafif kendi isigi
 const KMOD = {};
+let KGRAY = null;
+function kupGray() {
+  if (KGRAY) return KGRAY;
+  const src = MOD.kup.mat.map; if (!src || !src.image) return (KGRAY = src);
+  const im = src.image, c = document.createElement('canvas'); c.width = im.width; c.height = im.height;
+  const x = c.getContext('2d'); x.drawImage(im, 0, 0); const d = x.getImageData(0, 0, c.width, c.height), a = d.data;
+  let sum = 0; for (let i = 0; i < a.length; i += 4) sum += 0.3 * a[i] + 0.59 * a[i + 1] + 0.11 * a[i + 2];
+  const mean = sum / (a.length / 4) || 1;
+  for (let i = 0; i < a.length; i += 4) { const L = 0.3 * a[i] + 0.59 * a[i + 1] + 0.11 * a[i + 2], v = Math.max(0, Math.min(255, 215 + (L - mean) * 1.5)); a[i] = a[i + 1] = a[i + 2] = v; }
+  x.putImageData(d, 0, 0); const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.flipY = src.flipY; t.anisotropy = 4;
+  return (KGRAY = t);
+}
 function kupModelMat(col) {
   if (KMOD[col]) return KMOD[col];
-  const m = MOD.kup.mat.clone(); m.color = new THREE.Color(col).lerp(new THREE.Color('#ffffff'), 0.12).multiplyScalar(1.35);
-  m.emissive = new THREE.Color(col); m.emissiveIntensity = 0.18; m.metalness = Math.min(m.metalness, 0.35);
+  // v5.5: metal kup modeli (koyu gri doku) bolum rengine boyanir: dokunun acik gri hali detay olarak kalir, rengi bolum verir
+  const m = MOD.kup.mat.clone(); m.map = kupGray(); m.color = new THREE.Color(col).multiplyScalar(1.05);
+  m.emissive = new THREE.Color(col); m.emissiveIntensity = 0.16; m.metalness = 0.15; m.roughness = 0.42;
   return (KMOD[col] = m);
 }
 
@@ -454,14 +480,14 @@ function buildLevel() {
   R = Math.max(3.4, R + 0.3); RZ = R; TOPY = 0; for (const c of list) TOPY = Math.max(TOPY, (c[1] + 1) * S);
   if (TEMA_YAPI[1] === 'sirk') {   // dikdortgen masa: yapinin her yanindan ~yarim kup bosluk
     let mx = 0, mz = 0; for (const [i, , k] of list) { mx = Math.max(mx, Math.abs(i - ci) * S + S / 2); mz = Math.max(mz, Math.abs(k - ck) * S + S / 2); }
-    R = Math.max(3.6, mx + 0.75); RZ = Math.max(2.6, mz + 0.9); setSirk(R, RZ);
+    R = Math.max(3.6, mx + 0.75); RZ = Math.max(2.6, mz + 0.9); setSirk(R, RZ); DIRT.scale.set(R * 1.5, RZ * 2.2, 1);
   }
   stage.scale.set(R / R0, 1, RZ / R0);
   while (platBody.shapes.length) platBody.removeShape(platBody.shapes[0]);
   if (TEMA_YAPI[1] === 'sirk') { platBody.addShape(new CANNON.Box(new CANNON.Vec3(R, PT / 2, RZ)), new CANNON.Vec3(0, -PT / 2, 0)); platBody.addShape(new CANNON.Box(new CANNON.Vec3(0.7, (-GY - PT) / 2, 0.7)), new CANNON.Vec3(0, (GY - PT) / 2, 0)); }
   else if (KARE(TEMA_YAPI[1])) { platBody.addShape(new CANNON.Box(new CANNON.Vec3(R, PT / 2, R)), new CANNON.Vec3(0, -PT / 2, 0)); platBody.addShape(new CANNON.Box(new CANNON.Vec3(1.35, (-GY - PT) / 2, 1.35)), new CANNON.Vec3(0, (GY - PT) / 2, 0)); }
   else { platBody.addShape(new CANNON.Cylinder(R, R, PT, 32), new CANNON.Vec3(0, -PT / 2, 0)); platBody.addShape(new CANNON.Cylinder(1.05, 1.3, -GY - PT, 16), new CANNON.Vec3(0, (GY - PT) / 2, 0)); }
-  POFI.z = RZ + 5.6; pedG.position.copy(POFI); PF.holder.position.copy(POFI); TC.holder.position.set(-POFI.x, GY, POFI.z - 0.3); TC.aimYaw = TC.yaw = Math.atan2(-TC.holder.position.x, -TC.holder.position.z); fit();
+  POFI.z = RZ + 5.6; pedG.position.copy(POFI); PF.holder.position.copy(POFI); fit(); TC.aimYaw = TC.yaw = Math.atan2(-TC.holder.position.x, -TC.holder.position.z);
   for (const [i, j, k, col] of list) {
     const kd = col[0] === '#' ? null : KIND[col], mg = fitCube(kd ? col : 'kup'), isF = col === 'fici' && !mg;
     const pm = kd ? (kd.pm || (kd.pm = new CANNON.Material({ friction: kd.f, restitution: kd.r }))) : PM.cube;
@@ -533,7 +559,9 @@ function addTrunk(model, mesh) {
 }
 const PF = { holder: new THREE.Group(), ok: false, yaw: Math.PI, aimYaw: Math.PI, rec: 0, mats: {}, col: null };
 PF.holder.position.copy(POFI); scene.add(PF.holder);
+const NOPOFI = true;   // v5.5: Adem fil istemiyor - Pofi yuklenmez ve gosterilmez
 const pofiReady = new Promise((res) => {
+  if (NOPOFI) { PF.holder.visible = false; pedG.visible = false; return res(); }
   new GLTFLoader().load('../live_pofi.glb', (gl) => {
     const src = gl.scene; let m0 = null; src.traverse((o) => { if (o.isSkinnedMesh) m0 = o; }); if (!m0) return res();
     addTrunk(src, m0);
@@ -552,18 +580,23 @@ const TC = { holder: new THREE.Group(), gun: null, muzzle: new THREE.Vector3(), 
 TC.holder.position.set(-POFI.x, GY, POFI.z); scene.add(TC.holder);
 function makeCannon() {
   const M = MOD.topcu; if (!M || TC.gun) return;
-  const g = M.geo.clone(), b = g.boundingBox, c = b.getCenter(new THREE.Vector3()), z = b.getSize(new THREE.Vector3()), sc = 3.3 / z.x;
+  const g = M.geo.clone(), b = g.boundingBox, c = b.getCenter(new THREE.Vector3()), z = b.getSize(new THREE.Vector3()), sc = 4.2 / z.x;
   g.translate(-c.x, -b.min.y, -c.z); g.scale(sc, sc, sc); g.computeBoundingBox();
   // namlu ucu: govdenin ust kismindaki (y > %60) noktalarin iki x ucundan hangisi daha yuksekse namlu odur (ayaklar alcakta)
   const pa = g.attributes.position, ym = g.boundingBox.max.y; let x0 = 1e9, x1 = -1e9;
   for (let i = 0; i < pa.count; i++) if (pa.getY(i) > ym * 0.6) { x0 = Math.min(x0, pa.getX(i)); x1 = Math.max(x1, pa.getX(i)); }
-  const band = (x1 - x0) * 0.08, A = new THREE.Vector3(), B = new THREE.Vector3(); let na = 0, nb = 0;
+  TC.h = g.boundingBox.max.y; const band = (x1 - x0) * 0.08, A = new THREE.Vector3(), B = new THREE.Vector3(); let na = 0, nb = 0;
   for (let i = 0; i < pa.count; i++) { const y = pa.getY(i); if (y < ym * 0.45) continue; const x = pa.getX(i);
     if (x < x0 + band) { A.x += x; A.y += y; A.z += pa.getZ(i); na++; } else if (x > x1 - band) { B.x += x; B.y += y; B.z += pa.getZ(i); nb++; } }
   if (na) A.divideScalar(na); if (nb) B.divideScalar(nb);
   const plusX = !na || (nb && B.y >= A.y), mu = plusX ? B : A, rot = plusX ? -Math.PI / 2 : Math.PI / 2;   // namlu -> +z; holder yaw'i +z'yi hedefe cevirir
   const m = new THREE.Mesh(g, M.mat); m.castShadow = m.receiveShadow = true; m.rotation.y = rot;
   TC.gun = new THREE.Group(); TC.gun.add(m); TC.holder.add(TC.gun);
+  // altinda krem renkli yuvarlak tas kaide (resimdeki gibi)
+  const pad = new THREE.Mesh(new THREE.CylinderGeometry(2.35, 2.45, 0.22, 64), new THREE.MeshStandardMaterial({ color: '#f1e3cf', roughness: 0.6 }));
+  pad.position.y = 0.11; pad.receiveShadow = true; TC.holder.add(pad); TC.pad = pad;
+  const rim = new THREE.Mesh(new THREE.TorusGeometry(2.4, 0.08, 10, 72), new THREE.MeshStandardMaterial({ color: '#e0b84a', roughness: 0.3, metalness: 0.5 }));
+  rim.rotation.x = Math.PI / 2; rim.position.y = 0.22; TC.holder.add(rim);
   TC.muzzle.copy(mu).applyAxisAngle(new THREE.Vector3(0, 1, 0), rot); TC.info = { plusX, mu: mu.toArray().map((v) => +v.toFixed(2)) };
 }
 function updateCannon(dt) {
@@ -809,13 +842,22 @@ glc.addEventListener('pointerdown', (e) => {
 // ---------------- kamera ----------------
 // platformun tamami ve altta Pofi ekrana sigar; dar (telefon) ekranda geriye cekilir
 function fit() {
+  // v5.5: resimdeki gibi onden, hafif yukaridan bakis; yapi ekranin buyuk kismini kaplar, top arabasi altta yakinda ve buyuk
   const W = innerWidth, H = innerHeight; ren.setSize(W, H, false); cam.aspect = W / H;
-  cam.fov = 38; const hf = 2 * Math.atan(Math.tan(cam.fov * Math.PI / 360) * cam.aspect);
-  // yatayda platform, dikeyde yapinin tepesinden Pofi'nin ayagina kadar sigsin
-  const y0 = Math.min(POFI.y, GY) - 0.6, y1 = TOPY + 1.4, tg = new THREE.Vector3(0, (y0 + y1) / 2 + 0.6, POFI.z * 0.25);
-  const d = Math.max(14, (R + 0.6) / Math.tan(hf / 2), ((y1 - y0) / 2) / Math.tan(cam.fov * Math.PI / 360) * 1.05);
-  const dir = new THREE.Vector3(0, 0.27, 1).normalize();
-  cam.position.copy(tg).addScaledVector(dir, d); cam.lookAt(tg); cam.updateProjectionMatrix();
+  const HF = 50;   // yatay gorus acisi
+  cam.fov = Math.max(42, Math.min(92, THREE.MathUtils.radToDeg(2 * Math.atan(Math.tan(HF * Math.PI / 360) / cam.aspect)))); cam.updateProjectionMatrix();
+  const pitch = 10 * Math.PI / 180, dir = new THREE.Vector3(0, Math.sin(pitch), Math.cos(pitch));
+  const tg = new THREE.Vector3(0, TOPY * 0.5 - 1.2, 0), V = new THREE.Vector3();
+  let d = 7;
+  for (; d < 70; d += 0.25) {
+    cam.position.copy(tg).addScaledVector(dir, d); cam.lookAt(tg); cam.updateMatrixWorld(true);
+    const a = V.set(-(R + 0.4), TOPY + 0.3, -RZ).project(cam), top = a.y, ax = Math.abs(a.x), bx = Math.abs(V.set(R + 0.4, 0, RZ).project(cam).x);
+    if (top < 0.66 && ax < 0.94 && bx < 0.94) break;
+  }
+  // top arabasi: tepesi ekranin alttan ~%19'unda dursun; kamera ile platform arasinda
+  const ch = TC.h || 2.6; let zc = cam.position.z - 2.5;
+  for (; zc > RZ + 2; zc -= 0.1) { if (V.set(0, GY + ch, zc).project(cam).y >= -0.6) break; }
+  TC.holder.position.set(0, GY, zc);
   cam.userData.base = cam.position.clone();
 }
 addEventListener('resize', fit); fit();
