@@ -1,10 +1,10 @@
-// BLOKPOP Yapi v3 (prototip) - v6.17: (Adem 5 Kas 2026) kuma dusen kuma gomulur, kara dusen kara saplanir, suya dusen batar (tahta/buz/fici yuzer); sahil bolumlerinde platformun arkasi gercek dalgali deniz; fondaki koyun ve kuslar canli (canli.js). v6.16: (Adem 5 Kas 2026) bloklar Blender ile parcalanmis gercek parcalarina ayrilir (model/parcali), 5 yeni model (buz kup 2, ahsap kup 2, buz/mor dikey ve alev tas sutun) ve 4 yeni kule (bolum 28-31). v6.6: top gorunusu fizige baglandi (v6.3 hatasi), Adem in top mermisi ve platform 2/3 modelleri, denize batis, yumusak kazanma zili, alcak kamera, zor devrilme. v6.5: dusen blok kara/kuma/cimene gomulur (sekmez), yumusak sesler, buyuk 3B top, simetrik kuleler, bazi bolumlerde 360 derece donen platform. v6.4: cam sekiller ve boyali dokular yok, tum bloklar Tripo modeli orijinal renginde; top parlamasi yok; yuksek genis kuleler. v6.3: kayitli (sentezlenip mp3'e basilmis) sesler, yeni yazilar ve bolum bandi, atis dengesi. v6.2: 7 yeni model, platform kameraya duz bakar, top arabasi yerlesimi/olcusu yeniden, top ve kirilma gorunumu, atis/yikilma dengesi. v6.1: cam sekiller, her sey kirilir, boyama yok (Adem'in model renkleri), duz/esit atis, temiz platform ayagi, fon degisimi. v6.0: Royal Smash kalitesi icin atis/kirilma/ses/efekt yenilendi, kamera hafif yandan. v5.5: Pofi yok; onden bakis, altta yakindan buyuk top arabasi, metal kupler boyali. v5.4: cayir fonu + Adem'in Tripo modelleri (cizgili platform, top arabasi, top, ahsap/kirmizi/metal kupler). Direk ustundeki platformda iri metal kuplerden bir yapi; altta Pofi durur.
+// BLOKPOP Yapi v3 (prototip) - v6.18: (Adem) sahilde platformun alti 3B kum (bloklar suya batar gibi gorunmuyor), kum ve karda saplanan blok asagi inmez; koyunlar daha uzakta; nehir akiyor; karli koyde kar yagiyor. v6.17: (Adem 5 Kas 2026) kuma dusen kuma gomulur, kara dusen kara saplanir, suya dusen batar (tahta/buz/fici yuzer); sahil bolumlerinde platformun arkasi gercek dalgali deniz; fondaki koyun ve kuslar canli (canli.js). v6.16: (Adem 5 Kas 2026) bloklar Blender ile parcalanmis gercek parcalarina ayrilir (model/parcali), 5 yeni model (buz kup 2, ahsap kup 2, buz/mor dikey ve alev tas sutun) ve 4 yeni kule (bolum 28-31). v6.6: top gorunusu fizige baglandi (v6.3 hatasi), Adem in top mermisi ve platform 2/3 modelleri, denize batis, yumusak kazanma zili, alcak kamera, zor devrilme. v6.5: dusen blok kara/kuma/cimene gomulur (sekmez), yumusak sesler, buyuk 3B top, simetrik kuleler, bazi bolumlerde 360 derece donen platform. v6.4: cam sekiller ve boyali dokular yok, tum bloklar Tripo modeli orijinal renginde; top parlamasi yok; yuksek genis kuleler. v6.3: kayitli (sentezlenip mp3'e basilmis) sesler, yeni yazilar ve bolum bandi, atis dengesi. v6.2: 7 yeni model, platform kameraya duz bakar, top arabasi yerlesimi/olcusu yeniden, top ve kirilma gorunumu, atis/yikilma dengesi. v6.1: cam sekiller, her sey kirilir, boyama yok (Adem'in model renkleri), duz/esit atis, temiz platform ayagi, fon degisimi. v6.0: Royal Smash kalitesi icin atis/kirilma/ses/efekt yenilendi, kamera hafif yandan. v5.5: Pofi yok; onden bakis, altta yakindan buyuk top arabasi, metal kupler boyali. v5.4: cayir fonu + Adem'in Tripo modelleri (cizgili platform, top arabasi, top, ahsap/kirmizi/metal kupler). Direk ustundeki platformda iri metal kuplerden bir yapi; altta Pofi durur.
 // Oyuncu yapida bir yere dokunur, Pofi hortumuyla oraya top atar. Kupler gercek fizikle (cannon-es) devrilir, platformdan
 // dusen her kup sayilir. Hepsi dusunce bolum biter; toplar biterse kaybedilir.
 import * as THREE from '../three.module.min.js';
 import * as CANNON from '../cannon.min.js';
 import { GLTFLoader } from '../GLTFLoader.js';
-import { canliFon, canliKare } from './canli.js?v=1';   // v6.17: fondaki canli koyun ve kuslar
+import { canliFon, canliKare } from './canli.js?v=2';   // v6.17: fondaki canli koyun ve kuslar
 import { clone as skClone } from '../SkeletonUtils.js';
 import { mergeGeometries } from '../BufferGeometryUtils.js';
 
@@ -1193,11 +1193,23 @@ const SEAMAT = new THREE.ShaderMaterial({
       float a = mix(0.84, 0.95, smoothstep(0.0, 6.0, d)) * (1.0 - smoothstep(45.0, 75.0, d));
       gl_FragColor = vec4(col, max(a, foam * 0.9)); }`
 });
+// v6.18: (Adem) kuma dusen bloklar suya batiyor gibi gorunuyordu: fondaki resimde platformun altina denk gelen yer cizili deniz.
+// Sahilde platformun alti ve onu gercek 3B kum zemin (Adem'in sahil resminin on plan kumundan doku), arkasi deniz.
+const SAND = { mesh: null };
+function setSand(on) {
+  if (!SAND.mesh && on) {
+    const t = new THREE.TextureLoader().load('doku/kum_zemin.webp?v=1'); t.colorSpace = THREE.SRGBColorSpace; t.wrapS = t.wrapT = THREE.MirroredRepeatWrapping; t.repeat.set(9, 7); t.anisotropy = 8;
+    SAND.mesh = new THREE.Mesh(new THREE.PlaneGeometry(240, 120), new THREE.MeshStandardMaterial({ map: t, roughness: 1, color: new THREE.Color(1.08, 1.04, 0.98) }));
+    SAND.mesh.rotation.x = -Math.PI / 2; SAND.mesh.receiveShadow = true; scene.add(SAND.mesh);
+  }
+  if (SAND.mesh) { SAND.mesh.visible = on; SAND.mesh.position.set(0, GY + 0.004, SEA.z0 + 60 - 0.3); }
+}
 function setSea(fo) {
   SEA.on = fo.f.startsWith('sahil');
   if (!SEA.mesh) { SEA.mesh = new THREE.Mesh(new THREE.PlaneGeometry(220, 84, 110, 42), SEAMAT); SEA.mesh.rotation.x = -Math.PI / 2; SEA.mesh.renderOrder = 1; scene.add(SEA.mesh); }
   SEA.mesh.visible = SEA.on; SEA.z0 = -(RZ + 0.9); SEAMAT.uniforms.z0.value = SEA.z0;
   SEA.mesh.position.set(0, GY + 0.04, SEA.z0 - 40);
+  setSand(SEA.on);
 }
 function updSea(dt) { SEA.t += dt; SEAMAT.uniforms.t.value = SEA.t; }
 function seaY(x, z) { return GY + 0.04 + 0.07 * Math.sin(x * 0.8 + SEA.t * 1.7) + 0.05 * Math.sin(z * 1.1 - SEA.t * 1.3); }
@@ -1222,7 +1234,7 @@ function softLand(c, zn) {
   const sp = Math.min(1.7, 0.55 + Math.abs(v.y) / 14), sz = Math.max(0.65, h / S);
   if (zn === 'su') { splash(p.x, p.z, sp * sz, true); c.y0 = seaY(p.x, p.z); }
   else { softBurst(zn, p.x, p.z, sp * sz, v); c.cr = crater(zn, p.x, p.z, S * 0.75 * sz); }
-  c.bat = zn === 'kar' ? h * (0.42 + 0.18 * Math.random()) : zn === 'kum' ? h * (0.22 + 0.1 * Math.random()) : 0;
+  c.bat = (zn === 'kar' ? h * (0.3 + 0.12 * Math.random()) : zn === 'kum' ? h * (0.16 + 0.08 * Math.random()) : 0) * Math.min(1.25, 0.6 + Math.abs(v.y) / 30);   // v6.18: hizla dusen daha derine saplanir
   sfx(zn === 'su' ? 'su' : 'thud', zn === 'su' ? 1 : 3); buzz(18, 90); shake = Math.max(shake, 0.05);
 }
 function landTick(c, dt) {
@@ -1248,7 +1260,10 @@ function landTick(c, dt) {
   const k = Math.min(1, c.lt / (c.zn === 'kar' ? 0.26 : 0.16)), e = 1 - (1 - k) ** 3;
   if (k < 1) { m.position.x += c.v.x * dt * (1 - k) * 0.35; m.position.z += c.v.z * dt * (1 - k) * 0.35; m.rotateX(c.w.x * dt * 0.15); m.rotateZ(c.w.z * dt * 0.15); }
   m.position.y = c.y0 - c.bat * e;
-  if (c.lt > 3.6) { const q = Math.min(1, (c.lt - 3.6) / 1.4); m.position.y = c.y0 - c.bat - q * h * 1.15; if (c.cr) c.cr.material.opacity = 0.9 * (1 - q); if (q >= 1) { c.out = true; scene.remove(m); if (c.cr) { scene.remove(c.cr); c.cr.material.dispose(); } } }
+  if (c.lt > 6.5) {   // v6.18: asagi inmez; yerinde kucukup kaybolur (oyun alani dolmasin)
+    if (!c.pf) { c.pf = 1; softBurst(c.zn, m.position.x, m.position.z, 0.35, null); }
+    const q = Math.min(1, (c.lt - 6.5) / 0.35); m.scale.setScalar(Math.max(0.001, 1 - q)); if (c.cr) c.cr.material.opacity = 0.9 * (1 - q);
+    if (q >= 1) { c.out = true; scene.remove(m); m.scale.setScalar(1); if (c.cr) { scene.remove(c.cr); c.cr.material.dispose(); } } }
 }
 // su sicramasi: tac seklinde damlalar, ortada yukselen su kolonu, kopuk ve halkalar
 function splash(x, z, s, big) {
@@ -1314,7 +1329,6 @@ function softPiece(o, v, w, st, hs, dt) {
     else { if (PIECEFX++ < 40) softBurst(zn, o.position.x, o.position.z, 0.25 + hs * 0.6, null); v.set(0, 0, 0); w.set(0, 0, 0); st.y = GY + hs * 0.15; o.position.y = st.y; }
   }
   if (st.in === 'su') { v.x *= 1 - dt * 3; v.z *= 1 - dt * 3; v.y += (-1.3 - v.y) * dt * 4; o.position.addScaledVector(v, dt); w.multiplyScalar(1 - dt * 2); o.rotation.x += w.x * dt; o.rotation.z += w.z * dt; }
-  else o.position.y -= dt * hs * 0.25;
   return true;
 }
 let PIECEFX = 0; setInterval(() => { PIECEFX = 0; }, 400);

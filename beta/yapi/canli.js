@@ -6,25 +6,66 @@
 // Hepsi fon resminin piksel koordinatinda calisir, ekrana fonla ayni sekilde (cover / ozel boyut) yerlesir.
 
 const cv = document.getElementById('canli'), cx = cv.getContext('2d');
+const cv2 = document.getElementById('onfx'), cx2 = cv2.getContext('2d');   // v6.18: yapinin onunde (kar yagisi)
 const IMG = {};
 function img(n) { if (!IMG[n]) { IMG[n] = new Image(); IMG[n].src = 'canli/' + n + '.png?v=1'; } return IMG[n]; }
 // koyunlar: resimdeki yeri (fon pikseli), sprite 2 kat cozunurlukte; kafa: dondurme noktasi (boyun), bakis yonu, bacak cizgisi
 const KOYUN = [
 // v6.17: resimdeki yerleri kulenin tam arkasinda kaliyordu; kulenin iki yanindaki on cimene alindi (yakin oldugu icin daha iri: sc)
-  { n: 'k1', x: 34, y: 628, w: 56, h: 52, sc: 1.55, yon: -1, piv: [62, 50], leg: 68 },
-  { n: 'k3', x: 575, y: 650, w: 57, h: 53, sc: 1.65, yon: -1, piv: [62, 50], leg: 70 },
-  { n: 'k2', x: 40, y: 712, w: 60, h: 50, sc: 1.8, yon: 1, piv: [60, 48], leg: 65 }
+// v6.18: (Adem) koyunlar platforma yakin durmasin, daha uzakta olsun: cayirin iki yan kenarinda, daha geride ve daha kucuk
+  { n: 'k1', x: 82, y: 590, w: 56, h: 52, sc: 1.05, yon: -1, piv: [62, 50], leg: 68 },
+  { n: 'k3', x: 616, y: 598, w: 57, h: 53, sc: 1.1, yon: -1, piv: [62, 50], leg: 70 },
+  { n: 'k2', x: 6, y: 612, w: 60, h: 50, sc: 1.15, yon: 1, piv: [60, 48], leg: 65 }
 ];
+// nehir (cayir): Adem'in resmindeki suyun maskesi; ustunde akis yonunde kayan isik cizgileri ve parlamalar
+const NEHIR = { x: 0, y: 390, w: 426, h: 148, dir: [-0.95, 0.31] };
+let nehirC = null, nehirP = null, flakes = [];
+function nehirHazirla() {
+  if (nehirC) return; nehirC = document.createElement('canvas'); nehirC.width = NEHIR.w; nehirC.height = NEHIR.h;
+  // akis dokusu: akis yonunde uzamis yumusak beyaz cizgiler (dikissiz tekrar eden 256x128)
+  nehirP = document.createElement('canvas'); nehirP.width = 256; nehirP.height = 128; const p = nehirP.getContext('2d');
+  for (let i = 0; i < 70; i++) { const x = Math.random() * 256, y = Math.random() * 128, l = 6 + Math.random() * 18, a = 0.1 + Math.random() * 0.28;
+    for (const dx of [-256, 0, 256]) for (const dy of [-128, 0, 128]) { p.save(); p.translate(x + dx, y + dy); p.rotate(Math.atan2(NEHIR.dir[1], NEHIR.dir[0])); p.fillStyle = 'rgba(255,255,255,' + a + ')'; p.beginPath(); p.ellipse(0, 0, l, 0.9 + Math.random() * 0.8, 0, 0, 6.283); p.fill(); p.restore(); } }
+  img('nehir');
+}
+function nehirCiz() {
+  const M = IMG.nehir; if (!M || !M.complete || !M.naturalWidth) return;
+  const c = nehirC.getContext('2d'); c.globalCompositeOperation = 'source-over'; c.clearRect(0, 0, NEHIR.w, NEHIR.h);
+  // iki katman: hizli ve yavas akis (derinlik); hafif dalgalanma
+  for (const [sp, al, sc] of [[26, 0.9, 1], [15, 0.55, 1.6]]) {
+    const ox = ((T * sp * NEHIR.dir[0]) % (256 * sc) + 256 * sc) % (256 * sc), oy = ((T * sp * NEHIR.dir[1]) % (128 * sc) + 128 * sc) % (128 * sc);
+    c.globalAlpha = al; for (let x = -256 * sc; x < NEHIR.w + 256 * sc; x += 256 * sc) for (let y = -128 * sc; y < NEHIR.h + 128 * sc; y += 128 * sc) c.drawImage(nehirP, x + ox, y + oy + Math.sin(T * 1.3 + x * 0.01) * 0.6, 256 * sc, 128 * sc);
+  }
+  // parlamalar
+  c.globalAlpha = 1;
+  for (let i = 0; i < 9; i++) { const ph = T * 0.7 + i * 1.7, k = Math.max(0, Math.sin(ph * 2.3)); if (k < 0.6) continue; const t2 = (i * 0.137 + T * 0.04) % 1, x = NEHIR.w * (1 - t2), y = NEHIR.h * (0.25 + 0.5 * ((i * 0.31) % 1)) + t2 * 30;
+    const gg = c.createRadialGradient(x, y, 0, x, y, 3 + k * 3); gg.addColorStop(0, 'rgba(255,255,255,' + (k - 0.5) * 1.6 + ')'); gg.addColorStop(1, 'rgba(255,255,255,0)'); c.fillStyle = gg; c.fillRect(x - 8, y - 8, 16, 16); }
+  c.globalCompositeOperation = 'destination-in'; c.drawImage(M, 0, 0);
+  const s = map.s * DPR; cx.drawImage(nehirC, map.ox * DPR + NEHIR.x * s, map.oy * DPR + NEHIR.y * s, NEHIR.w * s, NEHIR.h * s);
+}
+// kar yagisi (karli koy): hafif, farkli buyuklukte taneler, sallanarak iner (yakindakiler buyuk ve hizli)
+function karHazirla() { flakes = []; const n = Math.round(Math.min(140, innerWidth * innerHeight / 5200)); for (let i = 0; i < n; i++) flakes.push(newFlake(true)); }
+function newFlake(first) { const d = Math.random(); return { x: Math.random() * innerWidth, y: first ? Math.random() * innerHeight : -8, r: 0.8 + d * 2.4, vy: 18 + d * 42, sw: Math.random() * 6, sa: 6 + Math.random() * 18, a: 0.45 + d * 0.5 }; }
+function karCiz(dt) {
+  const cx = cx2; cx.clearRect(0, 0, cv2.width, cv2.height); cx.fillStyle = '#ffffff';
+  for (const f of flakes) {
+    f.y += f.vy * dt; f.sw += dt * (0.6 + f.r * 0.25); const x = f.x + Math.sin(f.sw) * f.sa;
+    if (f.y > innerHeight + 8) Object.assign(f, newFlake(false));
+    cx.globalAlpha = f.a; cx.beginPath(); cx.arc(x * DPR, f.y * DPR, f.r * DPR, 0, 6.283); cx.fill();
+  }
+  cx.globalAlpha = 1;
+}
 let FON = null, sheep = [], birds = [], IW = 720, IH = 1280, map = { s: 1, ox: 0, oy: 0 }, T = 0, DPR = 1;
 
 export function canliFon(fo) {
-  FON = fo.f; sheep = []; birds = [];
+  FON = fo.f; sheep = []; birds = []; flakes = []; cx2.clearRect(0, 0, cv2.width, cv2.height);
   if (FON === 'cayir4') {
     sheep = KOYUN.map((k, i) => ({ ...k, w: k.w * k.sc, h: k.h * k.sc, x0: k.x, dx: 0, face: k.yon, st: 'otla', t: 0, dur: 2 + i * 1.3, hb: 0, hbT: 0.5, step: 0, br: Math.random() * 6, nib: 0, look: 0 }));
     for (const k of KOYUN) { img(k.n + '_govde'); img(k.n + '_kafa'); }
     for (let i = 0; i < 3; i++) birds.push(newBird('kucuk', true));
+    nehirHazirla();
   } else if (FON.startsWith('sahil')) { for (let i = 0; i < 6; i++) birds.push(newBird('marti', true)); }
-  else if (FON.startsWith('kar')) { for (let i = 0; i < 3; i++) birds.push(newBird('kucuk', true)); }
+  else if (FON.startsWith('kar')) { for (let i = 0; i < 2; i++) birds.push(newBird('kucuk', true)); karHazirla(); }
   resize(fo);
 }
 // fonun ekrana yerlesimi (CSS ile ayni): cover + ortala, ya da kar fonundaki gibi ozel boy (yukseklik %135, alta yasli)
@@ -32,7 +73,7 @@ let LASTFO = null;
 function resize(fo) {
   fo = fo || LASTFO; LASTFO = fo; if (!fo) return;
   DPR = Math.min(2, devicePixelRatio || 1); const W = innerWidth, H = innerHeight;
-  cv.width = Math.round(W * DPR); cv.height = Math.round(H * DPR);
+  cv.width = cv2.width = Math.round(W * DPR); cv.height = cv2.height = Math.round(H * DPR);
   IH = fo.f.startsWith('kar') || fo.f.startsWith('cayir') || fo.f.startsWith('sahil') ? 1280 : 1222;
   let s;
   if (fo.bs === 'auto 135%') { s = H * 1.35 / IH; map = { s, ox: (W - IW * s) / 2, oy: H - IH * s }; }
@@ -146,7 +187,9 @@ let lastT = 0;
 export function canliKare(dt) {
   if (!FON) return;
   T += dt; cx.clearRect(0, 0, cv.width, cv.height);
+  if (FON === 'cayir4') nehirCiz();
   for (const k of sheep) { updSheep(k, dt); drawSheep(k); }
   birds.sort((a, b) => a.d - b.d);
   for (const b of birds) { updBird(b, dt); drawBird(b); }
+  if (FON.startsWith('kar')) karCiz(dt);
 }
