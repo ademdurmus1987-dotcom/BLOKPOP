@@ -48,7 +48,12 @@ def load_model(path):
     ob.name = 'model'
     # kalan cift noktalari birlestir, normalleri disa cevir (kapali govde = temiz kesim)
     bm = bmesh.new(); bm.from_mesh(ob.data)
-    bmesh.ops.remove_doubles(bm, verts=bm.verts, dist=1e-5)
+    bmesh.ops.remove_doubles(bm, verts=bm.verts, dist=1e-4)
+    # acik kenarlar (kapali olmayan modeller: sandik, ahsap kup 2) kapatilir ki kesim temiz olsun
+    bound = [e for e in bm.edges if e.is_boundary]
+    if bound:
+        print('   acik kenar', len(bound), '-> kapatiliyor')
+        bmesh.ops.holes_fill(bm, edges=bound, sides=0)
     bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
     bm.to_mesh(ob.data); bm.free()
     return ob
