@@ -22,7 +22,9 @@ for path in sorted(glob.glob(os.path.join(SRC, '*.glb'))):
         bmesh.ops.remove_doubles(bm, verts=bm.verts, dist=1e-5)
         bm.to_mesh(o.data); bm.free()
         tri0 += sum(len(p.vertices) - 2 for p in o.data.polygons)
-    ratio = min(1.0, TARGET / max(1, tri0))
+    # korsan modunun buyuk modelleri (gemiler, kule adasi, sal) ekrani doldurdugu icin tam ayrintida kalir; sadece doku JPEG'e cevrilir
+    hedef = 20000 if name in ('bizim_gemi', 'dusman_gemi', 'kule_ada', 'sal') else TARGET
+    ratio = min(1.0, hedef / max(1, tri0))
     for o in meshes:
         if ratio < 1.0:
             m = o.modifiers.new('kucult', 'DECIMATE')
