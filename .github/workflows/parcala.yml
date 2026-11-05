@@ -16,6 +16,8 @@ on:
     branches: [main]
     paths:
       - 'tools/blender/parcala.py'
+      - 'tools/blender/kucult.py'
+      - 'beta/yapi/model/kaynak/**'
       - '.github/workflows/parcala.yml'
 
 permissions:
@@ -31,7 +33,7 @@ jobs:
     timeout-minutes: 90
     env:
       BLENDER_V: '4.2.3'
-      HEPSI: 'kup,kup_ahsap,kup_kirmizi,kup_metal,kup_tas,kup_altin,kup_ahsap_metal,sandik,varil,buz_silindir,piramit_tas,bal_kabagi'
+      HEPSI: 'kup,kup_ahsap,kup_kirmizi,kup_metal,kup_tas,kup_altin,kup_ahsap_metal,sandik,varil,buz_silindir,piramit_tas,bal_kabagi,buz_kup_2,ahsap_kup_2,buz_dikey_kup,alev_tas_uzun_kup,mor_dikey_kup'
     steps:
       - uses: actions/checkout@v4
 
@@ -54,6 +56,12 @@ jobs:
           sudo apt-get update -qq
           sudo apt-get install -y -qq libxi6 libxxf86vm1 libxfixes3 libxrender1 libxkbcommon0 libsm6 libgl1 libegl1 >/dev/null
 
+      - name: Yeni modelleri kucult (kaynak -> model)
+        run: |
+          ~/blender/blender -b --factory-startup -P tools/blender/kucult.py -- \
+            beta/yapi/model/kaynak beta/yapi/model 6000 2>&1 | grep -E "KUCULT|BITTI|Error|rror:" | tee /tmp/k.txt
+          grep -q "^BITTI" /tmp/k.txt
+
       - name: Parcala
         run: |
           M="${{ github.event.inputs.modeller }}"; [ -z "$M" ] && M="$HEPSI"
@@ -66,7 +74,7 @@ jobs:
         run: |
           git config user.name "blokpop-bot"
           git config user.email "actions@users.noreply.github.com"
-          git add beta/yapi/model/parcali tools/blender/onizleme
+          git add beta/yapi/model tools/blender/onizleme
           git diff --cached --quiet && { echo "Degisiklik yok"; exit 0; }
           git commit -m "Yapi: Blender ile parcalanmis blok modelleri ve onizlemeler"
           git pull --rebase origin main
