@@ -23,7 +23,7 @@ function walk(d, rel) {
     if (n.startsWith('.')) continue;
     const full = path.join(d, n), r = rel ? rel + '/' + n : n;
     const st = fs.statSync(full);
-    if (st.isDirectory()) { if (n === 'beta' || n === 'tools' || n === 'node_modules' || n === 'orig') continue; /* orig: galeri orijinalleri, bakilinca indirilir */ out = out.concat(walk(full, r)); }
+    if (st.isDirectory()) { if (n === 'beta' || n === 'tools' || n === 'node_modules' || n === 'orig' || n === 'kaynak') continue; /* orig: galeri orijinalleri, bakilinca indirilir; kaynak: Blender'a giden ham Tripo modelleri */ out = out.concat(walk(full, r)); }
     else if (EXT.test(n) && !SKIP.has(r)) out.push(r);
   }
   return out;
