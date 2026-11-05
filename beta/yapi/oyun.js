@@ -12,7 +12,7 @@ const $ = (id) => document.getElementById(id);
 const Q = new URLSearchParams(location.search), TEST = Q.has('test');
 // v6.19: (Adem) Korsan modu pilotu: beta/korsan/index.html ayni motoru window.KORSAN ile acar; korsan.js sahneyi, hedefleri ve kartlari kurar.
 // KORSAN yoksa (Yapi modu) K null'dur ve asagidaki 'if (K)' satirlarinin hicbiri calismaz.
-const K = window.KORSAN ? await import('../korsan/korsan.js?v=2') : null;
+const K = window.KORSAN ? await import('../korsan/korsan.js?v=3') : null;
 const SKEY = K ? 'blokpop_korsan_v1' : 'blokpop_yapi_v3';
 let SV = { L: 1, max: 1 };
 try { const d = JSON.parse(localStorage.getItem(SKEY) || 'null'); if (d) SV = Object.assign(SV, d); } catch (e) {}
@@ -1451,7 +1451,7 @@ function updateCubes(dt) {
   for (const c of cubes) {
     if (c.out) continue;
     const p = c.body.position;
-    if (!c.gone && p.y < GONE_Y) knock(c, false);
+    if (!c.gone && p.y < (K ? K.goneY(c) : GONE_Y)) knock(c, false);   // v6.20: korsanda kup, durdugu kursunun altina inince dusmus sayilir
     if (c.landed === true) { landTick(c, dt); continue; }
     if (c.gone && !c.landed && c.kind !== 'recel' && (c.yer || p.y < GY + (c.h || S) * 0.55)) { land(c); continue; }
     if (c.gone && !c.landed && c.kind === 'recel' && p.y < GY + (c.h || S) * 0.62) { c.landed = 2; dust(p.x, GY, p.z, 1); }
