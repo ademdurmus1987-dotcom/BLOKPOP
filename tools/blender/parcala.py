@@ -33,7 +33,7 @@ def select_only(objs, active=None):
 
 
 def load_model(path):
-    bpy.ops.import_scene.gltf(filepath=path)
+    bpy.ops.import_scene.gltf(filepath=path, merge_vertices=True)  # dikis yerlerinde acik kenar kalmasin
     meshes = [o for o in bpy.context.scene.objects if o.type == 'MESH']
     select_only(meshes)
     bpy.ops.object.parent_clear(type='CLEAR_KEEP_TRANSFORM')
@@ -46,6 +46,11 @@ def load_model(path):
         if o != ob:
             bpy.data.objects.remove(o, do_unlink=True)
     ob.name = 'model'
+    # kalan cift noktalari birlestir, normalleri disa cevir (kapali govde = temiz kesim)
+    bm = bmesh.new(); bm.from_mesh(ob.data)
+    bmesh.ops.remove_doubles(bm, verts=bm.verts, dist=1e-5)
+    bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
+    bm.to_mesh(ob.data); bm.free()
     return ob
 
 
@@ -144,6 +149,10 @@ def fracture(ob, n, seed):
         mod = pc.modifiers.new('kes', 'BOOLEAN')
         mod.operation = 'INTERSECT'
         mod.solver = 'EXACT'
+        try:
+            mod.material_mode = 'TRANSFER'   # kirik yuzeyler kesicinin malzemesini alsin (siyah cikmasin)
+        except Exception:
+            pass
         mod.object = cut
         select_only([pc])
         try:
@@ -177,12 +186,12 @@ def render_preview(orig, pieces, path):
     w = max(size.x, size.y, size.z)
     mid = (mn + mx) / 2
     # sagda patlamis parcalar, solda tam model
-    gap = w * 1.25
+    gap = w * 1.6
     orig.hide_render = False
     orig.location.x -= gap * 0.75
     for p in pieces:
         d = p.location - mid
-        p.location = p.location + d * 0.55 + Vector((gap * 0.75, 0, 0))
+        p.location = p.location + d * 0.95 + Vector((gap * 0.75, 0, 0))
     # isik
     sun = bpy.data.lights.new('gunes', 'SUN')
     sun.energy = 3.2
