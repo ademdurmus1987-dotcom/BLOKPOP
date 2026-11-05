@@ -1,9 +1,10 @@
-// BLOKPOP Yapi v3 (prototip) - v6.16: (Adem 5 Kas 2026) bloklar Blender ile parcalanmis gercek parcalarina ayrilir (model/parcali), 5 yeni model (buz kup 2, ahsap kup 2, buz/mor dikey ve alev tas sutun) ve 4 yeni kule (bolum 28-31). v6.6: top gorunusu fizige baglandi (v6.3 hatasi), Adem in top mermisi ve platform 2/3 modelleri, denize batis, yumusak kazanma zili, alcak kamera, zor devrilme. v6.5: dusen blok kara/kuma/cimene gomulur (sekmez), yumusak sesler, buyuk 3B top, simetrik kuleler, bazi bolumlerde 360 derece donen platform. v6.4: cam sekiller ve boyali dokular yok, tum bloklar Tripo modeli orijinal renginde; top parlamasi yok; yuksek genis kuleler. v6.3: kayitli (sentezlenip mp3'e basilmis) sesler, yeni yazilar ve bolum bandi, atis dengesi. v6.2: 7 yeni model, platform kameraya duz bakar, top arabasi yerlesimi/olcusu yeniden, top ve kirilma gorunumu, atis/yikilma dengesi. v6.1: cam sekiller, her sey kirilir, boyama yok (Adem'in model renkleri), duz/esit atis, temiz platform ayagi, fon degisimi. v6.0: Royal Smash kalitesi icin atis/kirilma/ses/efekt yenilendi, kamera hafif yandan. v5.5: Pofi yok; onden bakis, altta yakindan buyuk top arabasi, metal kupler boyali. v5.4: cayir fonu + Adem'in Tripo modelleri (cizgili platform, top arabasi, top, ahsap/kirmizi/metal kupler). Direk ustundeki platformda iri metal kuplerden bir yapi; altta Pofi durur.
+// BLOKPOP Yapi v3 (prototip) - v6.17: (Adem 5 Kas 2026) kuma dusen kuma gomulur, kara dusen kara saplanir, suya dusen batar (tahta/buz/fici yuzer); sahil bolumlerinde platformun arkasi gercek dalgali deniz; fondaki koyun ve kuslar canli (canli.js). v6.16: (Adem 5 Kas 2026) bloklar Blender ile parcalanmis gercek parcalarina ayrilir (model/parcali), 5 yeni model (buz kup 2, ahsap kup 2, buz/mor dikey ve alev tas sutun) ve 4 yeni kule (bolum 28-31). v6.6: top gorunusu fizige baglandi (v6.3 hatasi), Adem in top mermisi ve platform 2/3 modelleri, denize batis, yumusak kazanma zili, alcak kamera, zor devrilme. v6.5: dusen blok kara/kuma/cimene gomulur (sekmez), yumusak sesler, buyuk 3B top, simetrik kuleler, bazi bolumlerde 360 derece donen platform. v6.4: cam sekiller ve boyali dokular yok, tum bloklar Tripo modeli orijinal renginde; top parlamasi yok; yuksek genis kuleler. v6.3: kayitli (sentezlenip mp3'e basilmis) sesler, yeni yazilar ve bolum bandi, atis dengesi. v6.2: 7 yeni model, platform kameraya duz bakar, top arabasi yerlesimi/olcusu yeniden, top ve kirilma gorunumu, atis/yikilma dengesi. v6.1: cam sekiller, her sey kirilir, boyama yok (Adem'in model renkleri), duz/esit atis, temiz platform ayagi, fon degisimi. v6.0: Royal Smash kalitesi icin atis/kirilma/ses/efekt yenilendi, kamera hafif yandan. v5.5: Pofi yok; onden bakis, altta yakindan buyuk top arabasi, metal kupler boyali. v5.4: cayir fonu + Adem'in Tripo modelleri (cizgili platform, top arabasi, top, ahsap/kirmizi/metal kupler). Direk ustundeki platformda iri metal kuplerden bir yapi; altta Pofi durur.
 // Oyuncu yapida bir yere dokunur, Pofi hortumuyla oraya top atar. Kupler gercek fizikle (cannon-es) devrilir, platformdan
 // dusen her kup sayilir. Hepsi dusunce bolum biter; toplar biterse kaybedilir.
 import * as THREE from '../three.module.min.js';
 import * as CANNON from '../cannon.min.js';
 import { GLTFLoader } from '../GLTFLoader.js';
+import { canliFon, canliKare } from './canli.js?v=1';   // v6.17: fondaki canli koyun ve kuslar
 import { clone as skClone } from '../SkeletonUtils.js';
 import { mergeGeometries } from '../BufferGeometryUtils.js';
 
@@ -596,6 +597,7 @@ const TEMALAR = [['cayir1', 'ahsap'], ['cayir2', 'ahsap'], ['sahil1', 'mercan'],
 const TEMA_YAPI = ['cayir4', 'sirk'];
 // v6.1: fon her 3 bolumde bir degisir: cayir, karli koy, sahil. Zemin lekesi ve toz rengi fona uyar.
 const FONLAR = [{ f: 'cayir4', dirt: ['176,128,82', '160,112,70', '120,92,50'], toz: '#d9c3a0' }, { f: 'kar3', bs: 'auto 135%', bp: '50% 100%', dirt: ['236,242,252', '222,232,248', '200,214,236'], toz: '#ffffff' }, { f: 'sahil3', dirt: ['240,214,160', '228,198,140', '210,180,120'], toz: '#f3dfb4' }];
+const BOSFON = new Set(['cayir4', 'sahil3']);   // v6.17: cizili koyun/martilari silinmis fon; canlilari canli.js cizer
 function fonOf(L) { return FONLAR[Math.floor((L - 1) / 3) % FONLAR.length]; }   // v5.4: Adem'in cayir resmi + cizgili Tripo platformu (harabe kodu duruyor)
 // v6.1: bolum tasarimindaki renkler artik boya degil; renk ailesine gore Adem'in kup modeline (orijinal rengiyle) ya da cam sekle donusur.
 // Sutun tepeleri cogunlukla cam tepe sekli (kure, piramit, koni, kristal...), govdenin bir kismi cam yigin sekli olur. Bolume gore sabit.
@@ -661,7 +663,7 @@ let LV = 1, g = null;
 const cubes = [], balls = [], CUBE_OF = new Map();
 function clearLevel() {
   clearPX();
-  for (const c of cubes) { world.removeBody(c.body); scene.remove(c.mesh); }
+  for (const c of cubes) { world.removeBody(c.body); scene.remove(c.mesh); if (c.cr) { scene.remove(c.cr); c.cr.material.dispose(); } }
   for (const b of balls) { world.removeBody(b.body); scene.remove(b.mesh); }
   for (const d of DEB) scene.remove(d.m); for (const s of SPL) scene.remove(s.m);
   CUBE_OF.clear(); cubes.length = 0; balls.length = 0; DEB.length = 0; SPL.length = 0;
@@ -749,7 +751,7 @@ function addCubes(Y, list, ctr) {
   syncMeshes();
   g = { don: Y.don || 0, L: LV, ad: Y.ad, total: cubes.length, left: cubes.length, shots: shotsFor(cubes.length, Y), max: shotsFor(cubes.length, Y), state: 'play', t: 0, busy: 0, quiet: 0, combo: null, armed: false, bonus: 0, gold: 0 };
   FUSE.length = 0;
-  const tm = TEMA_YAPI, fo = fonOf(LV); $('bg').style.backgroundImage = 'url(fon/' + fo.f + '.webp?v=2)'; $('bg').style.backgroundSize = fo.bs || ''; $('bg').style.backgroundPosition = fo.bp || ''; setPlat(tm[1]); setDirt(fo);   // v6.11: (Adem) karli koyde platform koyun icinde duruyordu: fon buyuyup koy yukari, platformun arkasina alindi
+  const tm = TEMA_YAPI, fo = fonOf(LV); $('bg').style.backgroundImage = 'url(fon/' + fo.f + (BOSFON.has(fo.f) ? '_bos.webp?v=1' : '.webp?v=2') + ')'; $('bg').style.backgroundSize = fo.bs || ''; $('bg').style.backgroundPosition = fo.bp || ''; setPlat(tm[1]); setDirt(fo); setSea(fo); canliFon(fo);   // v6.11: (Adem) karli koyde platform koyun icinde duruyordu: fon buyuyup koy yukari, platformun arkasina alindi
   const nm = $('nm'); nm.innerHTML = '<div class="rb1"><small>BÖLÜM ' + LV + '</small><b>' + Y.ad + '</b></div>'; nm.classList.remove('on'); void nm.offsetWidth; nm.classList.add('on'); $('hint').style.opacity = 1;
   hud(true);
 }
@@ -1014,10 +1016,13 @@ function realPieces(c, p, q, dir, max) {
     const ol = off.length() || 1, v = off.clone().multiplyScalar((3.5 + Math.random() * 3) / ol).addScaledVector(dir, 2.5 + Math.random() * 3);
     v.y += 3 + Math.random() * 3.5;
     const w = rndV(11), hs = Math.min(it.hs * sm, S * 0.45) * 0.55, life = 2.1 + Math.random() * 0.6;
+    const st = {};
     fx(grp, life, (o, kk, dt) => {
-      v.y -= 26 * dt; o.position.addScaledVector(v, dt); o.rotation.x += w.x * dt; o.rotation.y += w.y * dt; o.rotation.z += w.z * dt;
+      if (st.in) softPiece(o, v, w, st, hs, dt);
+      else { v.y -= 26 * dt; o.position.addScaledVector(v, dt); o.rotation.x += w.x * dt; o.rotation.y += w.y * dt; o.rotation.z += w.z * dt; }
       const fl = floorAt(o.position.x, o.position.z) + hs;
-      if (o.position.y < fl && o.position.y > fl - 1.2) { o.position.y = fl; if (v.y < 0) { v.y *= -0.28; v.x *= 0.55; v.z *= 0.55; w.multiplyScalar(0.55); } }
+      if (!st.in && softPiece(o, v, w, st, hs, dt)) { /* kuma/kara saplandi ya da suya dustu */ }
+      else if (!st.in && o.position.y < fl && o.position.y > fl - 1.2) { o.position.y = fl; if (v.y < 0) { v.y *= -0.28; v.x *= 0.55; v.z *= 0.55; w.multiplyScalar(0.55); } }
       const sc = kk > 0.78 ? Math.max(0.001, (1 - kk) / 0.22) : 1; nd.scale.copy(fs).multiplyScalar(sc);
       if (kk >= 0.999 && !o.userData.cnt) { o.userData.cnt = 1; PARN--; }
     });
@@ -1062,8 +1067,8 @@ function updateBalls(dt) {
       b.lp = pos.clone(); }
     for (let j = b.trail.length - 1; j >= 0; j--) { const p = b.trail[j]; p.life -= dt; const k = Math.max(0, p.life / 0.2); p.m.scale.setScalar(BR * 1.3 * (1.6 - 0.6 * k)); p.m.material.opacity = 0.35 * k; if (p.life <= 0) { scene.remove(p.m); p.m.material.dispose(); b.trail.splice(j, 1); } }
     if (!b.pc && b.body.position.y > BR + 0.05) { b.pc = 1; b.body.collisionFilterMask = -1; }   // v6.12: (hata) top platformun icinden dusuyordu: platform hizasini asinca platforma carpar
-    if (!b.sunk && b.body.position.y < GY + BR * 1.1) { b.sunk = 1; groundFx(b.body.position.x, b.body.position.z, 0.6); world.removeBody(b.body); }
-    if (b.sunk) { b.sunk += dt; b.mesh.position.y = GY + BR - Math.min(1, b.sunk / 0.5) * BR * 2.4; }
+    if (!b.sunk && b.body.position.y < GY + BR * 1.1) { b.sunk = 1; const bx = b.body.position.x, bz = b.body.position.z; b.zn = zoneAt(bx, bz); if (b.zn === 'su') { splash(bx, bz, 0.9, true); sfx('su', 0); } else if (b.zn === 'cim') groundFx(bx, bz, 0.6); else { softBurst(b.zn, bx, bz, 0.6, b.body.velocity); sfx('thud', 3); } world.removeBody(b.body); }   // v6.17
+    if (b.sunk) { b.sunk += dt; b.mesh.position.y = GY + BR - Math.min(1, b.sunk / (b.zn === 'su' ? 0.9 : 0.5)) * BR * (b.zn === 'kum' ? 1.1 : b.zn === 'kar' ? 1.5 : 2.4); }
     else if (b.t > 1.2 && b.body.velocity.length() < 1.2) b.rest = (b.rest || 0) + dt;
     if (b.rest > 0.6) b.mesh.scale.setScalar(Math.max(0.001, 1 - (b.rest - 0.6) / 0.4));
     if (b.body.position.y < -16 || b.t > 7 || b.sunk > 0.6 || b.rest > 1) { for (const p of b.trail) { scene.remove(p.m); p.m.material.dispose(); } world.removeBody(b.body); scene.remove(b.mesh); b.halo.material.dispose(); if (b.mesh.material !== TOPM) b.mesh.material.dispose(); balls.splice(i, 1); }
@@ -1078,7 +1083,7 @@ function fx(o, life, upd) { FX.push({ o, life, max: life, upd }); }
 function updateFX(dt) {
   for (let i = FX.length - 1; i >= 0; i--) {
     const f = FX[i]; f.life -= dt; const k = 1 - Math.max(0, f.life) / f.max; f.upd(f.o, k, dt);
-    if (f.life <= 0) { scene.remove(f.o); if (f.o.material && !f.o.userData.shared) f.o.material.dispose(); FX.splice(i, 1); }
+    if (f.life <= 0) { if (!f.keep) { scene.remove(f.o); if (f.o.material && !f.o.userData.shared) f.o.material.dispose(); } FX.splice(i, 1); }
   }
 }
 const flashLight = new THREE.PointLight('#ffd6f0', 0, 16, 1.5); scene.add(flashLight);
@@ -1113,8 +1118,11 @@ function piece(m, p, dir, sz, spd, life) {
   const out = m.position.clone().sub(p).normalize(), v = out.multiplyScalar(spd * (0.6 + Math.random() * 0.8)).addScaledVector(dir, spd * (0.4 + Math.random() * 0.6)); v.y += 2.5 + Math.random() * 4;
   const w = new THREE.Vector3((Math.random() - 0.5) * 16, (Math.random() - 0.5) * 16, (Math.random() - 0.5) * 16);
   scene.add(m);
+  const st = {};
   fx(m, life, (o, k, dt) => {
+    if (st.in) { softPiece(o, v, w, st, sz * 0.45, dt); o.scale.setScalar(sz * (k > 0.7 ? Math.max(0, (1 - k) / 0.3) : 1)); return; }
     v.y -= 24 * dt; o.position.addScaledVector(v, dt); o.rotation.x += w.x * dt; o.rotation.y += w.y * dt; o.rotation.z += w.z * dt;
+    if (softPiece(o, v, w, st, sz * 0.45, dt)) return;
     const fl = floorAt(o.position.x, o.position.z) + sz * 0.45;
     if (o.position.y < fl && o.position.y > fl - 1.2) { o.position.y = fl; if (v.y < 0) { v.y *= -0.32; v.x *= 0.55; v.z *= 0.55; w.multiplyScalar(0.5); } }
     o.scale.setScalar(sz * (k > 0.7 ? Math.max(0, (1 - k) / 0.3) : 1));
@@ -1148,13 +1156,168 @@ const ZFX = { kar: { toz: '#ffffff', toz2: 3, par: ['#ffffff', '#eef6ff', '#dfee
 // v6.13: (Adem) efekt gorunmuyordu (parcaciklar kucuktu) ve dusen her cisim kirilsin: blok zemine degince parcalanir,
 // parcalar zemine batar; zemine gore buyuk su sicramasi + halkalar, kar bulutu ya da kum puskurmesi.
 function land(c) {
-  const zn = zemin(), z = ZFX[zn], p = new THREE.Vector3().copy(c.body.position), h = c.h || S;
+  const p = new THREE.Vector3().copy(c.body.position), h = c.h || S, zn0 = zoneAt(p.x, p.z);
+  if (zn0 !== 'cim' && c.mesh) { softLand(c, zn0); return; }   // v6.17: (Adem) kuma/kara dusen gomulur, suya dusen batar
   c.landed = 2;
   groundFx(p.x, p.z, 1);
   breakBlock(c, new THREE.Vector3(0, 1, 0), 10);
   buzz(22, 90);
   shake = Math.max(shake, 0.07);
 }
+
+// ---------------- v6.17: gercekci zemin: deniz, kum, kar ----------------
+// (Adem 5 Kas 2026) kuma dusen kuma gomulur, suya dusen suya batar, kara dusen kara saplanir.
+// Sahil bolumlerinde platformun arkasi gercek (dalgali) deniz, onu ve yanlari kum. Tahta, buz, fici yuzer; tas, metal, altin batar.
+const SEA = { mesh: null, z0: -8, t: 0, on: false };
+const SEAMAT = new THREE.ShaderMaterial({
+  transparent: true, depthWrite: false,
+  uniforms: { t: { value: 0 }, z0: { value: -8 }, sunDir: { value: new THREE.Vector3(-0.35, 0.75, -0.55).normalize() } },
+  vertexShader: `varying vec3 vW; uniform float t;
+    void main() { vec4 w = modelMatrix * vec4(position, 1.0);
+      w.y += 0.07 * sin(w.x * 0.8 + t * 1.7) + 0.05 * sin(w.z * 1.1 - t * 1.3);
+      vW = w.xyz; gl_Position = projectionMatrix * viewMatrix * w; }`,
+  fragmentShader: `varying vec3 vW; uniform float t; uniform float z0; uniform vec3 sunDir;
+    void main() {
+      float d = z0 - vW.z + 0.18 * sin(vW.x * 0.45 + 1.3) + 0.12 * sin(vW.x * 1.3 - t * 0.8);
+      if (d < 0.0) { float wet = smoothstep(-1.6, 0.0, d); gl_FragColor = vec4(0.62, 0.50, 0.34, wet * 0.45); return; }
+      float nx = 0.056 * cos(vW.x * 0.8 + t * 1.7) + 0.03 * cos(vW.x * 3.1 + vW.z * 2.3 + t * 2.4) + 0.015 * sin(vW.x * 7.0 - t * 3.1);
+      float nz = 0.055 * cos(vW.z * 1.1 - t * 1.3) + 0.03 * sin(vW.x * 2.7 - vW.z * 3.3 + t * 2.1) + 0.015 * cos(vW.z * 6.0 + t * 2.7);
+      vec3 n = normalize(vec3(-nx * 5.0, 1.0, -nz * 5.0)), v = normalize(cameraPosition - vW);
+      float fr = pow(1.0 - max(dot(n, v), 0.0), 3.0);
+      vec3 col = mix(vec3(0.36, 0.88, 0.86), vec3(0.04, 0.42, 0.68), smoothstep(0.0, 9.0, d));
+      col = mix(col, vec3(0.78, 0.93, 1.0), fr * 0.55);
+      col += vec3(1.0, 0.97, 0.9) * pow(max(dot(n, normalize(sunDir + v)), 0.0), 140.0) * 1.8;
+      float lap = 0.45 + 0.4 * sin(t * 1.1);
+      float foam = (1.0 - smoothstep(lap, lap + 0.55, d)) * (0.65 + 0.35 * sin(vW.x * 5.0 + t * 2.6));
+      col = mix(col, vec3(1.0), clamp(foam, 0.0, 1.0) * 0.9);
+      float a = mix(0.84, 0.95, smoothstep(0.0, 6.0, d)) * (1.0 - smoothstep(45.0, 75.0, d));
+      gl_FragColor = vec4(col, max(a, foam * 0.9)); }`
+});
+function setSea(fo) {
+  SEA.on = fo.f.startsWith('sahil');
+  if (!SEA.mesh) { SEA.mesh = new THREE.Mesh(new THREE.PlaneGeometry(220, 84, 110, 42), SEAMAT); SEA.mesh.rotation.x = -Math.PI / 2; SEA.mesh.renderOrder = 1; scene.add(SEA.mesh); }
+  SEA.mesh.visible = SEA.on; SEA.z0 = -(RZ + 0.9); SEAMAT.uniforms.z0.value = SEA.z0;
+  SEA.mesh.position.set(0, GY + 0.04, SEA.z0 - 40);
+}
+function updSea(dt) { SEA.t += dt; SEAMAT.uniforms.t.value = SEA.t; }
+function seaY(x, z) { return GY + 0.04 + 0.07 * Math.sin(x * 0.8 + SEA.t * 1.7) + 0.05 * Math.sin(z * 1.1 - SEA.t * 1.3); }
+function zoneAt(x, z) {
+  const f = (fonOf(LV) || {}).f || '';
+  if (f.startsWith('kar')) return 'kar';
+  if (f.startsWith('sahil')) return z < SEA.z0 - 0.18 * Math.sin(x * 0.45 + 1.3) ? 'su' : 'kum';
+  return 'cim';
+}
+// yuzenler (tahta, buz, fici, kabak) ve batanlar (tas, metal, altin, cam, jole)
+const FLOAT = new Set(['ahsap', 'ahsap2', 'sandik', 'hediye', 'kirmizi', 'ahsapmetal', 'kabak', 'fici', 'bomba', 'buz', 'buz2', 'buzDikey', 'yildiz']);
+const QE = new THREE.Euler();
+function flatQuat(q, tall) {
+  QE.setFromQuaternion(q, 'YXZ'); const sn = (a) => Math.round(a / (Math.PI / 2)) * (Math.PI / 2);
+  QE.x = sn(QE.x); QE.z = sn(QE.z); if (tall && Math.abs(Math.cos(QE.x)) > 0.5 && Math.abs(Math.cos(QE.z)) > 0.5) QE.x = Math.PI / 2;   // sutun yatarak yuzer
+  return new THREE.Quaternion().setFromEuler(QE);
+}
+function softLand(c, zn) {
+  const b = c.body, p = new THREE.Vector3().copy(b.position), v = new THREE.Vector3().copy(b.velocity), h = c.h || S;
+  world.removeBody(b); c.landed = true; c.lt = 0; c.zn = zn; c.v = v; c.w = new THREE.Vector3().copy(b.angularVelocity).multiplyScalar(0.6);
+  c.mesh.position.copy(p); c.mesh.quaternion.copy(b.quaternion); c.y0 = p.y; c.flt = zn === 'su' && FLOAT.has(c.kind); c.bub = 0;
+  const sp = Math.min(1.7, 0.55 + Math.abs(v.y) / 14), sz = Math.max(0.65, h / S);
+  if (zn === 'su') { splash(p.x, p.z, sp * sz, true); c.y0 = seaY(p.x, p.z); }
+  else { softBurst(zn, p.x, p.z, sp * sz, v); c.cr = crater(zn, p.x, p.z, S * 0.75 * sz); }
+  c.bat = zn === 'kar' ? h * (0.42 + 0.18 * Math.random()) : zn === 'kum' ? h * (0.22 + 0.1 * Math.random()) : 0;
+  sfx(zn === 'su' ? 'su' : 'thud', zn === 'su' ? 1 : 3); buzz(18, 90); shake = Math.max(shake, 0.05);
+}
+function landTick(c, dt) {
+  c.lt += dt; const m = c.mesh, h = c.h || S;
+  if (c.zn === 'su') {
+    const sy = seaY(m.position.x, m.position.z);
+    if (c.flt && c.lt < 3.4) {   // yuzer: bir dalar, geri cikar, dalgayla iner kalkar, yavasca duz yatar
+      const tgt = sy - h * 0.16; c.v.y += ((tgt - m.position.y) * 26 - c.v.y * 4.2) * dt;
+      c.v.x *= 1 - dt * 1.6; c.v.z = c.v.z * (1 - dt * 1.6) - dt * 0.35;
+      m.quaternion.slerp(c.qf || (c.qf = flatQuat(m.quaternion, KEEP[c.kind] === 'tall')), dt * 1.4);
+      c.ph = (c.ph || Math.random() * 6) + dt; m.rotateZ(Math.sin(c.ph * 2.1) * dt * 0.06);
+      if (c.lt > 0.6 && Math.random() < dt * 2) ripple(m.position.x, m.position.z, 0.7);
+    } else {   // batar: suyun icinde yavaslar, takla atarak dibe iner, kabarcik birakir
+      c.v.x *= 1 - dt * 2.6; c.v.z *= 1 - dt * 2.6; c.v.y += (-(c.flt ? 0.7 : 2.0) - c.v.y) * dt * 3.5;
+      m.rotateX(c.w.x * dt * 0.25); m.rotateZ(c.w.z * dt * 0.25); c.w.multiplyScalar(1 - dt * 0.8);
+      c.bub += dt; if (c.bub > 0.09 && m.position.y > GY - 6) { c.bub = 0; bubble(m.position.x + (Math.random() - 0.5) * h * 0.6, m.position.y + h * 0.3, m.position.z + (Math.random() - 0.5) * h * 0.6); }
+    }
+    m.position.addScaledVector(c.v, dt);
+    if (m.position.y < GY - h * 3.4 || c.lt > 8) { c.out = true; scene.remove(m); }
+    return;
+  }
+  // kar / kum: carpinca icine saplanir (egik kalir), bir sure durur, sonra yavasca gomulur
+  const k = Math.min(1, c.lt / (c.zn === 'kar' ? 0.26 : 0.16)), e = 1 - (1 - k) ** 3;
+  if (k < 1) { m.position.x += c.v.x * dt * (1 - k) * 0.35; m.position.z += c.v.z * dt * (1 - k) * 0.35; m.rotateX(c.w.x * dt * 0.15); m.rotateZ(c.w.z * dt * 0.15); }
+  m.position.y = c.y0 - c.bat * e;
+  if (c.lt > 3.6) { const q = Math.min(1, (c.lt - 3.6) / 1.4); m.position.y = c.y0 - c.bat - q * h * 1.15; if (c.cr) c.cr.material.opacity = 0.9 * (1 - q); if (q >= 1) { c.out = true; scene.remove(m); if (c.cr) { scene.remove(c.cr); c.cr.material.dispose(); } } }
+}
+// su sicramasi: tac seklinde damlalar, ortada yukselen su kolonu, kopuk ve halkalar
+function splash(x, z, s, big) {
+  const y = seaY(x, z) + 0.05, n = Math.round((big ? 30 : 9) * Math.min(1.5, s));
+  for (let i = 0; i < n; i++) {
+    const a = i / n * 6.283 + Math.random() * 0.25, r = (big ? 0.55 : 0.2) * s, m = spr(i % 3 ? '#ffffff' : '#c6f1ff', false, 0.95);
+    const sp = (big ? 2 : 1.2) * (0.7 + Math.random() * 0.8) * s, w = new THREE.Vector3(Math.cos(a) * sp, (big ? 6.5 : 3.5) * (0.7 + Math.random() * 0.6) * Math.sqrt(s), Math.sin(a) * sp);
+    m.position.set(x + Math.cos(a) * r, y, z + Math.sin(a) * r); const s0 = (big ? 0.3 : 0.15) * (0.7 + Math.random() * 0.6);
+    fx(m, 0.85 + Math.random() * 0.25, (o, k, dt) => { w.y -= 22 * dt; o.position.addScaledVector(w, dt); if (o.position.y < y - 0.05) { o.position.y = y - 0.05; w.set(0, 0, 0); } o.scale.set(s0, s0 * (1 + Math.min(1.6, Math.abs(w.y) * 0.1)), 1); o.material.opacity = 0.95 * (1 - k * k); });
+  }
+  if (big) for (let i = 0; i < 10; i++) {   // kolon
+    const m = spr(i % 2 ? '#ffffff' : '#d8f6ff', false, 0.9), w = new THREE.Vector3((Math.random() - 0.5) * 0.9, (5.5 + Math.random() * 4.5) * Math.sqrt(s), (Math.random() - 0.5) * 0.9);
+    m.position.set(x, y, z); const s0 = (0.45 + Math.random() * 0.35) * Math.min(1.4, s);
+    fx(m, 0.8, (o, k, dt) => { w.y -= 20 * dt; o.position.addScaledVector(w, dt); if (o.position.y < y) { o.position.y = y; w.set(0, 0, 0); } o.scale.set(s0 * (1 + k * 0.6), s0 * (1.6 - k * 0.6), 1); o.material.opacity = 0.9 * (1 - k); });
+  }
+  foam(x, z, (big ? 1.3 : 0.55) * s);
+  ripple(x, z, (big ? 2.3 : 1) * s); if (big) setTimeout(() => ripple(x, z, 1.6 * s), 220);
+}
+const FOAMT = canvasTex(128, 128, (x, w, h) => { for (let i = 0; i < 70; i++) { const a = Math.random() * 6.283, r = Math.random() * w * 0.38; x.fillStyle = 'rgba(255,255,255,' + (0.35 + Math.random() * 0.5) + ')'; x.beginPath(); x.arc(w / 2 + Math.cos(a) * r, h / 2 + Math.sin(a) * r, 2 + Math.random() * 7, 0, 6.283); x.fill(); } });
+function foam(x, z, s) {
+  const m = new THREE.Mesh(SPLGEO, new THREE.MeshBasicMaterial({ map: FOAMT, transparent: true, opacity: 0.9, depthWrite: false })); m.rotation.x = -Math.PI / 2; m.position.set(x, GY + 0.12, z); m.renderOrder = 2; scene.add(m);
+  fx(m, 1.6, (o, k) => { o.scale.setScalar(s * (0.6 + k * 0.9)); o.position.y = seaY(o.position.x, o.position.z) + 0.07; o.material.opacity = 0.9 * (1 - k); });
+}
+function bubble(x, y, z) {
+  const m = spr('#eaffff', false, 0.7); m.position.set(x, y, z); const s0 = 0.08 + Math.random() * 0.1, vy = 1.8 + Math.random() * 1.2;
+  fx(m, 1.4, (o, k, dt) => { o.position.y += vy * dt; o.position.x += Math.sin(k * 18) * dt * 0.3; o.scale.setScalar(s0 * (1 + k)); const top = seaY(o.position.x, o.position.z); if (o.position.y >= top) { o.position.y = top; o.material.opacity *= 0.8; } else o.material.opacity = 0.7; });
+}
+// kar ve kum: carpan blogun cevresine toz bulutu ve topaklar savrulur
+const SOFTC = { kar: { puf: ['#ffffff', '#f2f8ff', '#e4efff'], top: ['#ffffff', '#eef5ff'], n: 22, up: 5.5, puff: 1.25 }, kum: { puf: ['#f1d9a6', '#e8cc94', '#f6e4bc'], top: ['#e2c288', '#d4b070', '#f0d6a2'], n: 26, up: 4.2, puff: 0.9 } };
+function softBurst(zn, x, z, s, v) {
+  const C2 = SOFTC[zn], hx = v ? v.x * 0.15 : 0, hz = v ? v.z * 0.15 : 0;
+  for (let i = 0; i < C2.n; i++) {   // topaklar / kum taneleri
+    const m = spr(C2.top[i % C2.top.length], false, 1), a = Math.random() * 6.283, r = (1.2 + Math.random() * 2.6) * s;
+    const w = new THREE.Vector3(Math.cos(a) * r + hx, C2.up * (0.6 + Math.random() * 0.7) * Math.sqrt(s), Math.sin(a) * r + hz);
+    m.position.set(x + Math.cos(a) * 0.5, GY + 0.15, z + Math.sin(a) * 0.5); const s0 = (zn === 'kar' ? 0.2 : 0.11) * (0.6 + Math.random() * 0.8);
+    fx(m, 0.9 + Math.random() * 0.4, (o, k, dt) => { w.y -= 22 * dt; o.position.addScaledVector(w, dt); if (o.position.y < GY + 0.06) { o.position.y = GY + 0.06; w.set(0, 0, 0); } o.scale.setScalar(s0); o.material.opacity = k > 0.7 ? (1 - k) / 0.3 : 1; });
+  }
+  for (let i = 0; i < 9; i++) {   // toz bulutu: alcakta yayilir, yavasca dagilir
+    const m = spr(C2.puf[i % C2.puf.length], false, 0.8), a = Math.random() * 6.283, w = new THREE.Vector3(Math.cos(a) * (1.4 + Math.random() * 1.6) * s, 0.5 + Math.random() * 1.4, Math.sin(a) * (1.4 + Math.random() * 1.6) * s);
+    m.position.set(x, GY + 0.35, z); const s0 = (0.9 + Math.random() * 0.6) * C2.puff * Math.min(1.5, s);
+    fx(m, 1.1 + Math.random() * 0.5, (o, k, dt) => { o.position.addScaledVector(w, dt); w.multiplyScalar(1 - dt * 2.2); o.scale.setScalar(s0 * (1 + k * 1.8)); o.material.opacity = 0.8 * (1 - k) ** 1.4; });
+  }
+}
+// gomulen blogun cevresinde kalan cukur (kar: golgeli beyaz cukur, kum: koyu ic, acik kenar)
+const CRT = {};
+function crater(zn, x, z, r) {
+  const t = CRT[zn] || (CRT[zn] = canvasTex(128, 128, (c, w, h) => {
+    const gg = c.createRadialGradient(w / 2, h / 2, 0, w / 2, h / 2, w / 2);
+    if (zn === 'kar') { gg.addColorStop(0, 'rgba(150,175,210,.75)'); gg.addColorStop(0.55, 'rgba(190,210,235,.55)'); gg.addColorStop(0.72, 'rgba(255,255,255,1)'); gg.addColorStop(1, 'rgba(255,255,255,0)'); }
+    else { gg.addColorStop(0, 'rgba(150,112,64,.7)'); gg.addColorStop(0.55, 'rgba(196,158,104,.5)'); gg.addColorStop(0.74, 'rgba(246,226,184,.95)'); gg.addColorStop(1, 'rgba(246,226,184,0)'); }
+    c.fillStyle = gg; c.fillRect(0, 0, w, h); }));
+  const m = new THREE.Mesh(SPLGEO, new THREE.MeshBasicMaterial({ map: t, transparent: true, opacity: 0.9, depthWrite: false })); m.rotation.x = -Math.PI / 2; m.rotation.z = Math.random() * 6; m.position.set(x, GY + 0.03, z); m.scale.setScalar(r * 0.2); scene.add(m);
+  fx(m, 0.25, (o, k) => o.scale.setScalar(r * (0.2 + 0.8 * (1 - (1 - k) ** 2)))); FX[FX.length - 1].keep = true;
+  return m;
+}
+// parcalar ve kirintilar: suya duserse kucuk sicrama + batar, kara/kuma duserse saplanir (sekmez)
+function softPiece(o, v, w, st, hs, dt) {
+  if (!st.in) {
+    if (o.position.y - hs > GY + 0.06 || floorAt(o.position.x, o.position.z) !== GY) return false;
+    const zn = zoneAt(o.position.x, o.position.z); if (zn === 'cim') return false;
+    st.in = zn;
+    if (zn === 'su') { if (PIECEFX++ < 40) splash(o.position.x, o.position.z, 0.3 + hs, false); v.multiplyScalar(0.3); }
+    else { if (PIECEFX++ < 40) softBurst(zn, o.position.x, o.position.z, 0.25 + hs * 0.6, null); v.set(0, 0, 0); w.set(0, 0, 0); st.y = GY + hs * 0.15; o.position.y = st.y; }
+  }
+  if (st.in === 'su') { v.x *= 1 - dt * 3; v.z *= 1 - dt * 3; v.y += (-1.3 - v.y) * dt * 4; o.position.addScaledVector(v, dt); w.multiplyScalar(1 - dt * 2); o.rotation.x += w.x * dt; o.rotation.z += w.z * dt; }
+  else o.position.y -= dt * hs * 0.25;
+  return true;
+}
+let PIECEFX = 0; setInterval(() => { PIECEFX = 0; }, 400);
 // zemin efekti (s: buyukluk carpani; blok 1, top 0.6)
 function groundFx(x, z0, s) {
   const zn = zemin(), z = ZFX[zn];
@@ -1182,12 +1345,6 @@ function ripple(x, z, s) { for (let i = 0; i < 2; i++) { const m = new THREE.Mes
 function landFx(x, z, s) { const zn = zemin(), zz = ZFX[zn]; const t0 = TOZ; TOZ = zz.toz; dust(x, GY, z, s); TOZ = t0; if (zz.halka) ripple(x, z, s * 1.4);
   for (let i = 0; i < 6; i++) { const m = spr(zz.par[i % zz.par.length], false, 0.95), a = Math.random() * 6.283, w = new THREE.Vector3(Math.cos(a) * 1.5, zz.up * 0.7, Math.sin(a) * 1.5); m.position.set(x, GY + 0.15, z);
     fx(m, 0.6, (o, k, dt) => { w.y -= 18 * dt; o.position.addScaledVector(w, dt); o.scale.setScalar(0.2 * (1 - k * 0.5)); o.material.opacity = 0.95 * (1 - k); }); } }
-function landTick(c, dt) {
-  c.lt += dt; const k = Math.min(1, c.lt / 0.35), e = 1 - (1 - k) * (1 - k);
-  c.mesh.position.x += c.drift.x * dt; c.mesh.position.z += c.drift.z * dt; c.drift.multiplyScalar(Math.max(0, 1 - dt * 6));
-  c.mesh.position.y = c.y0 - c.bat * e;
-  if (c.lt > 1.3) { const q = Math.max(0, 1 - (c.lt - 1.3) / 0.5); c.mesh.position.y -= (1 - q) * (c.h || S) * 0.6; if (q <= 0) { c.out = true; scene.remove(c.mesh); } }
-}
 function dust(x, y, z, s) {
   for (let i = 0; i < 7; i++) {
     const m = spr(TOZ, false, 0.75), a = Math.random() * 6.283, v = new THREE.Vector3(Math.cos(a) * (1 + Math.random() * 2), 0.6 + Math.random() * 1.2, Math.sin(a) * (1 + Math.random() * 2));
@@ -1348,6 +1505,16 @@ function chime(notes, gap, vol, chord) {
   if (chord) [523.25, 659.25, 783.99].forEach((f) => { const t = t0 + notes.length * gap; const o = AC.createOscillator(), v = AC.createGain(); o.type = 'sine'; o.frequency.value = f;
     v.gain.setValueAtTime(0.0001, t); v.gain.linearRampToValueAtTime(vol * 0.35, t + 0.08); v.gain.exponentialRampToValueAtTime(0.0001, t + 2); o.connect(v); v.connect(o0); o.start(t); o.stop(t + 2.1); });
 }
+let SPLB = null;
+function splashSnd(v) {   // v6.17: su sicrama sesi (kayit yok; gurultu kopuk + alcak plop)
+  const o = out(), now = AC.currentTime;
+  if (!SPLB) { const n = Math.floor(AC.sampleRate * 0.7); SPLB = AC.createBuffer(1, n, AC.sampleRate); const d = SPLB.getChannelData(0); let l = 0; for (let i = 0; i < n; i++) { const r = Math.random() * 2 - 1; l = l * 0.6 + r * 0.4; d[i] = l * Math.pow(1 - i / n, 2.4) * (i < 300 ? i / 300 : 1); } }
+  const src = AC.createBufferSource(), f = AC.createBiquadFilter(), g0 = AC.createGain(); src.buffer = SPLB; src.playbackRate.value = 0.85 + Math.random() * 0.3;
+  f.type = 'lowpass'; f.frequency.setValueAtTime(3200, now); f.frequency.exponentialRampToValueAtTime(500, now + 0.6); g0.gain.value = v;
+  src.connect(f); f.connect(g0); g0.connect(o); src.start(now);
+  const os = AC.createOscillator(), og = AC.createGain(); os.frequency.setValueAtTime(170, now); os.frequency.exponentialRampToValueAtTime(55, now + 0.16); og.gain.setValueAtTime(v * 0.7, now); og.gain.exponentialRampToValueAtTime(0.001, now + 0.2);
+  os.connect(og); og.connect(o); os.start(now); os.stop(now + 0.22);
+}
 function sfx(k, n) {
   if (!AC) return; out(); const now = AC.currentTime;
   const key = k === 'kir' ? matSnd(n) : k === 'shatter' ? 'tahta' : k;
@@ -1360,6 +1527,7 @@ function sfx(k, n) {
   else if (k === 'metal') play('tas', 0.3, 0.8);
   else if (k === 'boom') play('patlama', 0.7, 0.9);
   else if (k === 'thud') play('dusme', 0.3, 0.75 + Math.random() * 0.1);
+  else if (k === 'su') splashSnd(n ? 0.55 : 0.3);
   else if (k === 'slap') play('dusme', 0.5, 0.8);
   else if (k === 'bonus') chime([1318.5, 1760], 0.07, 0.16);
   else if (k === 'win') chime([523.25, 659.25, 783.99, 1046.5, 1318.5], 0.11, 0.2, true);
@@ -1458,7 +1626,7 @@ let last = 0, shake = 0;
 function frame(ts) {
   const dt = Math.min(0.05, last ? (ts - last) / 1000 : 0.016); last = ts;
   if (g) { g.t += dt; spin(dt); slide(dt); world.step(1 / 120, dt, 8); if (SIRK.mesh) SIRK.mesh.quaternion.set(platBody.quaternion.x, platBody.quaternion.y, platBody.quaternion.z, platBody.quaternion.w); updateFuse(dt); updateDebris(dt); syncMeshes(); updateBalls(dt); updateCubes(dt); if (KM.bomba) KM.bomba.emissiveIntensity = 0.45 + 0.4 * Math.sin(g.t * 8); }
-  updatePofi(dt); updateCannon(dt); updateParts(dt); updateFX(dt); if (flashLight.intensity > 0) flashLight.intensity = Math.max(0, flashLight.intensity - dt * 400);
+  updatePofi(dt); updateCannon(dt); updateParts(dt); updateFX(dt); updSea(dt); canliKare(dt); if (flashLight.intensity > 0) flashLight.intensity = Math.max(0, flashLight.intensity - dt * 400);
   if (shake > 0) { shake = Math.max(0, shake - dt * 1.4); cam.position.copy(cam.userData.base).add(new THREE.Vector3((Math.random() - 0.5) * shake, (Math.random() - 0.5) * shake, 0)); } else if (cam.userData.base) cam.position.copy(cam.userData.base);
   ren.render(scene, cam);
   if (!TEST) requestAnimationFrame(frame);
@@ -1467,7 +1635,7 @@ function start(L) {
   LV = Math.max(1, L); SV.L = LV; save(); closeModal(); $('praise').innerHTML = '';
   setPofiCol(POFICOL[(LV - 1) % POFICOL.length]); buildLevel();
 }
-window.YP = { TC, cam, scene, cubes, balls, get g() { return g; }, start, shoot: (x, y, z) => shoot(new THREE.Vector3(x, y, z)), aimAt, run(sec) { let t = last || 0; for (let i = 0; i < Math.round(sec * 60); i++) { t += 1000 / 60; frame(t); } }, snap() { return glc.toDataURL('image/png'); } };
+window.YP = { TC, cam, scene, cubes, balls, get g() { return g; }, get R() { return R; }, start, shoot: (x, y, z) => shoot(new THREE.Vector3(x, y, z)), aimAt, run(sec) { let t = last || 0; for (let i = 0; i < Math.round(sec * 60); i++) { t += 1000 / 60; frame(t); } }, snap() { return glc.toDataURL('image/png'); } };
 Promise.all([faceReady, pofiReady, texReady, modelReady]).then(() => {
   makeCannon(); fit();
   for (const k in KMAT) delete KMAT[k];
