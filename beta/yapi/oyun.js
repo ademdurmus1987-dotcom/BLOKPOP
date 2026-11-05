@@ -10,7 +10,10 @@ import { mergeGeometries } from '../BufferGeometryUtils.js';
 
 const $ = (id) => document.getElementById(id);
 const Q = new URLSearchParams(location.search), TEST = Q.has('test');
-const SKEY = 'blokpop_yapi_v3';
+// v6.19: (Adem) Korsan modu pilotu: beta/korsan/index.html ayni motoru window.KORSAN ile acar; korsan.js sahneyi, hedefleri ve kartlari kurar.
+// KORSAN yoksa (Yapi modu) K null'dur ve asagidaki 'if (K)' satirlarinin hicbiri calismaz.
+const K = window.KORSAN ? await import('../korsan/korsan.js?v=1') : null;
+const SKEY = K ? 'blokpop_korsan_v1' : 'blokpop_yapi_v3';
 let SV = { L: 1, max: 1 };
 try { const d = JSON.parse(localStorage.getItem(SKEY) || 'null'); if (d) SV = Object.assign(SV, d); } catch (e) {}
 const save = () => { try { localStorage.setItem(SKEY, JSON.stringify(SV)); } catch (e) {} };
@@ -19,7 +22,7 @@ const save = () => { try { localStorage.setItem(SKEY, JSON.stringify(SV)); } cat
 const S = 1.55;          // kup kenari (iri)
 const R0 = 6.1;          // platform modelinin yaricapi
 let R = R0, RZ = R0, TOPY = 6;   // R: platformun yarim genisligi (x), RZ: yarim derinligi (z)              // bu bolumdeki yaricap: yapinin hemen disi, itilen kup kenardan dussun
-const GY = -4.0;         // zemin: platform kisa bir direk ustunde durur, dusen kupler direk dibindeki zeminde yuvarlanir
+let GY = -4.0;           // v6.19: korsan modunda deniz seviyesi hedefe gore degisir (sal alcak, kule yuksek)         // zemin: platform kisa bir direk ustunde durur, dusen kupler direk dibindeki zeminde yuvarlanir
 const PT = 1.1;          // platform tablasinin kalinligi (ust yuzey y=0)
 const POFI = new THREE.Vector3(1.35, GY, 9.6);   // v5.4: Pofi top arabasinin yaninda; ikisi birlikte ortada   // v5.3: Pofi ortada (Adem: kenarda durmasin)
 //     // Pofi kaidesiz, cimende durur; direkli platforma yukari atar   // Pofi'nin ayak yeri (z bolume gore platformun onune konur)
@@ -511,6 +514,7 @@ function makeJar() {
 const DEB = [], SPL = [];
 const rndV = (k) => new THREE.Vector3((Math.random() - 0.5) * k, (Math.random() - 0.5) * k, (Math.random() - 0.5) * k);
 function floorAt(x, z) {
+  if (K) return K.floorAt(x, z);
   if (PLS.length > 1 || (PLS[0] && PLS[0].cx)) { for (const q of PLS) if (Math.abs(x - q.cx) < q.r && Math.abs(z - q.z) < q.rz) return 0; return GY; } if (PANG) { const c = Math.cos(PANG), s2 = Math.sin(PANG), lx = x * c - z * s2, lz = x * s2 + z * c; x = lx; z = lz; } return (TEMA_YAPI[1] === 'sirk' ? Math.abs(x) < R && Math.abs(z) < RZ : KARE(TEMA_YAPI[1]) ? Math.abs(x) < R && Math.abs(z) < R : x * x + z * z < R * R) ? 0 : GY; }
 function debris(m, pos, vel, spin, life, kind, h, sr) { m.position.copy(pos); scene.add(m); DEB.push({ m, v: vel, w: spin, life, kind, s: m.scale.clone(), h, sr }); }
 let SPLMAT = null;
@@ -641,7 +645,7 @@ const KULELER = [
 ];
 // sira: 1. bolum Recel Rafi, sonra her eski bolumden sonra bir kule
 const LSIRA = (() => { const o = [], e = LEVELS.slice(); o.push(e.shift()); for (let i = 0; i < Math.max(e.length, KULELER.length); i++) { if (KULELER[i]) o.push(KULELER[i]); if (e[i]) o.push(e[i]); } return o; })();
-function levelOf(L) { return LSIRA[(L - 1) % LSIRA.length]; }
+function levelOf(L) { if (K) return K.bolum(L); return LSIRA[(L - 1) % LSIRA.length]; }
 // v6.13: kup listesindeki 5. alan platform numarasi (0, 1, ...); bolumun pl dizisi platformlarin yeri ve hareketi
 
 // ---------------- fizik ----------------
@@ -655,7 +659,7 @@ world.addContactMaterial(new CANNON.ContactMaterial(PM.cube, PM.plat, { friction
 world.addContactMaterial(new CANNON.ContactMaterial(PM.ball, PM.cube, { friction: 0.2, restitution: 0.25 }));
 world.addContactMaterial(new CANNON.ContactMaterial(PM.ball, PM.plat, { friction: 0.3, restitution: 0.3 }));
 const platBody = new CANNON.Body({ mass: 0, material: PM.plat }); platBody.collisionFilterGroup = 4; world.addBody(platBody);   // v6.11: mermi (grup 2) platforma carpmaz
-{ const gb = new CANNON.Body({ mass: 0, material: PM.plat }); gb.addShape(new CANNON.Plane()); gb.quaternion.setFromEuler(-Math.PI / 2, 0, 0); gb.position.y = GY; world.addBody(gb); }
+const GB = new CANNON.Body({ mass: 0, material: PM.plat }); GB.addShape(new CANNON.Plane()); GB.quaternion.setFromEuler(-Math.PI / 2, 0, 0); GB.position.y = GY; world.addBody(GB);
 const CUBESHAPE = new CANNON.Box(new CANNON.Vec3(S / 2, S / 2, S / 2)), FICISHAPE = new CANNON.Cylinder(FR, FR, S, 16);
 
 // ---------------- oyun durumu ----------------
@@ -672,6 +676,7 @@ function buildLevel() {
   clearLevel();
   const Y = levelOf(LV), made = Y.make(), list = convertLevel(made, LV);
   list.forEach((c, n) => { c[4] = made[n][4] || 0; });
+  if (K) return K.kur(Y, list);   // v6.19: korsan hedefi (sal, gemi, kule) kendi platformunu kurar
   const PD = Y.pl || [{ x: 0, z: 0 }];
   if (PD.length > 1 || PD[0].kay) return buildMulti(Y, list, PD);
   let i0 = 1e9, i1 = -1e9, k0 = 1e9, k1 = -1e9; for (const c of list) { i0 = Math.min(i0, c[0]); i1 = Math.max(i1, c[0]); k0 = Math.min(k0, c[2]); k1 = Math.max(k1, c[2]); }
@@ -729,12 +734,12 @@ function buildMulti(Y, list, PD) {
 }
 function addCubes(Y, list, ctr) {
   for (const [i, j, k, col, pn] of list) {
-    const [ci, ck, ox, oz] = ctr(pn);
+    const [ci, ck, ox, oz, oy] = ctr(pn);
     const kd = col[0] === '#' ? null : KIND[col], mg = fitCube(kd ? col : 'kup'), isF = col === 'fici' && !mg;
     const pm = kd ? (kd.pm || (kd.pm = new CANNON.Material({ friction: kd.f, restitution: kd.r }))) : PM.cube;
     const body = new CANNON.Body({ mass: (kd ? kd.mass : 1) * KAGIR, material: pm, sleepSpeedLimit: 0.25, sleepTimeLimit: 0.4, linearDamping: 0.03, angularDamping: 0.16 });   // v6.8: 3 kat agir, kolay donmez
     const isE = kd && kd.esya, gl = kd && kd.cam, kp = KEEP[col] && MOD[col] ? fitKeep(col) : null, ghh = gl ? glassInfo(gl).hh : kp ? MOD[col].dim.h : S;
-    body.addShape(gl ? glassShape(gl) : kp ? keepShape(col) : isF || isE ? FICISHAPE : CUBESHAPE); body.position.set(ox + (i - ci) * S, ghh / 2 + j * (S + 0.002), oz + (k - ck) * S);
+    body.addShape(gl ? glassShape(gl) : kp ? keepShape(col) : isF || isE ? FICISHAPE : CUBESHAPE); body.position.set(ox + (i - ci) * S, (oy || 0) + ghh / 2 + j * (S + 0.002), oz + (k - ck) * S);
     if (isE) body.quaternion.setFromEuler(0, (Math.random() - 0.5) * 0.5, 0);
     world.addBody(body); body.sleep();
     const mesh = gl ? makeGlass(gl) : kp ? new THREE.Mesh(kp, MOD[col].mat) : isE ? makeJar() : mg ? new THREE.Mesh(mg, kd ? MOD[col].mat : kupModelMat(col)) : new THREE.Mesh(isF ? FICIGEO : CUBEGEO, kd ? kindMat(col) : kupMat(col)); mesh.castShadow = !gl; mesh.receiveShadow = col !== 'cam' && !gl; scene.add(mesh);
@@ -751,7 +756,7 @@ function addCubes(Y, list, ctr) {
   syncMeshes();
   g = { don: Y.don || 0, L: LV, ad: Y.ad, total: cubes.length, left: cubes.length, shots: shotsFor(cubes.length, Y), max: shotsFor(cubes.length, Y), state: 'play', t: 0, busy: 0, quiet: 0, combo: null, armed: false, bonus: 0, gold: 0 };
   FUSE.length = 0;
-  const tm = TEMA_YAPI, fo = fonOf(LV); $('bg').style.backgroundImage = 'url(fon/' + fo.f + (BOSFON.has(fo.f) ? '_bos.webp?v=1' : '.webp?v=2') + ')'; $('bg').style.backgroundSize = fo.bs || ''; $('bg').style.backgroundPosition = fo.bp || ''; setPlat(tm[1]); setDirt(fo); setSea(fo); canliFon(fo);   // v6.11: (Adem) karli koyde platform koyun icinde duruyordu: fon buyuyup koy yukari, platformun arkasina alindi
+  if (K) K.sahne(); else { const tm = TEMA_YAPI, fo = fonOf(LV); $('bg').style.backgroundImage = 'url(fon/' + fo.f + (BOSFON.has(fo.f) ? '_bos.webp?v=1' : '.webp?v=2') + ')'; $('bg').style.backgroundSize = fo.bs || ''; $('bg').style.backgroundPosition = fo.bp || ''; setPlat(tm[1]); setDirt(fo); setSea(fo); canliFon(fo); }   // v6.11: (Adem) karli koyde platform koyun icinde duruyordu: fon buyuyup koy yukari, platformun arkasina alindi
   const nm = $('nm'); nm.innerHTML = '<div class="rb1"><small>BÖLÜM ' + LV + '</small><b>' + Y.ad + '</b></div>'; nm.classList.remove('on'); void nm.offsetWidth; nm.classList.add('on'); $('hint').style.opacity = 1;
   hud(true);
 }
@@ -1151,7 +1156,7 @@ function shatter(p, col, dir, mat0, cnt, chunkMat) {
 }
 // v6.5: (Adem) dusen blok zeminde sekmez: fona gore kara gomulur (kar tozu), kuma oturur (kum sicramasi) ya da cimene/topraga
 // saplanir (toprak ve cimen parcalari). Fizikten cikar, yavasca batar, sonra zemine girip kaybolur.
-function zemin() { const f = (fonOf(LV) || {}).f || ''; return f.startsWith('kar') ? 'kar' : f.startsWith('sahil') ? 'su' : 'cim'; }
+function zemin() { if (K) return 'su'; const f = (fonOf(LV) || {}).f || ''; return f.startsWith('kar') ? 'kar' : f.startsWith('sahil') ? 'su' : 'cim'; }
 const ZFX = { kar: { toz: '#ffffff', toz2: 3, par: ['#ffffff', '#eef6ff', '#dfeeff'], bat: 0.62, n: 22, up: 6.5 }, kum: { toz: '#f1d9a6', toz2: 2.4, par: ['#f3dcae', '#e6c88e', '#d8b678'], bat: 0.4, n: 18, up: 5.5 }, su: { toz: '#e8f8ff', toz2: 1.6, par: ['#ffffff', '#c9f1ff', '#8fdcff', '#5cc8f0'], bat: 1.35, n: 24, up: 8.5, halka: 1, kolon: 1 }, cim: { toz: '#b89468', toz2: 2, par: ['#6b4a2c', '#8a6238', '#4fae3c', '#3d8f2e'], bat: 0.28, n: 16, up: 5 } };
 // v6.13: (Adem) efekt gorunmuyordu (parcaciklar kucuktu) ve dusen her cisim kirilsin: blok zemine degince parcalanir,
 // parcalar zemine batar; zemine gore buyuk su sicramasi + halkalar, kar bulutu ya da kum puskurmesi.
@@ -1214,6 +1219,7 @@ function setSea(fo) {
 function updSea(dt) { SEA.t += dt; SEAMAT.uniforms.t.value = SEA.t; }
 function seaY(x, z) { return GY + 0.04 + 0.07 * Math.sin(x * 0.8 + SEA.t * 1.7) + 0.05 * Math.sin(z * 1.1 - SEA.t * 1.3); }
 function zoneAt(x, z) {
+  if (K) return K.zone(x, z);
   const f = (fonOf(LV) || {}).f || '';
   if (f.startsWith('kar')) return 'kar';
   if (f.startsWith('sahil')) return z < SEA.z0 - 0.18 * Math.sin(x * 0.45 + 1.3) ? 'su' : 'kum';
@@ -1555,7 +1561,7 @@ const prev = {};
 function setNum(id, v, anim) { const e = $(id); if (prev[id] !== v) { e.textContent = v; if (anim && prev[id] != null) { e.classList.remove('bump'); void e.offsetWidth; e.classList.add('bump'); } prev[id] = v; } }
 function hud(reset) {
   if (!g) return;
-  $('lv').textContent = 'Yapı'; setNum('lvn', LV, false);
+  $('lv').textContent = K ? 'Korsan' : 'Yapı'; setNum('lvn', LV, false);
   setNum('kc', g.left, !reset); setNum('tc', g.shots, !reset);
   $('pb').style.width = Math.round(100 * (1 - g.left / g.total)) + '%';
 }
@@ -1565,6 +1571,7 @@ function floatText(t, x, y, cls) { const e = document.createElement('div'); e.cl
 function modal(h) { $('card').innerHTML = h; $('modal').classList.add('on'); }
 function closeModal() { $('modal').classList.remove('on'); }
 function win() {
+  if (K) return K.kart();   // v6.19: korsan kazanma karti (yildiz, altin sayaci, sandik, harita)
   SV.max = Math.max(SV.max, LV + 1); save();
   const r = g.shots / g.max, st = Math.min(3, (r >= 0.4 ? 3 : r >= 0.15 ? 2 : 1) + g.bonus);
   const stars = [0, 1, 2].map((i) => '<span' + (i < st ? '' : ' class="off"') + '>★</span>').join('');
@@ -1601,6 +1608,7 @@ glc.addEventListener('pointerdown', (e) => {
 // platformun tamami ve altta Pofi ekrana sigar; dar (telefon) ekranda geriye cekilir
 const YAW = 0;   // v6.2: (Adem) platform kameraya duz baksin; derinligi yukaridan bakis acisi verir
 function fit() {
+  if (K && K.hazir()) return K.fit();
   // v6.2: 1) kamera: 13 derece yukaridan, tam karsidan. Yapinin tepesi ile platformun alt kenari ekranin ortasina (biraz yukari) oturur,
   //          yapi ekrana sigana kadar geri cekilir. 2) top arabasi: kameradan yapiya olan yolun ~%30'unda, ekran genisliginin ~%40'i kadar,
   //          namlu ucu ekranin alttan ~%24'unde. Platformla arasinda her zaman bosluk kalir.
@@ -1639,6 +1647,7 @@ addEventListener('resize', fit); fit();
 let last = 0, shake = 0;
 function frame(ts) {
   const dt = Math.min(0.05, last ? (ts - last) / 1000 : 0.016); last = ts;
+  if (K) K.kare(dt);   // v6.19: seyir, sallanan hedef, batma
   if (g) { g.t += dt; spin(dt); slide(dt); world.step(1 / 120, dt, 8); if (SIRK.mesh) SIRK.mesh.quaternion.set(platBody.quaternion.x, platBody.quaternion.y, platBody.quaternion.z, platBody.quaternion.w); updateFuse(dt); updateDebris(dt); syncMeshes(); updateBalls(dt); updateCubes(dt); if (KM.bomba) KM.bomba.emissiveIntensity = 0.45 + 0.4 * Math.sin(g.t * 8); }
   updatePofi(dt); updateCannon(dt); updateParts(dt); updateFX(dt); updSea(dt); canliKare(dt); if (flashLight.intensity > 0) flashLight.intensity = Math.max(0, flashLight.intensity - dt * 400);
   if (shake > 0) { shake = Math.max(0, shake - dt * 1.4); cam.position.copy(cam.userData.base).add(new THREE.Vector3((Math.random() - 0.5) * shake, (Math.random() - 0.5) * shake, 0)); } else if (cam.userData.base) cam.position.copy(cam.userData.base);
@@ -1649,8 +1658,13 @@ function start(L) {
   LV = Math.max(1, L); SV.L = LV; save(); closeModal(); $('praise').innerHTML = '';
   setPofiCol(POFICOL[(LV - 1) % POFICOL.length]); buildLevel();
 }
-window.YP = { TC, cam, scene, cubes, balls, get g() { return g; }, get R() { return R; }, start, shoot: (x, y, z) => shoot(new THREE.Vector3(x, y, z)), aimAt, run(sec) { let t = last || 0; for (let i = 0; i < Math.round(sec * 60); i++) { t += 1000 / 60; frame(t); } }, snap() { return glc.toDataURL('image/png'); } };
-Promise.all([faceReady, pofiReady, texReady, modelReady]).then(() => {
+window.YP = { K, ren, TC, cam, scene, cubes, balls, get g() { return g; }, get R() { return R; }, start, shoot: (x, y, z) => shoot(new THREE.Vector3(x, y, z)), aimAt, run(sec) { let t = last || 0; for (let i = 0; i < Math.round(sec * 60); i++) { t += 1000 / 60; frame(t); } }, snap() { return glc.toDataURL('image/png'); } };
+if (K) K.bagla({ THREE, CANNON, GLTFLoader, scene, world, cam, ren, sun, rim, MOD, PM, platBody, GB, cubes, balls, S, TC, KEEP, NENV, SV, save, $, Q, TEST,
+  get g() { return g; }, get LV() { return LV; }, get GY() { return GY; }, set GY(v) { GY = v; GB.position.y = v; }, get shake() { return shake; }, set shake(v) { shake = v; },
+  set TOPY(v) { TOPY = v; }, set R(v) { R = v; }, set RZ(v) { RZ = v; }, LEG, DIRT, KIND, splashSnd: (v) => AC && splashSnd(v),
+  clearLevel, addCubes, hud, setPlat, sfx, play, chime, splash, ripple, bubble, foam, seaY, burst, confetti, modal, closeModal, start, buzz, spr, fx, trunkTip, wakeAll, FOAMT, SOFT, canvasTex, floatText, screenAt,
+  get AC() { return AC; } });
+Promise.all([faceReady, pofiReady, texReady, modelReady, K ? K.yukle() : 0]).then(() => {
   makeCannon(); fit();
   for (const k in KMAT) delete KMAT[k];
   start(+(Q.get('sv') || SV.L || 1));
