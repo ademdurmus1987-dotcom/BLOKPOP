@@ -1,69 +1,101 @@
-// BLOKPOP Korsan modu - pilot (Adem 5 Kas 2026)
-// Yapi motorunun (yapi/oyun.js) uzerine kurulur: kupler, fizik, kirilma, ses ve top ayni. Bu dosya sadece korsan sahnesini kurar:
-//  - bizim gemimiz: kamera geminin arkasindan alcak bakar, ekranin altinda sadece burun ve guvertenin onu gorunur;
-//    top arabasi (Adem'in modeli) guvertedeki altin yuvarlak platformda durur. Gemi direksiz.
-//  - hedefler: sallanan sal, dusman korsan gemisi (alt guverte + kic kabin catisi iki kat), gozcu kulesi adasi.
-//  - seyir: her bolumun basinda gemi 2-3 sn ilerler (hedef uzaktan yaklasir), sonra demir atilir ve atis baslar.
-//  - hedef dalgada iner kalkar ve yalpalar; ustundeki kupler onunla birlikte tasinir. Kazaninca gemi/sal batar.
-//  - kazanma karti: 1-3 yildiz, altin sayilarak eklenir, her 5 bolumde hazine sandigi; sonra deniz haritasi (gemi rotada ilerler).
-// 3B modeller (Adem'in Tripo modelleri): model/bizim_gemi, dusman_gemi, kule_ada, sal .glb (KAL tablosu). Dosya yoksa kodla cizilmis yedek govdeler.
+// BLOKPOP Korsan modu - pilot (Adem 5-6 Kas 2026)
+// Yapi motorunun (yapi/oyun.js) uzerine kurulur: kupler, fizik, kirilma, ses ve top ayni. Bu dosya korsan sahnesini kurar.
+//  - Bizim gemimiz (Adem'in atici gemisi) denizde ilerler, yoluna hedefler cikar. Kamera geminin arkasindan bakar; top arabasinin
+//    alt kismi ve altindaki altin platform ekranin altinda kalir (modelde o kisim yakindan bozuk gorunuyor).
+//  - (Adem 6 Kas) Kupler hep Adem'in fiçili ahsap platformlarinda durur: kare, alti gen, yuvarlak, uzun. Platformlarin ustu top hizasinda.
+//    Her bolumde baska bir duzen: saga sola kayan, yan yana iki platform, onde sallanan + arkada buyuk sabit, donen, dalgada inip kalkan...
+//  - Korsan gemisi, gozcu kulesi adasi ve eski sal denizde sadece sus (uzakta yuzer, gemi yavasca seyreder).
+//  - Manzara her 2 bolumde degisir (8 fon). Deniz WebGL'de dalgalanir; kuslar ve penguen hareket eder.
+//  - Kazanma karti: 1-3 yildiz, altin sayilarak eklenir, her 5 bolumde hazine sandigi; sonra deniz haritasi.
 let A = null, THREE = null, CANNON = null;
 export function bagla(a) { A = a; THREE = a.THREE; CANNON = a.CANNON;
-  QA = new THREE.Quaternion(); EU = new THREE.Euler(); QS = new THREE.Quaternion(); EU2 = new THREE.Euler(); M4 = new THREE.Matrix4(); VA = new THREE.Vector3(); DQ = new THREE.Quaternion(); QI = new THREE.Quaternion(); V3 = new THREE.Vector3(); Q3 = new THREE.Quaternion(); const h = a.$('hr'); if (h) h.onclick = () => { a.sfx('tik'); haritaAc(); }; }
+  QA = new THREE.Quaternion(); EU = new THREE.Euler(); VA = new THREE.Vector3(); DQ = new THREE.Quaternion(); QI = new THREE.Quaternion(); V3 = new THREE.Vector3(); Q3 = new THREE.Quaternion(); QS = new THREE.Quaternion(); EU2 = new THREE.Euler(); M4 = new THREE.Matrix4(); const h = a.$('hr'); if (h) h.onclick = () => { a.sfx('tik'); haritaAc(); }; }
 export function hazir() { return !!(A && A.TC.gun); }
 
-// ---------------- fonlar: Adem'in Gemini resimleri (korsan/kaynak/fon_*.webp). h: ufuk cizgisinin resimdeki yeri (ustten oran) ----------------
+// ---------------- fonlar (korsan/kaynak/fon_*_bos.webp: cizili kuslar silinmis hali) ----------------
+// h: ufuk cizgisinin resimdeki yeri (ustten oran). pir: denizdeki gunes piriltisinin yonu/rengi/gucu. dekor: denizdeki sus modelleri.
 const FON = {
-  // pirilti: denizdeki gunes yansimasinin yonu (resimdeki parlak seritle ayni yerde), rengi ve gucu
-  acikdeniz: { h: 0.5, gunes: 0xfff0d0, gi: 2.6, rim: 0xcfe0ff, pir: [0.02, 0.3, -1], pr: 0xfffbe8, pg: 1.3 },
-  ada: { h: 0.522, gunes: 0xfff4dc, gi: 2.6, rim: 0xd8f0ff, pir: [0.0, 0.32, -1], pr: 0xfffbe8, pg: 1.2 },
-  gunbatimi: { h: 0.5, gunes: 0xffc48a, gi: 2.3, rim: 0xff9ad0, pir: [0.0, 0.1, -1], pr: 0xffd890, pg: 1.6 },
-  koy: { h: 0.537, gunes: 0xfff4dc, gi: 2.6, rim: 0xd8f0ff, pir: [0.25, 0.4, -1], pr: 0xfffbe8, pg: 1.1 }
+  gunes: { h: 0.414, gunes: 0xfff4dc, gi: 2.6, rim: 0xd8f0ff, pir: [0.02, 0.6, -1], pr: 0xffffff, pg: 1.3, dekor: ['gemi'] },
+  martili: { h: 0.414, gunes: 0xfff4dc, gi: 2.6, rim: 0xd8f0ff, pir: [0.0, 0.25, -1], pr: 0xfffbe8, pg: 1.3, dekor: ['gemi', 'sal'] },
+  ada: { h: 0.522, gunes: 0xfff4dc, gi: 2.6, rim: 0xd8f0ff, pir: [0.0, 0.32, -1], pr: 0xfffbe8, pg: 1.2, dekor: ['gemi'] },
+  gundogumu: { h: 0.3775, gunes: 0xffd9a0, gi: 2.4, rim: 0xffc8e0, pir: [0.0, 0.12, -1], pr: 0xffe0a0, pg: 1.6, dekor: ['gemi'] },
+  koy: { h: 0.537, gunes: 0xfff4dc, gi: 2.6, rim: 0xd8f0ff, pir: [0.25, 0.4, -1], pr: 0xfffbe8, pg: 1.1, dekor: ['kule'] },
+  buzul: { h: 0.345, gunes: 0xf4f8ff, gi: 2.5, rim: 0xd8ecff, pir: [0.1, 0.5, -1], pr: 0xffffff, pg: 0.9, dekor: [], penguen: { u: 0.76, v: 0.4797, u0: 0.68, u1: 0.86 } },   // penguen hedeflerin sagindaki buzda
+  acikdeniz: { h: 0.5, gunes: 0xfff0d0, gi: 2.6, rim: 0xcfe0ff, pir: [0.02, 0.3, -1], pr: 0xfffbe8, pg: 1.3, dekor: ['kule', 'gemi'] },
+  gunbatimi: { h: 0.5, gunes: 0xffc48a, gi: 2.3, rim: 0xff9ad0, pir: [0.0, 0.1, -1], pr: 0xffd890, pg: 1.6, dekor: ['gemi'] }
 };
 const IMG_AR = 1440 / 2560;
 // ---------------- bolumler ----------------
-// kup listesi [i, j(kat), k, model, platform] - platform 1: dusman gemisinin kic kabin catisi (ikinci kat)
+// Her bolum bir platform listesi: m model (kare, alti, yuvarlak, uzun), x/z yeri, har hareket, kup(o, pn) o platformun kupleri.
+// Hareketler: sabit (dalgada hafif), kay (saga sola), salla (yalpalar, iner kalkar), don (kendi ekseninde doner), dalga (buyuk iner kalkar).
 function box(o, i0, i1, j0, j1, k0, k1, col, pn) { for (let j = j0; j <= j1; j++) for (let k = k0; k <= k1; k++) for (let i = i0; i <= i1; i++) { const c = typeof col === 'function' ? col(i, j, k) : col; if (c) o.push([i, j, k, c, pn || 0]); } return o; }
-export const BOLGE = 10;   // her 10 bolumde bolge (manzara seti) degisir, 10. bolum patron gemisi. Pilotta 5 bolum var.
+// hazir kup dizilisleri: g genislik (x), d derinlik (z), h kat. tepe ortasinda altin, altta varil (patlayici) olabilir.
+const yapi = (g, d, h, pal, ops = {}) => (o, pn) => box(o, 0, g - 1, 0, h - 1, 0, d - 1, (i, j, k) => {
+  const mid = i === Math.floor((g - 1) / 2) || i === Math.ceil((g - 1) / 2);
+  if (j === h - 1 && mid && k === 0 && ops.altin !== false) return 'altin';
+  if (ops.fici && j === 0 && k === d - 1 && (i === 1 || i === g - 2)) return 'fici';
+  return pal[(j + (ops.cap ? i + k : 0)) % pal.length];
+}, pn);
+const AH = ['sandik', 'sandik', 'ahsap2'], KR = ['sandik', 'kirmizi', 'sandik', 'ahsap2'], TS = ['tas', 'metal', 'tas'], BZ = ['buz2', 'buz2', 'metal'], KZ = ['kirmizi', 'metal', 'kirmizi', 'tas'];
+export const BOLGE = 10;   // haritada her bolge 10 durak, 10. durak patron
 const BOLUMLER = [
-  { ad: 'Sallanan Sal', fon: 'acikdeniz', hedef: 'sal', make: () => box([], 0, 2, 0, 2, 0, 1, (i, j, k) => (j === 2 && i === 1 && k === 0 ? 'altin' : j === 1 && i === 1 ? 'fici' : 'sandik')) },
-  { ad: 'Korsan Gemisi', fon: 'acikdeniz', hedef: 'gemi', make: () => box([], 0, 5, 0, 3, 0, 1, (i, j, k) => (j === 0 && k === 1 && (i === 1 || i === 4) ? 'fici' : j === 3 ? (i === 2 || i === 3 ? 'altin' : 'ahsap2') : j === 2 ? 'kirmizi' : 'sandik')) },
-  { ad: 'Gözcü Kulesi', fon: 'ada', hedef: 'kule', make: () => box([], 0, 3, 0, 5, 0, 1, (i, j) => (j === 5 ? (i === 1 || i === 2 ? 'altin' : 'tas') : j % 2 ? 'metal' : 'tas')) },
-  { ad: 'İki Katlı Gemi', fon: 'gunbatimi', hedef: 'gemi', make: () => { const o = box([], 0, 4, 0, 2, 0, 1, (i, j, k) => (j === 0 && k === 1 && i === 2 ? 'fici' : j === 2 ? 'kirmizi' : 'sandik'));
-    return box(o, 0, 2, 0, 2, 0, 1, (i, j) => (j === 2 && i === 1 ? 'altin' : 'metal'), 1); } },
-  { ad: 'Patron Gemisi', fon: 'koy', hedef: 'gemi', patron: true, make: () => { const o = box([], 0, 5, 0, 3, 0, 1, (i, j, k) => (j === 0 && k === 1 && (i === 1 || i === 4) ? 'fici' : j === 3 ? 'ahsap2' : j === 1 ? 'tas' : 'sandik'));
-    return box(o, 0, 3, 0, 3, 0, 1, (i, j) => (j === 3 && (i === 1 || i === 2) ? 'altin' : j % 2 ? 'kirmizi' : 'metal'), 1); } }
+  { ad: 'İlk Hedef', fon: 'gunes', p: [{ m: 'kare', har: 'sabit', kup: yapi(4, 2, 3, AH) }] },
+  { ad: 'Kayan Sal', fon: 'gunes', p: [{ m: 'uzun', har: 'kay', a: 3.2, w: 0.55, kup: yapi(6, 1, 3, KR) }] },
+  { ad: 'İkiz Sallar', fon: 'martili', p: [{ m: 'yuvarlak', x: -5.3, har: 'sabit', kup: yapi(3, 2, 3, AH) }, { m: 'yuvarlak', x: 5.3, har: 'sabit', kup: yapi(3, 2, 3, KR) }] },
+  { ad: 'Sallanan Öncü', fon: 'martili', p: [{ m: 'alti', x: -3.5, z: 5, har: 'salla', kup: yapi(3, 2, 2, KR) }, { m: 'kare', z: -8, har: 'sabit', buyuk: 1.25, kup: yapi(5, 2, 5, AH, { fici: true }) }] },
+  { ad: 'Dönen Altıgen', fon: 'ada', p: [{ m: 'alti', har: 'don', w: 0.45, kup: yapi(3, 2, 4, TS) }] },
+  { ad: 'Karşı Akıntı', fon: 'ada', p: [{ m: 'uzun', z: 4, har: 'kay', a: 3, w: 0.6, kup: yapi(5, 1, 2, KR) }, { m: 'uzun', z: -6, har: 'kay', a: 3, w: 0.6, ph: Math.PI, kup: yapi(5, 1, 4, AH) }] },
+  { ad: 'Üçlü Filo', fon: 'gundogumu', p: [{ m: 'yuvarlak', x: -6.2, z: 4, har: 'salla', kup: yapi(3, 2, 2, KZ) }, { m: 'yuvarlak', x: 6.2, z: 4, har: 'salla', ph: 1.7, kup: yapi(3, 2, 2, KZ) }, { m: 'kare', z: -8, har: 'sabit', buyuk: 1.2, kup: yapi(4, 2, 5, AH, { fici: true }) }] },
+  { ad: 'Dalga Sırtı', fon: 'gundogumu', p: [{ m: 'kare', har: 'dalga', a: 0.55, kup: yapi(4, 2, 5, KR, { fici: true }) }] },
+  { ad: 'Kaçak Sal', fon: 'koy', p: [{ m: 'uzun', z: 4, har: 'kay', a: 4, w: 0.75, kup: yapi(5, 1, 2, KR) }, { m: 'yuvarlak', z: -6, har: 'sabit', kup: yapi(3, 2, 5, TS) }] },
+  { ad: 'Kaptanın Kalesi', fon: 'koy', patron: true, p: [{ m: 'kare', z: -8, har: 'sabit', buyuk: 1.3, kup: yapi(5, 2, 6, KZ, { fici: true }) }, { m: 'alti', x: -6.5, z: 3, har: 'don', w: 0.5, kup: yapi(3, 2, 2, AH) }, { m: 'alti', x: 6.5, z: 3, har: 'don', w: -0.5, kup: yapi(3, 2, 2, AH) }] },
+  { ad: 'Buz Salı', fon: 'buzul', p: [{ m: 'yuvarlak', har: 'dalga', a: 0.4, kup: yapi(3, 2, 4, BZ) }] },
+  { ad: 'Buz Kardeşler', fon: 'buzul', p: [{ m: 'alti', x: -5.3, har: 'salla', kup: yapi(3, 2, 3, BZ) }, { m: 'alti', x: 5.3, har: 'salla', ph: 2.1, kup: yapi(3, 2, 3, BZ) }] },
+  { ad: 'Kayan Kule', fon: 'acikdeniz', p: [{ m: 'kare', har: 'kay', a: 2.6, w: 0.5, kup: yapi(3, 2, 7, TS) }] },
+  { ad: 'Kademeli', fon: 'acikdeniz', p: [{ m: 'uzun', z: 4.5, har: 'sabit', kup: yapi(5, 1, 2, KR) }, { m: 'kare', z: -6, har: 'kay', a: 2.6, w: 0.5, kup: yapi(4, 2, 4, AH, { fici: true }) }] },
+  { ad: 'İkiz Fırıldak', fon: 'gunbatimi', p: [{ m: 'yuvarlak', x: -5.3, har: 'don', w: 0.55, kup: yapi(3, 2, 3, KZ) }, { m: 'yuvarlak', x: 5.3, har: 'don', w: -0.55, kup: yapi(3, 2, 3, KZ) }] },
+  { ad: 'Son Liman', fon: 'gunbatimi', p: [{ m: 'uzun', z: 5, har: 'kay', a: 3.5, w: 0.6, kup: yapi(5, 1, 2, KZ) }, { m: 'kare', z: -7, har: 'salla', buyuk: 1.25, kup: yapi(5, 2, 5, KR, { fici: true }) }] }
 ];
+// her bolumun kup listesi: [i, j, k, model, platform]
+for (const Y of BOLUMLER) Y.make = () => { const o = []; Y.p.forEach((p, pn) => p.kup(o, pn)); return o; };
 export function bolum(L) { return BOLUMLER[(L - 1) % BOLUMLER.length]; }
 
-// ---------------- Tripo modelleri (Adem, 6 Kas 2026) ----------------
-// Dosyalar beta/yapi/model/<ad>.glb (orijinalleri model/kaynak/). Olculer modelin kendisinden: yukaridan isin atilarak
-// guverte, kabin catisi, kule tepesi ve sal tablasinin yuksekligi ve siniri bulundu (model birimi, y yukari, burun +z).
-// su: su cizgisi yuksekligi (tahmin; gemi govdesinin ~%40'i suyun altinda).
+// ---------------- Adem'in Tripo modelleri ----------------
+// Olculer modelin kendisinden: yukaridan isin atilarak ust yuzeyin yuksekligi ve siniri bulundu (model birimi, y yukari).
+// Platformlar: ust = tablanin yuksekligi, yar = kuplerin durabilecegi yarim genislik (uzun: yx boy, yz en).
+const PLAT = {
+  kare: { ust: 0.365, yar: 0.43, sekil: 'kare' },
+  alti: { ust: 0.325, yar: 0.37, sekil: 'yuvarlak' },
+  yuvarlak: { ust: 0.359, yar: 0.42, sekil: 'yuvarlak' },
+  uzun: { ust: 0.227, yx: 0.455, yz: 0.165, sekil: 'uzun' }
+};
+// sus modelleri ve bizim gemi: su = su cizgisi (tahmin), plat = bizim gemideki altin platform
 const KAL = {
-  bizim_gemi: { plat: { y: 0.415, z: 0.15, r: 0.05 }, en: 0.31, kic: -0.17, bas: 0.49, su: 0.17 },   // atici gemisi: altin platform burna yakin
-  // kupeste: guverte kenarindaki duvarin ust kenari; ic: iki kupeste arasindaki duz guverte (yarim genislik)
-  dusman_gemi: { g: { y: 0.26, x: 0.15, ic: 0.087, kupeste: 0.345, z: [-0.1, 0.3] }, cati: { y: 0.41, x: 0.13, ic: 0.12, kupeste: 0.47, z: [-0.33, -0.1] }, bas: { y: 0.38, z: [0.3, 0.49] }, en: 0.22, su: 0.11 },
-  kule_ada: { tepe: { y: 0.9, z: -0.059, r: 0.19 }, kule: 0.13, kum: { y: 0.15, r: 0.4 }, ada: 0.49, su: 0.06 },
-  sal: { g: { y: 0.48, x: [-0.16, 0.4], z: 0.29 }, su: 0.21, kirp: -0.25 }   // fiçilar yarıya kadar suda
+  bizim_gemi: { plat: { y: 0.415, z: 0.15, r: 0.05 }, en: 0.31, kic: -0.17, bas: 0.49, su: 0.17 },
+  dusman_gemi: { su: 0.11 }, kule_ada: { su: 0.06 }, sal: { su: 0.21, kirp: -0.25 }
 };
 const KM = {};
 export function yukle() {
-  const fonlar = Object.keys(FON).map((n) => new Promise((res) => {
-    new THREE.TextureLoader().load('../korsan/kaynak/fon_' + n + '_bos.webp?v=1', (tx) => { tx.colorSpace = THREE.NoColorSpace; tx.anisotropy = 4; FON[n].tx = tx; FON[n].sis = ufukRengi(tx.image, FON[n].h); res(); }, undefined, () => res());
-  }));
-  return Promise.all(fonlar.concat(Object.keys(KAL).map((n) => new Promise((res) => {
-    new A.GLTFLoader().load('model/' + n + '.glb?v=1', (gl) => {
-      gl.scene.updateMatrixWorld(true);
-      gl.scene.traverse((o) => { if (!o.isMesh) return; o.castShadow = o.receiveShadow = true;
-        if (KAL[n].kirp != null && o.geometry.index) {   // salin yanindaki kopuk ip parcasi (modelde ayri duruyor) atilir
-          const P = o.geometry.attributes.position, I = o.geometry.index.array, v = new THREE.Vector3(), keep = [];
-          for (let i = 0; i < I.length; i += 3) { let out = 0; for (let j = 0; j < 3; j++) { v.fromBufferAttribute(P, I[i + j]).applyMatrix4(o.matrixWorld); if (v.x < KAL[n].kirp) out++; } if (out < 3) keep.push(I[i], I[i + 1], I[i + 2]); }
-          o.geometry.setIndex(keep); } });
-      KM[n] = gl.scene; res(); }, undefined, () => res());
-  }))));
+  const doku = (url, f) => new Promise((res) => new THREE.TextureLoader().load(url, (tx) => { tx.colorSpace = THREE.NoColorSpace; f(tx); res(); }, undefined, () => res()));
+  const isler = [];
+  for (const n of Object.keys(FON)) {
+    isler.push(doku('../korsan/kaynak/fon_' + n + '_bos.webp?v=2', (tx) => { tx.anisotropy = 4; FON[n].tx = tx; FON[n].sis = ufukRengi(tx.image, FON[n].h); }));
+    isler.push(doku('../korsan/kaynak/fon_' + n + '_su.png?v=1', (tx) => { FON[n].msk = tx; }));   // su maskesi: dalga sadece suya uygulanir (buz, kum, kaya kipirdamaz)
+  }
+  isler.push(doku('../korsan/kaynak/penguen.png?v=1', (tx) => { PENG.tx = tx; }));
+  const glb = (n, dosya) => new Promise((res) => new A.GLTFLoader().load('model/' + dosya + '.glb?v=1', (gl) => {
+    gl.scene.updateMatrixWorld(true);
+    gl.scene.traverse((o) => { if (!o.isMesh) return; o.castShadow = o.receiveShadow = true;
+      if (KAL[n] && KAL[n].kirp != null && o.geometry.index) {   // salin yanindaki kopuk ip parcasi (modelde ayri duruyor) atilir
+        const P = o.geometry.attributes.position, I = o.geometry.index.array, v = new THREE.Vector3(), keep = [];
+        for (let i = 0; i < I.length; i += 3) { let out = 0; for (let j = 0; j < 3; j++) { v.fromBufferAttribute(P, I[i + j]).applyMatrix4(o.matrixWorld); if (v.x < KAL[n].kirp) out++; } if (out < 3) keep.push(I[i], I[i + 1], I[i + 2]); }
+        o.geometry.setIndex(keep); } });
+    KM[n] = gl.scene; res(); }, undefined, () => res()));
+  for (const n of Object.keys(KAL)) isler.push(glb(n, n));
+  for (const n of Object.keys(PLAT)) isler.push(glb('p_' + n, 'plat_' + n));
+  return Promise.all(isler);
 }
-// sis rengi: resimde ufkun hemen ustundeki seridin ortalamasi (uzaktaki hedef bu renge dogru hafifce soluklasir)
+// sis rengi: resimde ufkun hemen ustundeki seridin ortalamasi (uzaktaki her sey bu renge dogru hafifce soluklasir)
 function ufukRengi(img, h) {
   try { const c = document.createElement('canvas'); c.width = 32; c.height = 64; const x = c.getContext('2d'); x.drawImage(img, 0, 0, 32, 64); const y = Math.round(h * 64) - 3, d = x.getImageData(0, y, 32, 2).data;
     let r = 0, g = 0, b = 0; for (let i = 0; i < d.length; i += 4) { r += d[i]; g += d[i + 1]; b += d[i + 2]; } const n = d.length / 4; return new THREE.Color().setRGB(r / n / 255, g / n / 255, b / n / 255, THREE.SRGBColorSpace); } catch (e) { return new THREE.Color('#bfe0f0'); }
@@ -75,260 +107,78 @@ function yerlestir(n, sc, rotY, cpa, to) {
   g.position.set(to[0] - off.x, to[1] - off.y, to[2] - off.z); return g;
 }
 
-// kursu: guvertede duran tahta kargo platformu (ust ve yanlar tahta, koyu kiris cerceve, altin kose baslari)
-function kursu(hx, hz, h, x, y, z) {
-  const g = new THREE.Group(), pts = [[-hx, -hz], [hx, -hz], [hx, hz], [-hx, hz]];
-  g.add(deckMesh(pts, h, h, mat('tahta')));
-  const kg = (w, hh, d) => new THREE.BoxGeometry(w, hh, d), K = mat('koyu'), Au = mat('altin'), b = 0.16;
-  for (const sz of [-1, 1]) { const m = new THREE.Mesh(kg(2 * hx + b, b, b), K); m.position.set(0, h - b / 2 + 0.01, sz * hz); g.add(m); const m2 = m.clone(); m2.position.y = b / 2; g.add(m2); }
-  for (const sx of [-1, 1]) { const m = new THREE.Mesh(kg(b, b, 2 * hz + b), K); m.position.set(sx * hx, h - b / 2 + 0.01, 0); g.add(m); }
-  for (const sx of [-1, 1]) for (const sz of [-1, 1]) { const p = new THREE.Mesh(kg(b * 1.4, h, b * 1.4), K); p.position.set(sx * hx, h / 2, sz * hz); p.castShadow = true; g.add(p);
-    const c = new THREE.Mesh(kg(b * 2, b * 1.2, b * 2), Au); c.position.set(sx * hx, h - b * 0.4, sz * hz); g.add(c); }
-  for (let xx = -hx + 1.6; xx < hx - 0.8; xx += 1.6) { const p = new THREE.Mesh(kg(b, h, b), K); p.position.set(xx, h / 2, hz); g.add(p); }
-  g.position.set(x, y, z); g.traverse((o) => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } });
-  return g;
-}
-// ---------------- kodla cizilen dokular ----------------
-const TX = {};
-function tex(n, w, h, draw, rep) { return TX[n] || (TX[n] = A.canvasTex(w, h, draw, rep)); }
-function plankTex() {   // guverte tahtalari (dunya biriminde: 1 tekrar = 4 birim)
-  return tex('tahta', 256, 256, (x, w, h) => {
-    const cols = ['#c98b4a', '#bf7f40', '#d39552', '#b87a3c'];
-    for (let i = 0; i < 8; i++) { x.fillStyle = cols[i % 4]; x.fillRect(0, i * 32, w, 32); x.fillStyle = 'rgba(80,40,10,.55)'; x.fillRect(0, i * 32, w, 3);
-      const cut = (i * 97) % 256; x.fillRect(cut, i * 32, 3, 32);
-      for (let k = 0; k < 6; k++) { x.strokeStyle = 'rgba(110,60,20,.18)'; x.beginPath(); x.moveTo(0, i * 32 + 8 + k * 4); x.bezierCurveTo(80, i * 32 + 6 + k * 4, 170, i * 32 + 12 + k * 4, 256, i * 32 + 8 + k * 4); x.stroke(); } }
-  }, [0.25, 0.25]);
-}
-function hullTex(red) {   // gemi govdesi: ustte altin cizgi, kirmizi serit, altinda koyu tahta
-  return tex('govde' + red, 64, 512, (x, w, h) => {
-    x.fillStyle = '#3a2418'; x.fillRect(0, 0, w, h);
-    for (let y = 0; y < h; y += 26) { x.fillStyle = y % 52 ? '#43291b' : '#352015'; x.fillRect(0, y, w, 24); x.fillStyle = 'rgba(0,0,0,.35)'; x.fillRect(0, y + 24, w, 2); }
-    x.fillStyle = red; x.fillRect(0, 64, w, 70); x.fillStyle = 'rgba(255,255,255,.18)'; x.fillRect(0, 64, w, 8);
-    x.fillStyle = '#f2c14a'; x.fillRect(0, 50, w, 12); x.fillRect(0, 136, w, 8);
-    x.fillStyle = '#5a3420'; x.fillRect(0, 0, w, 50);
-  });
-}
-function cabinTex() {   // kic kabini: tahta duvar, isikli pencereler
-  return tex('kabin', 256, 128, (x, w, h) => {
-    x.fillStyle = '#6b3f22'; x.fillRect(0, 0, w, h);
-    for (let i = 0; i < 16; i++) { x.fillStyle = i % 2 ? '#74462a' : '#633a20'; x.fillRect(i * 16, 0, 15, h); }
-    for (const cxp of [48, 128, 208]) { x.fillStyle = '#2a1608'; x.beginPath(); x.roundRect(cxp - 18, 34, 36, 44, 14); x.fill(); const gg = x.createRadialGradient(cxp, 56, 2, cxp, 56, 22); gg.addColorStop(0, '#fff3a8'); gg.addColorStop(1, '#f0a020'); x.fillStyle = gg; x.beginPath(); x.roundRect(cxp - 14, 38, 28, 36, 11); x.fill();
-      x.fillStyle = '#2a1608'; x.fillRect(cxp - 1.5, 38, 3, 36); x.fillRect(cxp - 14, 54, 28, 3); }
-    x.fillStyle = '#c8202e'; x.fillRect(0, h - 14, w, 10); x.fillStyle = '#f2c14a'; x.fillRect(0, h - 4, w, 4); x.fillRect(0, 0, w, 5);
-  });
-}
-function stoneTex() {
-  return tex('tas', 256, 256, (x, w, h) => {
-    x.fillStyle = '#9c968a'; x.fillRect(0, 0, w, h);
-    for (let r = 0; r < 8; r++) for (let c = 0; c < 5; c++) { const ox = (r % 2) * 26, l = 200 + ((r * 7 + c * 13) % 5) * 9;
-      x.fillStyle = 'rgb(' + l + ',' + (l - 8) + ',' + (l - 24) + ')'; x.beginPath(); x.roundRect(c * 52 + ox - 26 + 2, r * 32 + 2, 48, 28, 7); x.fill();
-      x.fillStyle = 'rgba(255,255,255,.18)'; x.fillRect(c * 52 + ox - 20, r * 32 + 4, 36, 4); }
-  });
-}
-function flagTex() {   // kara korsan bayragi (kafatasi + capraz kemik), kodla cizilir
-  return tex('bayrak', 128, 96, (x, w, h) => {
-    x.fillStyle = '#16141a'; x.fillRect(0, 0, w, h); x.fillStyle = '#f4f0e6'; x.strokeStyle = '#f4f0e6'; x.lineCap = 'round'; x.lineWidth = 9;
-    x.beginPath(); x.moveTo(38, 70); x.lineTo(90, 30); x.moveTo(38, 30); x.lineTo(90, 70); x.stroke();
-    for (const [a, b] of [[34, 68], [94, 32], [34, 32], [94, 68]]) { x.beginPath(); x.arc(a, b, 6, 0, 7); x.fill(); }
-    x.beginPath(); x.arc(64, 42, 19, 0, 7); x.fill(); x.fillRect(54, 52, 20, 14);
-    x.fillStyle = '#16141a'; x.beginPath(); x.arc(56, 42, 5.5, 0, 7); x.arc(72, 42, 5.5, 0, 7); x.fill(); x.fillRect(62, 50, 4, 6);
-  });
-}
-const MAT = {};
-function mat(n) {
-  if (MAT[n]) return MAT[n];
-  const M = THREE.MeshStandardMaterial;
-  const m = { tahta: () => new M({ map: plankTex(), roughness: 0.75 }), govde: () => new M({ map: hullTex('#c8202e'), roughness: 0.6, side: THREE.DoubleSide }),
-    govde2: () => new M({ map: hullTex('#7a2bd0'), roughness: 0.6, side: THREE.DoubleSide }), bizim: () => new M({ map: hullTex('#d42a2a'), roughness: 0.55, side: THREE.DoubleSide }),
-    kabin: () => new M({ map: cabinTex(), roughness: 0.7 }), altin: () => new M({ color: '#f2b93a', roughness: 0.3, metalness: 0.6 }),
-    kirmizi: () => new M({ color: '#d42a2a', roughness: 0.45, side: THREE.DoubleSide }), koyu: () => new M({ color: '#4a2c1a', roughness: 0.7 }),
-    tas: () => new M({ map: stoneTex(), roughness: 0.85 }), kaya: () => new M({ color: '#8a8780', roughness: 0.9, flatShading: true }),
-    kum: () => new M({ color: '#f0d9a0', roughness: 1 }), cimen: () => new M({ color: '#7cc444', roughness: 0.9, flatShading: true }),
-    bayrak: () => new M({ map: flagTex(), roughness: 0.8, side: THREE.DoubleSide }), sal: () => new M({ color: '#b97d42', roughness: 0.8 }), ip: () => new M({ color: '#d8b878', roughness: 0.9 }) }[n]();
-  return (MAT[n] = m);
-}
-// ---------------- kodla cizilen parcalar ----------------
-// guverte: (x,z) duzlemindeki cokgen, ustu y=top
-function deckMesh(pts, top, th, m) {
-  const sh = new THREE.Shape(pts.map(([x, z]) => new THREE.Vector2(x, -z)));
-  const g = new THREE.ExtrudeGeometry(sh, { depth: th, bevelEnabled: false, curveSegments: 4 }); g.rotateX(-Math.PI / 2); g.translate(0, top - th, 0);
-  const me = new THREE.Mesh(g, m); me.castShadow = me.receiveShadow = true; return me;
-}
-// govde: guverte kenarindan asagi daralan kabuk. lv: [y, olcek] seviyeleri (ustten alta). Doku v'si yukseklige gore.
-function hullMesh(pts, lv, cx, cz, m) {
-  const n = pts.length, pos = [], uv = [], idx = [], y0 = lv[lv.length - 1][0], y1 = lv[0][0];
-  let per = 0; const d = [0]; for (let i = 1; i <= n; i++) { const a = pts[i - 1], b = pts[i % n]; per += Math.hypot(b[0] - a[0], b[1] - a[1]); d.push(per); }
-  for (const [y, s] of lv) for (let i = 0; i <= n; i++) { const p = pts[i % n]; pos.push(cx + (p[0] - cx) * s, y, cz + (p[1] - cz) * s); uv.push(d[i] / 3, (y - y0) / (y1 - y0)); }
-  for (let l = 0; l < lv.length - 1; l++) for (let i = 0; i < n; i++) { const a = l * (n + 1) + i, b = a + 1, c = a + n + 1, e = c + 1; idx.push(a, c, b, b, c, e); }
-  const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2)); g.setIndex(idx); g.computeVertexNormals();
-  const me = new THREE.Mesh(g, m); me.castShadow = true; me.receiveShadow = true; return me;
-}
-// kenar parmakligi: kirmizi alcak duvar + altin kupeste + altin babalar
-function railing(grp, pts, y, h, k, closed, wall) {
-  const P = pts.map(([x, z]) => new THREE.Vector3(x, y + h, z)); if (closed) P.push(P[0].clone());
-  const cur = new THREE.CatmullRomCurve3(P, false, 'centripetal', 0.1);
-  const tube = new THREE.Mesh(new THREE.TubeGeometry(cur, Math.max(8, P.length * 6), 0.09 * k, 8, false), mat('altin')); tube.castShadow = true; grp.add(tube);
-  if (wall) {   // ic tarafta kirmizi duvar seridi
-    const pos = [], idx = []; const L = P.length;
-    for (let i = 0; i < L; i++) { pos.push(P[i].x, y, P[i].z, P[i].x, y + h, P[i].z); if (i) { const a = (i - 1) * 2; idx.push(a, a + 2, a + 1, a + 1, a + 2, a + 3); } }
-    const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.setIndex(idx); g.computeVertexNormals();
-    const me = new THREE.Mesh(g, mat('kirmizi')); me.receiveShadow = true; grp.add(me);
-  }
-  const len = cur.getLength(), nP = Math.max(2, Math.round(len / (1.1 * k)));
-  const pg = new THREE.CylinderGeometry(0.07 * k, 0.09 * k, h, 8), kg = new THREE.SphereGeometry(0.14 * k, 10, 8);
-  for (let i = 0; i <= nP; i++) { const p = cur.getPointAt(Math.min(1, i / nP)); const po = new THREE.Mesh(pg, mat('altin')); po.position.set(p.x, y + h / 2, p.z); po.castShadow = true; grp.add(po);
-    if (i % 3 === 0) { const kn = new THREE.Mesh(kg, mat('altin')); kn.position.set(p.x, y + h + 0.08 * k, p.z); grp.add(kn); } }
-}
-function flag(grp, x, y, z, h) {
-  const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.09, h, 8), mat('koyu')); pole.position.set(x, y + h / 2, z); pole.castShadow = true; grp.add(pole);
-  const g = new THREE.PlaneGeometry(1.5, 1.1, 8, 1); g.translate(-0.75, 0, 0);
-  const f = new THREE.Mesh(g, mat('bayrak')); f.position.set(x - 0.05, y + h - 0.6, z); f.castShadow = true; grp.add(f); grp.userData.flag = f;
-  const top = new THREE.Mesh(new THREE.SphereGeometry(0.14, 10, 8), mat('altin')); top.position.set(x, y + h + 0.1, z); grp.add(top);
-}
-// ---------------- hedef ----------------
-// T: bu bolumun hedefi. grp: gorunus (pozla birlikte tasinir), p/q: su anki poz. Fizikte hedef = platBody (statik, elle tasinir).
+// ---------------- hedef: platformlar ----------------
+// T.P: platformlar. Her biri statik bir fizik govdesi (ilki motorun platBody'si), gorunus grubu, taban yeri ve o anki pozu.
+// Ustundeki kupler pozla birlikte tasinir. Platformlarin ust yuzeyi y=0'da (top hizasi), deniz GY'de.
 let T = null, TT = 0;
-const SEFER = { sure: 2.6, yol: 64 };   // seyir: hedef bu kadar uzaktan yaklasir
-const EXTRA = [];
+const SEFER = { sure: 2.6, yol: 64 };   // seyir: hedefler bu kadar uzaktan yaklasir (gemi ilerliyor)
+const DENIZ = -1.4;   // deniz seviyesi: platformun ustunden 1.4 birim asagida (fiçilarin yarisi suda)
 function temizle() {
-  if (T && T.grp) A.scene.remove(T.grp);
-  for (const o of EXTRA) A.scene.remove(o); EXTRA.length = 0;
+  if (T) for (const P of T.P) { A.scene.remove(P.grp); if (P.kopuk) A.scene.remove(P.kopuk); if (P.body !== A.platBody) A.world.removeBody(P.body); }
   T = null;
 }
 export function kur(Y, list) {
   temizle();
-  const { S } = A, pb = A.platBody;
-  A.setPlat('sirk'); A.LEG.visible = false; A.DIRT.visible = false;   // setPlat('sirk') direk yayini acar; sonra gizlenir
-  // her platformun (0: alt guverte, 1: kabin catisi) kup sinirlari
-  const inf = [0, 1].map(() => ({ i0: 1e9, i1: -1e9, k0: 1e9, k1: -1e9, n: 0 }));
-  for (const c of list) { const f = inf[c[4] || 0]; f.n++; f.i0 = Math.min(f.i0, c[0]); f.i1 = Math.max(f.i1, c[0]); f.k0 = Math.min(f.k0, c[2]); f.k1 = Math.max(f.k1, c[2]); f.top = Math.max(f.top || 0, (c[1] + (A.KEEP[c[3]] === 'tall' ? 2 : 1)) * S); }
-  for (const f of inf) if (f.n) { f.ci = (f.i0 + f.i1) / 2; f.ck = (f.k0 + f.k1) / 2; f.mx = (f.i1 - f.i0) / 2 * S + S / 2; f.mz = (f.k1 - f.k0) / 2 * S + S / 2; }
-  while (pb.shapes.length) pb.removeShape(pb.shapes[0]);
-  pb.position.set(0, 0, 0); pb.quaternion.set(0, 0, 0, 1); pb.velocity.set(0, 0, 0); pb.angularVelocity.set(0, 0, 0);
-  const grp = new THREE.Group(); A.scene.add(grp);
-  const t = { tip: Y.hedef, grp, p: new THREE.Vector3(), q: new THREE.Quaternion(), top: inf[0].top, batar: Y.hedef !== 'kule', patron: !!Y.patron };
-  const BOX = (hx, hy, hz, x, y, z) => pb.addShape(new CANNON.Box(new CANNON.Vec3(hx, hy, hz)), new CANNON.Vec3(x, y, z));
-  const f0 = inf[0], f1 = inf[1];
-  if (KM[{ sal: 'sal', kule: 'kule_ada', gemi: 'dusman_gemi' }[Y.hedef]]) modelHedef(Y, t, f0, f1, BOX);
-  else if (Y.hedef === 'sal') {
-    // sal: suya yakin alcak tahta tabla (Adem'in ahsap platform modeli), en cok o sallanir
-    A.GY = -1.7; const r = f0.mx + S * 0.6, rz = f0.mz + S * 0.55, GY = A.GY;
-    BOX(r, -GY / 2, rz, 0, GY / 2, 0);
-    if (A.MOD.platform_ahsap) {
-      const m = A.MOD.platform_ahsap, g = m.geo.clone(); g.computeBoundingBox(); const b = g.boundingBox, s = b.getSize(new THREE.Vector3()), c = b.getCenter(new THREE.Vector3());
-      g.translate(-c.x, -b.max.y, -c.z); g.scale(2 * r / s.x, 0.9 / s.y, 2 * rz / s.z);
-      const me = new THREE.Mesh(g, m.mat); me.castShadow = me.receiveShadow = true; grp.add(me);
-      // tablanin altinda birbirine bagli kutuklar (sal)
-      const lg = new THREE.CylinderGeometry(0.42, 0.42, 2 * rz + 0.5, 12); lg.rotateX(Math.PI / 2);
-      for (let x = -r + 0.45; x <= r - 0.4; x += 0.86) { const l = new THREE.Mesh(lg, mat('sal')); l.position.set(x, -1.25, 0); l.castShadow = true; grp.add(l); }
-      for (const z of [-rz + 0.4, rz - 0.4]) { const ip = new THREE.Mesh(new THREE.TorusGeometry(0.5, 0.06, 6, 16), mat('ip')); ip.position.set(-r + 0.5, -1.2, z); ip.rotation.y = Math.PI / 2; grp.add(ip); }
-    } else grp.add(deckMesh([[-r, -rz], [r, -rz], [r, rz], [-r, rz]], 0, 0.6, mat('tahta')));
-    t.hx = r; t.hz = rz; t.dalga = { y: 0.16, roll: 0.05, pitch: 0.035, hz: 0.9 };
-    t.ctr = (pn) => [f0.ci, f0.ck, 0, 0, 0];
-    t.zemin = (x, z) => (Math.abs(x) < r && Math.abs(z) < rz ? 0 : null);
-  } else if (Y.hedef === 'kule') {
-    // gozcu kulesi adasi: kayalarla cevrili kum adacik, ortasinda tas kule, tepesinde duz tahta platform (yapi bunun ustunde)
-    A.GY = -8.2; const GY = A.GY, rt = Math.max(f0.mx, f0.mz) * 1.02 + S * 0.45, rb = rt * 0.72, Ri = rt * 2.2;
-    pb.addShape(new CANNON.Cylinder(rt, rt, 0.5, 24), new CANNON.Vec3(0, -0.25, 0));
-    pb.addShape(new CANNON.Cylinder(rb * 0.92, rb * 1.12, -GY - 0.5, 16), new CANNON.Vec3(0, (GY - 0.5) / 2, 0));
-    {
-      const disc = new THREE.Mesh(new THREE.CylinderGeometry(rt, rt * 0.98, 0.5, 40), [mat('tahta'), mat('tahta'), mat('koyu')]); disc.position.y = -0.25; disc.castShadow = disc.receiveShadow = true; grp.add(disc);
-      for (let i = 0; i < 16; i++) { const a = i / 16 * 6.283; const be = new THREE.Mesh(new THREE.BoxGeometry(0.35, 0.7, 0.5), mat('koyu')); be.position.set(Math.cos(a) * rb * 1.02, -0.75, Math.sin(a) * rb * 1.02); be.rotation.y = -a; grp.add(be); }
-      const prof = []; const H = -GY; for (let i = 0; i <= 10; i++) { const y = -H + i / 10 * (H - 0.5); prof.push(new THREE.Vector2(rb * (1.32 - 0.32 * i / 10), y)); }
-      prof.push(new THREE.Vector2(0.01, -0.5));
-      const tw = new THREE.Mesh(new THREE.LatheGeometry(prof, 32), mat('tas')); tw.castShadow = tw.receiveShadow = true; grp.add(tw);
-      mat('tas').map.repeat.set(4, 2.5); mat('tas').map.wrapS = mat('tas').map.wrapT = THREE.RepeatWrapping;
-      for (let i = 0; i < 12; i++) { const a = i / 12 * 6.283; const m = new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.55, 0.55), mat('tas')); m.position.set(Math.cos(a) * rb * 1.12, -1.15, Math.sin(a) * rb * 1.12); m.rotation.y = -a; m.castShadow = true; grp.add(m); }
-      const door = new THREE.Mesh(new THREE.BoxGeometry(1.2, 1.9, 0.3), mat('koyu')); door.position.set(0, GY + 1.2, rb * 1.28); grp.add(door);
-      const kap = new THREE.Mesh(new THREE.TorusGeometry(0.75, 0.16, 8, 16, Math.PI), mat('tas')); kap.position.set(0, GY + 2.1, rb * 1.3); grp.add(kap);
-      const kum = new THREE.Mesh(new THREE.CylinderGeometry(Ri * 0.92, Ri, 0.5, 40), mat('kum')); kum.position.y = GY - 0.23; kum.receiveShadow = true; grp.add(kum);
-      for (let i = 0; i < 22; i++) { const a = i / 22 * 6.283 + (i % 3) * 0.05, s = 0.9 + ((i * 37) % 7) / 10; const k = new THREE.Mesh(new THREE.DodecahedronGeometry(s, 0), mat('kaya')); k.position.set(Math.cos(a) * Ri * 1.02, GY + 0.1, Math.sin(a) * Ri * 1.02); k.rotation.set(i, i * 2, 0); k.scale.y = 0.7; k.castShadow = true; grp.add(k); }
-      for (let i = 0; i < 6; i++) { const a = i * 1.1 + 0.4; const c = new THREE.Mesh(new THREE.IcosahedronGeometry(0.55, 0), mat('cimen')); c.position.set(Math.cos(a) * rb * 1.6, GY + 0.35, Math.sin(a) * rb * 1.6); c.scale.y = 0.6; grp.add(c); }
-      flag(grp, -rt + 0.35, 0, -rt * 0.5, 3.2);
-    }
-    t.hx = Ri; t.hz = Ri; t.dalga = null; t.ada = Ri;
-    t.ctr = () => [f0.ci, f0.ck, 0, 0, 0];
-    t.zemin = (x, z) => (x * x + z * z < rt * rt ? 0 : null);
-  } else {
-    // dusman korsan gemisi: boyu x ekseninde (burun solda), alt guverte y=0, kicta kabin; kabin catisi ikinci kat (y=hc)
-    A.GY = t.patron ? -4.4 : -4; const GY = A.GY, k = t.patron ? 1.15 : 1;
-    const hz = Math.max(2.3, Math.max(f0.mz, f1.n ? f1.mz : 0) + S * 0.45), Lm = f0.mx * 2 + S * 0.7, Lc = f1.n ? f1.mx * 2 + S * 0.7 : 3.2 * k, hc = f1.n ? 2.6 : 2.2, Lb = 3.4 * k;
-    const xs = (Lm + Lc - Lb) / 2, xm = xs - Lc - Lm / 2, xc = xs - Lc / 2, xb = xm - Lm / 2 - Lb;   // kic, alt guverte ortasi, kabin ortasi, burun ucu
-    BOX((Lm + Lb * 0.5) / 2, -GY / 2, hz, xm - Lb * 0.25, GY / 2, 0);
-    BOX(Lc / 2, (hc - GY) / 2, hz, xc, (hc + GY) / 2, 0);
-    {
-      const out = [[xs, -hz], [xs, hz]]; for (let i = 0; i <= 8; i++) { const a = i / 8; const x = xm - Lm / 2 - Lb * (a ** 1.6), w = hz * Math.sqrt(1 - a * a * 0.98); out.push([x, w]); }
-      for (let i = 8; i >= 0; i--) { const a = i / 8; const x = xm - Lm / 2 - Lb * (a ** 1.6), w = hz * Math.sqrt(1 - a * a * 0.98); out.push([x, -w]); }
-      const pts = [[xs, -hz], [xs, hz]].concat(out.slice(2)).filter((p, i, a) => i === 0 || Math.hypot(p[0] - a[i - 1][0], p[1] - a[i - 1][1]) > 0.01);
-      grp.add(deckMesh(pts, 0, 0.3, mat('tahta')));
-      grp.add(hullMesh(pts, [[0.55, 1], [0, 1.02], [-1.2, 0.98], [-2.6, 0.86], [GY - 1.6, 0.55]], xm, 0, mat(t.patron ? 'govde2' : 'govde')));
-      // kabin
-      const cab = new THREE.Mesh(new THREE.BoxGeometry(Lc, hc, hz * 2 - 0.1), [mat('kabin'), mat('kabin'), mat('tahta'), mat('koyu'), mat('kabin'), mat('kabin')]); cab.position.set(xc, hc / 2, 0); cab.castShadow = cab.receiveShadow = true; grp.add(cab);
-      const roof = new THREE.Mesh(new THREE.BoxGeometry(Lc + 0.3, 0.22, hz * 2 + 0.2), mat('tahta')); roof.position.set(xc, hc - 0.11, 0); roof.receiveShadow = true; grp.add(roof);
-      // parmaklik: alt guverte kenarlari (kabine kadar) ve kabin catisi (on kenari acik)
-      const side = (sg) => pts.filter((p) => p[1] * sg > 0.01 || p[0] === xb).filter((p) => p[0] < xs - Lc + 0.01).sort((a, b) => a[0] - b[0]);
-      railing(grp, side(1).concat([[xs - Lc, hz]]), 0, 0.55, 1, false, true); railing(grp, side(-1).concat([[xs - Lc, -hz]]), 0, 0.55, 1, false, true);
-      railing(grp, [[xs - Lc + 0.15, hz + 0.05], [xs + 0.1, hz + 0.05], [xs + 0.1, -hz - 0.05], [xs - Lc + 0.15, -hz - 0.05]], hc, 0.5, 1, false, false);
-      // gemi toplari (sus) ve fener
-      for (const sg of [1, -1]) for (const dx of [-0.25, 0.25]) { const gx = xm + dx * Lm; const gun = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.3, 1.3, 12), mat('koyu')); gun.rotation.x = Math.PI / 2 * sg; gun.position.set(gx, -1.25, sg * (hz * 1.03 + 0.45)); grp.add(gun); }
-      flag(grp, xs - 0.35, hc, -hz + 0.35, t.patron ? 4.2 : 3.4);
-    }
-    t.hx = (xs - xb) / 2; t.hz = hz; t.dalga = t.patron ? { y: 0.1, roll: 0.022, pitch: 0.012, hz: 0.55 } : { y: 0.12, roll: 0.028, pitch: 0.015, hz: 0.7 };
-    t.ctr = (pn) => (pn === 1 ? [f1.ci, f1.ck, xc, 0, hc] : [f0.ci, f0.ck, xm, 0, 0]);
-    t.zemin = (x, z) => (Math.abs(z) > hz || x < xb || x > xs ? null : x > xs - Lc ? hc : 0);
-    t.kx = [xb, xs]; t.hc = hc; if (f1.n) t.top = Math.max(t.top, hc + f1.top);
-  }
-  // su cizgisinde kopuk ve hafif golge (hedefle birlikte gider)
-  t.cx = t.cx || 0; t.kopuk = suHalkasi(t.hx * 2.25, t.hz * 2.6); A.scene.add(t.kopuk); EXTRA.push(t.kopuk);
-  T = t; A.TOPY = t.top; A.R = t.hx; A.RZ = t.hz;
-  A.addCubes(Y, list, t.ctr);
+  A.setPlat('sirk'); A.LEG.visible = false; A.DIRT.visible = false;
+  A.GY = DENIZ; const S = A.S;
+  const inf = Y.p.map(() => ({ i0: 1e9, i1: -1e9, k0: 1e9, k1: -1e9, top: 0 }));
+  for (const c of list) { const f = inf[c[4] || 0]; f.i0 = Math.min(f.i0, c[0]); f.i1 = Math.max(f.i1, c[0]); f.k0 = Math.min(f.k0, c[2]); f.k1 = Math.max(f.k1, c[2]); f.top = Math.max(f.top, (c[1] + (A.KEEP[c[3]] === 'tall' ? 2 : 1)) * S); }
+  const P = Y.p.map((d, i) => {
+    const f = inf[i], mx = (f.i1 - f.i0) / 2 * S + S / 2, mz = (f.k1 - f.k0) / 2 * S + S / 2, M = PLAT[d.m];
+    let sc = M.sekil === 'kare' ? (Math.max(mx, mz) + 0.45) / M.yar : M.sekil === 'uzun' ? Math.max((mx + 0.45) / M.yx, (mz + 0.3) / M.yz) : (Math.hypot(mx, mz) + 0.35) / M.yar;
+    sc *= d.buyuk || 1;
+    const body = i === 0 ? A.platBody : new CANNON.Body({ mass: 0, material: A.PM.plat });
+    if (i) { body.collisionFilterGroup = 4; A.world.addBody(body); }
+    while (body.shapes.length) body.removeShape(body.shapes[0]);
+    body.velocity.set(0, 0, 0); body.angularVelocity.set(0, 0, 0);
+    const h = M.ust * sc;   // tablanin ustunden fiçilarin altina
+    let hx, hz;
+    if (M.sekil === 'kare') { hx = hz = M.yar * sc; body.addShape(new CANNON.Box(new CANNON.Vec3(hx, h / 2, hz)), new CANNON.Vec3(0, -h / 2, 0)); }
+    else if (M.sekil === 'uzun') { hx = M.yx * sc; hz = M.yz * sc; body.addShape(new CANNON.Box(new CANNON.Vec3(hx, h / 2, hz)), new CANNON.Vec3(0, -h / 2, 0)); }
+    else { hx = hz = M.yar * sc; body.addShape(new CANNON.Cylinder(hx, hx, h, 24), new CANNON.Vec3(0, -h / 2, 0)); }
+    const grp = new THREE.Group(); A.scene.add(grp);
+    // model: tablanin ust ortasi platformun merkezine (uzun platformun boyu x eksenine doner)
+    if (KM['p_' + d.m]) grp.add(yerlestir('p_' + d.m, sc, M.sekil === 'uzun' ? Math.PI / 2 : 0, [0, M.ust, 0], [0, 0, 0]));
+    const x = d.x || 0, z = d.z || 0;
+    const kopuk = suHalkasi(hx * 2.5, hz * 2.5); A.scene.add(kopuk);
+    return { d, body, grp, kopuk, x, z, hx, hz, top: f.top, mx, mz, ci: (f.i0 + f.i1) / 2, ck: (f.k0 + f.k1) / 2, kuyu: M.sekil !== 'kare' && M.sekil !== 'uzun',
+      p: new THREE.Vector3(x, 0, z), q: new THREE.Quaternion(), ph: d.ph || 0 };
+  });
+  T = { P, batar: true };
+  // kamera cercevesi icin: tum platformlarin (kayma payi dahil) siniri
+  let x0 = 1e9, x1 = -1e9, zf = -1e9, top = 0;
+  for (const p of P) { const k = p.d.har === 'kay' ? p.d.a : 0; x0 = Math.min(x0, p.x - p.hx - k); x1 = Math.max(x1, p.x + p.hx + k); zf = Math.max(zf, p.z + p.hz); top = Math.max(top, p.top); }
+  Object.assign(T, { x0, x1, zf, top, hz: Math.max(...P.map((p) => Math.abs(p.z) + p.hz)) });
+  A.TOPY = top; A.R = (x1 - x0) / 2; A.RZ = T.hz;
+  A.addCubes(Y, list, (pn) => { const p = P[pn]; return [p.ci, p.ck, p.x, p.z, 0]; });
 }
-// Adem'in modelleriyle hedef: model kupleri tasiyacak kadar buyutulur, kupler olculen guverte/cati/tepe uzerine oturur.
-// Fizik govdeleri modelin olculen bolgelerinden kutu/silindir olarak kurulur. Yerel cerceve: alt guverte ortasi (0,0,0), ust yuzey y=0.
-function modelHedef(Y, t, f0, f1, BOX) {
-  const pb = A.platBody, S = A.S, grp = t.grp;
-  if (Y.hedef === 'gemi') {
-    const K = KAL.dusman_gemi, g = K.g, c = K.cati, gL = g.z[1] - g.z[0], cL = c.z[1] - c.z[0], gz = (g.z[0] + g.z[1]) / 2, cz = (c.z[0] + c.z[1]) / 2;
-    let sc = Math.max((2 * f0.mx + 0.6) / gL, (2 * f0.mz + 0.8) / (2 * g.ic), f1.n ? (2 * f1.mx + 0.35) / cL : 0, f1.n ? (2 * f1.mz + 0.6) / (2 * c.ic) : 0);
-    if (t.patron) sc *= 1.12;
-    // burun +z -> dunyada -x (sola), kic kabini saga. dunya x = -(z - gz) * sc
-    const X = (z) => -(z - gz) * sc, hc = (c.y - g.y) * sc, hb = (K.bas.y - g.y) * sc;
-    A.GY = (K.su - g.y) * sc; const GY = A.GY;
-    grp.add(yerlestir('dusman_gemi', sc, -Math.PI / 2, [0, g.y, gz], [0, 0, 0]));
-    BOX((X(g.z[0]) - X(g.z[1])) / 2, -GY / 2 + 0.5, g.x * sc + 0.15, (X(g.z[0]) + X(g.z[1])) / 2, GY / 2 - 0.5, 0);
-    BOX((X(-0.49) - X(c.z[1])) / 2, (hc - GY) / 2, c.x * sc + 0.2, (X(-0.49) + X(c.z[1])) / 2, (hc + GY) / 2, 0);
-    BOX((X(K.bas.z[0]) - X(K.bas.z[1])) / 2, (hb - GY) / 2, 0.12 * sc, (X(K.bas.z[0]) + X(K.bas.z[1])) / 2, (hb + GY) / 2, 0);
-    t.x0 = X(0.49); t.x1 = X(-0.49); t.hx = (t.x1 - t.x0) / 2; t.cx = (t.x0 + t.x1) / 2; t.hz = K.en * sc; t.hc = hc;
-    t.dalga = t.patron ? { y: 0.1, roll: 0.02, pitch: 0.01, hz: 0.55 } : { y: 0.12, roll: 0.026, pitch: 0.013, hz: 0.7 };
-    // (Adem 6 Kas) kupeste guverteden bir kupten yuksek, alt sira gorunmuyordu: yapi, kupeste hizasina kadar yukselen
-    // tahta bir kursunun (kargo platformu) ustunde durur. Kabin catisinda da alcak bir kursu var.
-    const hp = (g.kupeste - g.y) * sc + 0.08, kx = Math.min(gL / 2 * sc, f0.mx + 0.4), kz = Math.min(g.ic * sc - 0.05, f0.mz + 0.4);
-    grp.add(kursu(kx, kz, hp, 0, 0, 0)); BOX(kx, hp / 2, kz, 0, hp / 2, 0);
-    let hp2 = 0;
-    if (f1.n) { hp2 = (c.kupeste - c.y) * sc + 0.06; const rx = Math.min(cL / 2 * sc, f1.mx + 0.35), rz = Math.min(c.ic * sc - 0.05, f1.mz + 0.35);
-      grp.add(kursu(rx, rz, hp2, X(cz), hc, 0)); BOX(rx, hp2 / 2, rz, X(cz), hc + hp2 / 2, 0); }
-    t.ust = [hp, hc + hp2]; t.alt = hp;
-    t.ctr = (pn) => (pn === 1 ? [f1.ci, f1.ck, X(cz), 0, hc + hp2] : [f0.ci, f0.ck, 0, 0, hp]);
-    t.zemin = (x, z) => (Math.abs(z) > g.x * sc ? null : x > X(c.z[1]) ? hc + (Math.abs(x - X(cz)) < cL / 2 * sc && Math.abs(z) < c.ic * sc ? hp2 : 0) : x < X(g.z[1]) ? hb : Math.abs(x) < kx && Math.abs(z) < kz ? hp : 0);
-    t.kx = [t.x0, t.x1]; t.top = hp + f0.top; if (f1.n) t.top = Math.max(t.top, hc + hp2 + f1.top);
-  } else if (Y.hedef === 'kule') {
-    const K = KAL.kule_ada, tp = K.tepe, sc = (Math.hypot(f0.mx, f0.mz) + 0.4) / tp.r;
-    A.GY = (K.su - tp.y) * sc; const GY = A.GY, ky = (K.kum.y - tp.y) * sc, az = -tp.z * sc;   // ada merkezi kule tepesinin biraz onunde
-    grp.add(yerlestir('kule_ada', sc, 0, [0, tp.y, tp.z], [0, 0, 0]));
-    pb.addShape(new CANNON.Cylinder(tp.r * sc, tp.r * sc, 0.6, 24), new CANNON.Vec3(0, -0.3, 0));
-    pb.addShape(new CANNON.Cylinder(K.kule * sc, K.kule * sc * 1.15, -0.6 - ky, 16), new CANNON.Vec3(0, (ky - 0.6) / 2, 0));
-    pb.addShape(new CANNON.Cylinder(K.kum.r * sc * 0.92, K.kum.r * sc, ky - GY, 24), new CANNON.Vec3(0, (ky + GY) / 2, az));
-    t.hx = t.hz = K.ada * sc; t.cz = az; t.ada = K.kum.r * sc; t.dalga = null;
-    t.ctr = () => [f0.ci, f0.ck, 0, 0, 0];
-    t.zemin = (x, z) => (x * x + z * z < (tp.r * sc) ** 2 ? 0 : x * x + (z - az) ** 2 < (K.kum.r * sc) ** 2 ? ky : null);
-  } else {
-    const K = KAL.sal, g = K.g, gL = g.x[1] - g.x[0], gx = (g.x[0] + g.x[1]) / 2, sc = Math.max((2 * f0.mx + 0.5) / gL, (2 * f0.mz + 0.5) / (2 * g.z));
-    A.GY = (K.su - g.y) * sc; const GY = A.GY;
-    grp.add(yerlestir('sal', sc, 0, [gx, g.y, 0], [0, 0, 0]));
-    BOX(gL / 2 * sc, -GY / 2, g.z * sc, 0, GY / 2, 0);
-    t.hx = (gL / 2 + 0.05) * sc; t.hz = (g.z + 0.05) * sc; t.dalga = { y: 0.16, roll: 0.045, pitch: 0.032, hz: 0.9 };
-    t.ctr = () => [f0.ci, f0.ck, 0, 0, 0];
-    t.zemin = (x, z) => (Math.abs(x) < gL / 2 * sc && Math.abs(z) < g.z * sc ? 0 : null);
+// ---------------- denizdeki suslar: korsan gemisi, gozcu kulesi adasi, eski sal ----------------
+const DEKOR = [];
+function dekorKur(fo) {
+  for (const o of DEKOR) A.scene.remove(o.g); DEKOR.length = 0;
+  const GY = A.GY;
+  for (const n of fo.dekor) {
+    if (n === 'gemi' && KM.dusman_gemi) {   // uzakta yavasca seyreden korsan gemisi (burun yon degistirince doner)
+      const sg = Math.random() < 0.5 ? -1 : 1, g = new THREE.Group(); g.add(yerlestir('dusman_gemi', 22, 0, [0, KAL.dusman_gemi.su, 0], [0, 0, 0]));
+      A.scene.add(g); DEKOR.push({ g, tip: 'gemi', x: sg * (32 + Math.random() * 14), z: -95 - Math.random() * 25, v: -sg * 1.1, y: GY, ph: Math.random() * 6 });
+    }
+    if (n === 'kule' && KM.kule_ada) {
+      const g = yerlestir('kule_ada', 30, -0.5, [0, KAL.kule_ada.su, 0], [0, 0, 0]); const w = new THREE.Group(); w.add(g); A.scene.add(w);
+      DEKOR.push({ g: w, tip: 'kule', x: -48, z: -140, v: 0, y: GY, ph: 0 });
+    }
+    if (n === 'sal' && KM.sal) {
+      const g = yerlestir('sal', 9, 0.6, [0.12, KAL.sal.su, 0], [0, 0, 0]); const w = new THREE.Group(); w.add(g); A.scene.add(w);
+      DEKOR.push({ g: w, tip: 'sal', x: 30, z: -55, v: 0, y: GY, ph: 1 });
+    }
+  }
+  dekorKare(0);
+}
+function dekorKare(dt) {
+  for (const o of DEKOR) {
+    o.ph += dt; o.x += o.v * dt;
+    if (o.tip === 'gemi') { if (Math.abs(o.x) > 62) o.v = -o.v; o.g.rotation.y = o.v > 0 ? Math.PI / 2 : -Math.PI / 2; }   // model burnu +z: gidis yonune doner
+    o.g.position.set(o.x, o.y + Math.sin(o.ph * 0.9) * (o.tip === 'kule' ? 0 : 0.18), o.z);
+    if (o.tip !== 'kule') { o.g.rotation.z = Math.sin(o.ph * 0.7) * 0.025; o.g.rotation.x = Math.sin(o.ph * 0.55 + 1) * 0.015; }
   }
 }
 // ---------------- su: gorunmez yuzey (su altini fon resmi gosterir) ----------------
@@ -349,6 +199,7 @@ function suHalkasi(w, d) {
   const m = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), new THREE.MeshBasicMaterial({ map: t, transparent: true, depthWrite: false })); m.rotation.x = -Math.PI / 2; m.scale.set(w, d, 1); m.renderOrder = 2; return m;
 }
 
+
 // ---------------- sahne: fon, isik, seyir ----------------
 export function sahne() {
   const Y = bolum(A.LV), fo = FON[Y.fon], bg = A.$('bg');
@@ -359,55 +210,61 @@ export function sahne() {
   A.scene.fog = new THREE.Fog(fo.sis || new THREE.Color('#bfe0f0'), 38, 300);
   suYuzeyi().position.y = A.GY;
   const g = A.g; g.state = 'sefer'; g.sefer = 0; A.$('hint').style.opacity = 0;
-  g.shots = g.max = g.max + 2;   // hedef uzakta ve sallaniyor: Yapi'dan 2 top fazla
+  g.shots = g.max = g.max + 2 * Y.p.length;   // hedefler uzakta ve hareketli: platform basina 2 top fazla
   if (A.Q.has('demir') || (A.TEST && !A.Q.has('sefer'))) g.sefer = SEFER.sure;   // test: seyir atlanir
-  fit(); poz(0); kuslar(Y.fon);
+  fit(); poz(); kuslar(Y.fon); dekorKur(fo); penguenKur(fo);
   A.hud(true); altinHud();
 }
-// kup durdugu kursunun ustunden asagi inince dusmus sayilir (hedefin dalgayla inip kalkmasi da hesaba katilir)
-export function goneY(c) { if (!T) return -0.45; const u = T.ust ? T.ust[c.pi || 0] : 0; return T.p.y + u - 0.7; }
-export function zone(x, z) { return T && T.ada && (x - T.p.x) ** 2 + (z - T.p.z - (T.cz || 0)) ** 2 < (T.ada * 0.9) ** 2 ? 'kum' : 'su'; }
+// kup durdugu platformun ustunden asagi inince dusmus sayilir (platformun dalgayla inip kalkmasi da hesaba katilir)
+export function goneY(c) { const P = T && T.P[c.pi || 0]; return P ? P.p.y - 0.7 : -0.45; }
+export function zone() { return 'su'; }
 export function floorAt(x, z) {
-  if (!T) return A.GY; const lx = x - T.p.x, lz = z - T.p.z, y = T.zemin(lx, lz); return y == null ? A.GY : y + T.p.y;
+  if (T) for (const P of T.P) { const lx = x - P.p.x, lz = z - P.p.z; if (P.kuyu ? lx * lx + lz * lz < P.hx * P.hx : Math.abs(lx) < P.hx && Math.abs(lz) < P.hz) return P.p.y; }
+  return A.GY;
 }
-// hedefin pozu: seyir (uzaktan yaklasma), dalga (iner kalkar, yalpalar), batma
+// her platformun pozu: seyir (uzaktan yaklasma), hareket (kay, salla, don, dalga), batma
 let QA, EU, VA;
-function poz(dt) {
+function poz() {
   const g = A.g; if (!T || !g) return;
   const s = g.state === 'sefer' ? Math.min(1, g.sefer / SEFER.sure) : 1, e = 1 - (1 - s) ** 3, uz = SEFER.yol * (1 - e);
-  const d = T.dalga, w = TT * (d ? d.hz : 0) * 2;
-  let y = d ? d.y * Math.sin(w) : 0, rx = d ? d.roll * Math.sin(w * 0.8 + 0.6) : 0, rz = d ? d.pitch * Math.sin(w * 0.6 + 1.7) : 0;
-  if (T.bat != null) { const b = T.bat; y -= Math.min(b / 3.2, 1) ** 1.6 * (T.hz * 2 - A.GY + 6); rx += Math.min(b / 2.5, 1) * 0.45; rz -= Math.min(b / 3, 1) * 0.28; }
-  const p = VA.set(0, y, -uz); EU.set(rx, 0, rz); QA.setFromEuler(EU);
-  tasi(p, QA);
-  T.kopuk.position.set(T.p.x + T.cx, A.GY + 0.02, T.p.z + (T.cz || 0)); T.kopuk.material.opacity = T.bat != null ? Math.max(0, 1 - T.bat) : 1;
-  if (T.grp.userData.flag) T.grp.userData.flag.rotation.y = Math.sin(TT * 3.1) * 0.25;
+  for (const P of T.P) {
+    const d = P.d, t = TT, ph = P.ph;
+    let x = P.x, y = 0.05 * Math.sin(t * 1.3 + ph), rx = 0.008 * Math.sin(t * 1.1 + ph), rz = 0.008 * Math.sin(t * 0.9 + ph + 1), ry = 0;
+    if (d.har === 'kay') x += d.a * Math.sin(t * d.w + ph);
+    if (d.har === 'salla') { y = 0.16 * Math.sin(t * 1.7 + ph); rx = 0.05 * Math.sin(t * 1.35 + ph + 0.6); rz = 0.04 * Math.sin(t * 1.05 + ph + 1.7); }
+    if (d.har === 'dalga') { y = (d.a || 0.45) * Math.sin(t * 1.25 + ph); rx = 0.02 * Math.sin(t * 1.25 + ph + 1.2); }
+    if (d.har === 'don') ry = t * d.w;
+    if (T.bat != null) { const b = T.bat; y -= Math.min(b / 3, 1) ** 1.6 * 6; rx += Math.min(b / 2.5, 1) * 0.3; rz -= Math.min(b / 3, 1) * 0.2; }
+    VA.set(x, y, P.z - uz); EU.set(rx, ry, rz, 'YXZ'); QA.setFromEuler(EU);
+    tasi(P, VA, QA);
+    P.kopuk.position.set(P.p.x, A.GY + 0.02, P.p.z); P.kopuk.material.opacity = T.bat != null ? Math.max(0, 1 - T.bat) : 1;
+  }
 }
-// hedefi ve ustundeki (dusmemis) kupleri yeni poza tasir; uyuyan kupler uyanmaz, uyanik kuplerin hizi da doner
+// platformu ve ustundeki (dusmemis) kupleri yeni poza tasir; uyuyan kupler uyanmaz, uyanik kuplerin hizi da doner
 let DQ, QI, V3, Q3, QS, EU2, M4;
-function tasi(p, q) {
-  QI.copy(T.q).invert(); DQ.copy(q).multiply(QI);
-  const pb = A.platBody;
+function tasi(P, p, q) {
+  QI.copy(P.q).invert(); DQ.copy(q).multiply(QI);
+  const pi = T.P.indexOf(P);
   for (const c of A.cubes) {
-    if (c.gone || c.out || c.landed) continue; const b = c.body;
-    V3.set(b.position.x - T.p.x, b.position.y - T.p.y, b.position.z - T.p.z).applyQuaternion(DQ).add(p); b.position.set(V3.x, V3.y, V3.z);
+    if (c.gone || c.out || c.landed || (c.pi || 0) !== pi) continue; const b = c.body;
+    V3.set(b.position.x - P.p.x, b.position.y - P.p.y, b.position.z - P.p.z).applyQuaternion(DQ).add(p); b.position.set(V3.x, V3.y, V3.z);
     Q3.set(b.quaternion.x, b.quaternion.y, b.quaternion.z, b.quaternion.w).premultiply(DQ); b.quaternion.set(Q3.x, Q3.y, Q3.z, Q3.w);
     V3.set(b.velocity.x, b.velocity.y, b.velocity.z).applyQuaternion(DQ); b.velocity.set(V3.x, V3.y, V3.z); b.aabbNeedsUpdate = true;
   }
-  pb.position.set(p.x, p.y, p.z); pb.quaternion.set(q.x, q.y, q.z, q.w); pb.aabbNeedsUpdate = true;
-  T.p.copy(p); T.q.copy(q); T.grp.position.copy(p); T.grp.quaternion.copy(q);
+  P.body.position.set(p.x, p.y, p.z); P.body.quaternion.set(q.x, q.y, q.z, q.w); P.body.aabbNeedsUpdate = true;
+  P.p.copy(p); P.q.copy(q); P.grp.position.copy(p); P.grp.quaternion.copy(q);
 }
-// her kare: seyir, dalga, batma, bizim geminin sallanmasi, dumen suyu
+// her kare: seyir, platform hareketleri, batma, bizim geminin sallanmasi, deniz, kuslar, penguen, suslar
 export function kare(dt) {
   TT += dt; const g = A.g;
   if (g && T) {
     if (g.state === 'sefer') { g.sefer += dt; A.$('hint').style.opacity = 0; if (g.sefer >= SEFER.sure) demirAt(); }
-    if (g.state === 'win' && T.batar && T.bat == null) { T.bat = 0; batmaBasla(); }
-    if (T.bat != null) { T.bat += dt; if (T.bat < 3 && Math.random() < dt * 22) A.bubble(T.p.x + (Math.random() - 0.5) * T.hx * 1.6, A.GY - 0.3, T.p.z + (Math.random() - 0.5) * T.hz); }
-    poz(dt);
+    if (g.state === 'win' && T.bat == null) { T.bat = 0; batmaBasla(); }
+    if (T.bat != null) { T.bat += dt; if (T.bat < 3 && Math.random() < dt * 22) { const P = T.P[Math.floor(Math.random() * T.P.length)]; A.bubble(P.p.x + (Math.random() - 0.5) * P.hx * 1.6, A.GY - 0.3, P.p.z + (Math.random() - 0.5) * P.hz); } }
+    poz();
   }
   // bizim gemi: kamera ile birlikte iner kalkar, yalpalar (roll) ve bas vurur (pitch); seyirde daha cok.
-  // Fon resmi de DENIZ golgelendiricisinde ayni aciyla doner, boylece ufuk dunyayla birlikte egilir.
+  // Fon resmi de deniz golgelendiricisinde ayni aciyla doner, boylece ufuk dunyayla birlikte egilir.
   const cam = A.cam;
   if (BIZ.pv && cam.userData.q0) {
     const sef = g && g.state === 'sefer' ? 1 - Math.min(1, g.sefer / SEFER.sure) : 0;
@@ -421,10 +278,12 @@ export function kare(dt) {
   }
   if (DZ.mesh && cam.userData.q0) {
     const u = DZ.mesh.material.uniforms; u.time.value = TT; u.sar.value = innerWidth / innerHeight; u.th.value = DZ.th; u.pitch.value = DZ.pitch; u.camH.value = DZ.camH + (cam.userData.base.y - cam.userData.base0.y);
-    if (g && g.state === 'sefer') { const k = Math.min(1, g.sefer / SEFER.sure); DZ.travel += SEFER.yol * 3 * (1 - k) ** 2 / SEFER.sure * dt; u.zoom.value = ZOOM0 * (1 + 0.06 * (1 - k) ** 2); } else u.zoom.value = ZOOM0;
+    if (g && g.state === 'sefer') { const k = Math.min(1, g.sefer / SEFER.sure); DZ.travel += SEFER.yol * 3 * (1 - k) ** 2 / SEFER.sure * dt; u.zoom.value = FR.Z * (1 + 0.06 * (1 - k) ** 2); } else u.zoom.value = FR.Z;
+    u.kay.value = FR.kay;
     u.travel.value = DZ.travel; QI.copy(cam.userData.q0).invert().multiply(cam.quaternion); u.rot.value.setFromMatrix4(M4.makeRotationFromQuaternion(QI));
+    penguenKare(dt, u);
   }
-  kusKare(dt);
+  kusKare(dt); dekorKare(dt);
 }
 function demirAt() {
   const g = A.g; g.state = 'play'; g.sefer = SEFER.sure;
@@ -434,7 +293,7 @@ function demirAt() {
   A.shake = Math.max(A.shake, 0.08);
 }
 function batmaBasla() {
-  const p = T.p; A.splash(p.x - T.hx * 0.5, p.z + T.hz, 1.6, true); A.splash(p.x + T.hx * 0.4, p.z + T.hz, 1.3, true);
+  for (const P of T.P) A.splash(P.p.x, P.p.z + P.hz, 1.4, true);
   if (A.AC) { A.splashSnd(0.6); setTimeout(() => A.sfx('thud', 3), 300); }
 }
 // seyirde bizim geminin iki yaninda akan kopuk
@@ -447,22 +306,31 @@ function dumenSuyu(dt, k) {
     A.fx(m, 1.1, (o, kk, dd) => { o.position.z += 26 * dd; o.position.x += vx * dd; o.scale.set(s0 * (1 + kk * 2), s0 * 0.55 * (1 + kk), 1); o.material.opacity = 0.85 * (1 - kk); });
   }
 }
-
 // ---------------- deniz: fon resmi WebGL'de, dalgali ve parlayan su ----------------
-// (Adem 6 Kas: deniz hareket etmiyordu) Fon artik CSS degil, ekrani kaplayan bir yuzeyde cizilir. Ufkun altindaki her nokta icin
-// kameradan denize isin atilir: denizdeki 5 dalganin egimi resmi o noktada hafifce kaydirir (yakinda cok, uzakta az -> perspektif),
-// gunes pirilti yapar. Seyirde dalgalar bize dogru akar (gemi ilerliyor). Kamera yalpalayinca resim de ayni aciyla doner.
-const DZ = { mesh: null, travel: 0 }, ZOOM0 = 1.045;   // yalpada kenarlar acilmasin diye resim %4.5 buyuk
+// Fon, ekrani kaplayan bir yuzeyde cizilir. Ufkun altindaki her nokta icin kameradan denize isin atilir: 5 dalganin egimi resmi
+// o noktada kaydirir (yakinda cok, uzakta az -> perspektif), gunes pirilti yapar. Su maskesi sayesinde buz, kum ve kayalar kipirdamaz.
+// Seyirde dalgalar bize dogru akar. Kamera yalpalayinca resim de ayni aciyla doner. Penguen de bu yuzeyde, buzun ustunde yurur.
+const DZ = { mesh: null, travel: 0 }, ZOOM0 = 1.045; let FR = { Z: 1.045, kay: 0, c: 1 };   // yalpada kenarlar acilmasin diye resim %4.5 buyuk
 // resimdeki bir satirin (ustten oran) ekrandaki yeri (ustten oran): golgelendiricideki 'cover' + ZOOM0 ile ayni hesap
-function resimdenEkran(r) { const sar = innerWidth / innerHeight; return 0.5 + (r - 0.5) * ZOOM0 * (sar < IMG_AR ? 1 : sar / IMG_AR); }
+// (Adem 6 Kas) ufku cok yukarida olan fonlarda (buzul, gundogumu) kamera fazla asagi bakiyordu: resim biraz buyutulup asagi
+// kaydirilir, ufuk ekranin ustten ~%43'une gelir. Z: buyutme, kay: dikey kayma (ekran orani), c: genis ekranda dikey kirpma
+const UFUK = 0.43;
+function cerceve(fo) {
+  const sar = innerWidth / innerHeight, c = sar < IMG_AR ? 1 : sar / IMG_AR, h0 = 0.5 + (fo.h - 0.5) * ZOOM0 * c;
+  if (h0 >= UFUK) return { Z: ZOOM0, kay: 0, c };
+  const Z = ZOOM0 * Math.max(1, UFUK / (fo.h * c), (1 - UFUK) / ((1 - fo.h) * c));
+  return { Z, kay: UFUK - 0.5 - (fo.h - 0.5) * Z * c, c };
+}
+function resimdenEkran(fo, r) { const k = cerceve(fo); return 0.5 + (r - 0.5) * k.Z * k.c + k.kay; }
 function denizKur(fo) {
   if (!DZ.mesh) {
     const m = new THREE.ShaderMaterial({ depthTest: false, depthWrite: false, fog: false,
-      uniforms: { map: { value: null }, iar: { value: IMG_AR }, sar: { value: 0.5 }, zoom: { value: ZOOM0 }, th: { value: 1 }, pitch: { value: 0 }, camH: { value: 6 }, time: { value: 0 }, travel: { value: 0 },
-        rot: { value: new THREE.Matrix3() }, sun: { value: new THREE.Vector3(0, 0.3, -1).normalize() }, sunCol: { value: new THREE.Color(1, 1, 0.9) }, glint: { value: 1.2 } },
+      uniforms: { map: { value: null }, msk: { value: null }, iar: { value: IMG_AR }, sar: { value: 0.5 }, zoom: { value: ZOOM0 }, kay: { value: 0 }, th: { value: 1 }, pitch: { value: 0 }, camH: { value: 6 }, time: { value: 0 }, travel: { value: 0 },
+        rot: { value: new THREE.Matrix3() }, sun: { value: new THREE.Vector3(0, 0.3, -1).normalize() }, sunCol: { value: new THREE.Color(1, 1, 0.9) }, glint: { value: 1.2 },
+        pTex: { value: null }, pOn: { value: 0 }, pPos: { value: new THREE.Vector2() }, pSize: { value: new THREE.Vector2(0.1035, 0.0895) }, pAng: { value: 0 }, pFlip: { value: 1 }, pSq: { value: 1 }, pHop: { value: 0 } },
       vertexShader: 'varying vec2 vUv; void main() { vUv = uv; gl_Position = vec4(position.xy, 0.9999, 1.0); }',
-      fragmentShader: `varying vec2 vUv; uniform sampler2D map; uniform float iar, sar, zoom, th, pitch, camH, time, travel, glint; uniform mat3 rot; uniform vec3 sun, sunCol;
-        vec2 cover(vec2 n) { vec2 u = n * 0.5 + 0.5; if (sar < iar) u.x = 0.5 + (u.x - 0.5) * sar / iar; else u.y = 0.5 + (u.y - 0.5) * iar / sar; return (u - 0.5) / zoom + 0.5; }
+      fragmentShader: `varying vec2 vUv; uniform sampler2D map, msk, pTex; uniform float iar, sar, zoom, kay, th, pitch, camH, time, travel, glint, pOn, pAng, pFlip, pSq, pHop; uniform vec2 pPos, pSize; uniform mat3 rot; uniform vec3 sun, sunCol;
+        vec2 cover(vec2 n) { vec2 u = n * 0.5 + 0.5; u.y += kay; if (sar < iar) u.x = 0.5 + (u.x - 0.5) * sar / iar; else u.y = 0.5 + (u.y - 0.5) * iar / sar; return (u - 0.5) / zoom + 0.5; }
         void main() {
           vec2 n = vUv * 2.0 - 1.0;
           vec3 r0 = rot * normalize(vec3(n.x * th * sar, n.y * th, -1.0));
@@ -472,25 +340,63 @@ function denizKur(fo) {
           vec3 wd = normalize(vec3(r0.x, r0.y * cp + r0.z * sp, -r0.y * sp + r0.z * cp));
           vec3 col;
           if (wd.y < -0.0015) {
+            float m = texture2D(msk, uv).r;
             float t = camH / -wd.y; vec2 P = wd.xz * t; P.y -= travel;
             vec2 gr = vec2(0.0); float hg = 0.0;
             #define WV(dx, dz, k, a, w) { vec2 D = normalize(vec2(dx, dz)); float f = exp(-k * t * 0.018); float ph = dot(D, P) * k + time * w; gr += D * k * a * cos(ph) * f; hg += a * sin(ph) * f; }
-            WV(0.15, 1.0, 0.45, 0.42, 1.0) WV(-0.55, 1.0, 0.8, 0.26, 1.45) WV(0.75, 0.65, 1.45, 0.14, 2.0) WV(-0.3, -1.0, 2.6, 0.07, 2.7) WV(1.0, 0.15, 4.2, 0.035, 3.4)
-            float near = clamp(10.0 / t, 0.0, 1.7);
-            vec2 off = gr * 0.011 * near; off.y *= 0.6;
+            WV(0.15, 1.0, 0.45, 0.48, 1.05) WV(-0.55, 1.0, 0.8, 0.3, 1.5) WV(0.75, 0.65, 1.45, 0.16, 2.05) WV(-0.3, -1.0, 2.6, 0.08, 2.8) WV(1.0, 0.15, 4.2, 0.04, 3.5)
+            float near = clamp(10.0 / t, 0.0, 1.8);
+            vec2 off = gr * 0.013 * near * m; off.y *= 0.6;
             col = texture2D(map, uv + off).rgb;
             vec3 nr = normalize(vec3(-gr.x * 0.8, 1.0, -gr.y * 0.8));
             float s = pow(max(dot(reflect(wd, nr), sun), 0.0), 260.0) * smoothstep(320.0, 20.0, t);
-            col += sunCol * s * glint;
-            col *= 1.0 + hg * 0.07 * near;
+            col += sunCol * s * glint * m;
+            col *= 1.0 + hg * 0.08 * near * m;
           } else col = texture2D(map, uv).rgb;
+          if (pOn > 0.5) {   // penguen: resim piksel biriminde, ayak noktasi etrafinda yalpalayarak
+            vec2 d = (uv - pPos) * vec2(1.0, 1.0 / iar);
+            float ca = cos(pAng), sa = sin(pAng); d = vec2(ca * d.x + sa * d.y, -sa * d.x + ca * d.y);
+            vec2 ps = pSize * vec2(1.0, 1.0 / iar);
+            float sh = length(vec2((d.x - ps.x * 0.12) / (ps.x * 0.55), (d.y + pHop * 0.3) / (ps.y * 0.06)));
+            col *= 1.0 - 0.22 * smoothstep(1.0, 0.3, sh) / (1.0 + pHop * 60.0);
+            vec2 l = vec2(d.x * pFlip / (ps.x * (2.0 - pSq)) + 0.5, (d.y - pHop) / (ps.y * pSq));
+            if (l.x > 0.0 && l.x < 1.0 && l.y > 0.0 && l.y < 1.0) { vec4 pc = texture2D(pTex, l); col = mix(col, pc.rgb, pc.a); }
+          }
           float l = dot(col, vec3(0.2126, 0.7152, 0.0722)); col = mix(vec3(l), col, 1.25) * 1.06; col = (col - 0.5) * 1.04 + 0.5;   // eski CSS fon filtresi
           gl_FragColor = vec4(clamp(col, 0.0, 1.0), 1.0);
         }` });
     DZ.mesh = new THREE.Mesh(new THREE.PlaneGeometry(2, 2), m); DZ.mesh.frustumCulled = false; DZ.mesh.renderOrder = -100; A.scene.add(DZ.mesh);
   }
-  const u = DZ.mesh.material.uniforms; u.map.value = fo.tx || null; DZ.mesh.visible = !!fo.tx;
+  const u = DZ.mesh.material.uniforms; u.map.value = fo.tx || null; u.msk.value = fo.msk || fo.tx || null; DZ.mesh.visible = !!fo.tx;
   u.sun.value.set(...fo.pir).normalize(); u.sunCol.value.set(fo.pr); u.glint.value = fo.pg; DZ.travel = 0;
+}
+// ---------------- penguen: buz kutlesinin ustunde yalpalayarak yurur, durur, etrafina bakar, ziplar, kanat cirpar ----------------
+// Adem'in buzul resmindeki penguen resimden kesildi (penguen.png), yeri dolduruldu; simdi fon yuzeyinde canli cizilir.
+const PENG = { tx: null, on: false };
+function penguenKur(fo) {
+  const p = fo.penguen; PENG.on = !!(p && PENG.tx);
+  if (!PENG.on) return;
+  Object.assign(PENG, { u: p.u, v: p.v, u0: p.u0, u1: p.u1, yon: -1, mod: 'dur', t: 1.2, adim: 0, hop: 0, sq: 1 });
+}
+function penguenKare(dt, U) {
+  U.pOn.value = PENG.on ? 1 : 0; if (!PENG.on) return;
+  const P = PENG; P.t -= dt;
+  if (P.t <= 0) {   // yeni davranis
+    const r = Math.random();
+    if (P.mod === 'yuru' || r < 0.3) { P.mod = 'dur'; P.t = 0.8 + Math.random() * 1.8; }
+    else if (r < 0.75) { P.mod = 'yuru'; P.t = 1.5 + Math.random() * 2.5; if (Math.random() < 0.45) P.yon = -P.yon; }
+    else if (r < 0.88) { P.mod = 'zipla'; P.t = 0.5; }
+    else { P.mod = 'kanat'; P.t = 0.9; }
+  }
+  let ang = 0;
+  if (P.mod === 'yuru') {
+    P.adim += dt * 7.5; P.u += P.yon * 0.022 * dt;
+    if (P.u < P.u0) { P.u = P.u0; P.yon = 1; } if (P.u > P.u1) { P.u = P.u1; P.yon = -1; }
+    ang = Math.sin(P.adim) * 0.11; P.hop = Math.abs(Math.sin(P.adim)) * 0.0018; P.sq = 1;
+  } else if (P.mod === 'zipla') { const k = 1 - P.t / 0.5; P.hop = Math.sin(k * Math.PI) * 0.012; P.sq = k < 0.15 ? 0.9 : 1.04; }
+  else if (P.mod === 'kanat') { P.sq = 1 + Math.sin(P.t * 28) * 0.035; ang = Math.sin(P.t * 28) * 0.03; P.hop = 0; }
+  else { P.hop = 0; P.sq = 1 + Math.sin(TT * 2.4) * 0.008; ang = Math.sin(TT * 0.7) * 0.02; }
+  U.pPos.value.set(P.u, 1 - P.v); U.pAng.value = ang; U.pFlip.value = P.yon < 0 ? 1 : -1; U.pSq.value = P.sq; U.pHop.value = P.hop; U.pTex.value = P.tx;
 }
 // ---------------- martilar: gokte kanat cirparak ucar, suzulur, egilerek doner ----------------
 const KUS = [];
@@ -538,70 +444,63 @@ function kusKare(dt) {
   }
 }
 // ---------------- kamera ve bizim gemi ----------------
-// Kamera geminin arkasindan, guverte hizasinin biraz ustunden bakar. Egim, fondaki ufuk cizgisini 3B ufukla cakistirir
-// (boylece hedefin su cizgisi resimdeki denize oturur). Hedef ekrani dolduracak kadar yakin; top arabasi altta, altin platformda.
+// Kamera geminin arkasindan bakar. Egim, fondaki ufuk cizgisini 3B ufukla cakistirir (hedefler resimdeki denize oturur).
+// Top arabasi platformlarin ustuyle ayni hizada; (Adem 6 Kas) arabanin alti ve altin platform ekranin altinda kalir:
+// kamera yuksekligi, altin platformun on kenari ekranin hemen altina dusecek kadar secilir.
 const BIZ = { grp: null };
+const GUV = -0.7;   // bizim guverte (top arabasinin tabani): platform ustlerinin (y=0) biraz altinda, namlu platform hizasinda
 export function fit() {
   const { cam, ren, TC } = A, W = innerWidth, H = innerHeight; ren.setSize(W, H, false); cam.aspect = W / H;
   cam.fov = Math.max(42, Math.min(92, THREE.MathUtils.radToDeg(2 * Math.atan(Math.tan(52 * Math.PI / 360) / cam.aspect)))); cam.updateProjectionMatrix();
   const th = Math.tan(cam.fov * Math.PI / 360), thx = th * cam.aspect;
   const Y = bolum(A.LV), fo = FON[Y.fon];
-  // fon resmi ekrana DENIZ golgelendiricisindeki gibi oturur; ufkun ekrandaki yeri -> kameranin egimi (3B ufuk resimdeki ufka denk gelir)
-  const yh = 1 - 2 * resimdenEkran(fo.h), pitch = Math.atan(yh * th);
+  const yh = 1 - 2 * resimdenEkran(fo, fo.h), pitch = Math.atan(yh * th); FR = cerceve(fo);
   const dir = new THREE.Vector3(0, -Math.sin(pitch), -Math.cos(pitch)), V = new THREE.Vector3();
-  const t = T || { hx: 6, hz: 3, top: 7 }, GY = A.GY;
-  const x0 = t.x0 != null ? t.x0 : -t.hx, x1 = t.x1 != null ? t.x1 : t.hx, cz = t.cz || 0;
-  const tops = [[x0, t.top, -t.hz], [x1, t.top, -t.hz], [x0, t.top, t.hz], [x1, t.top, t.hz]];
-  const hull = [[x0, GY, cz + t.hz], [x1, GY, cz + t.hz]], alt = [(x0 + x1) / 2, t.alt || 0, Math.min(t.hz, 2)];
+  const t = T || { x0: -5, x1: 5, zf: 3, top: 6, hz: 3 }, GY = A.GY;
   const nd = (p) => V.set(p[0], p[1], p[2]).project(cam);
-  // (Adem 6 Kas) goz hizasi: bizim guverte hedefin guvertesiyle ayni yukseklikte (gemiler ayni boyda yuzer), kamera
-  // guvertenin ~2.5 birim ustunde, yani hedefe yukaridan degil karsidan bakilir. Kule yuksek oldugu icin ona asagidan bakilir.
-  const FB = Math.min(3.6, Math.max(1.8, -GY - 0.3)), deck = GY + FB, camY = deck + GOZ;
+  let camY = GUV + 2.2, dc = 4.1, sc = 0, rd = 1;
   const place = (dd) => { cam.position.set(0, camY, dd); cam.lookAt(V.set(0, camY, dd).add(dir)); cam.updateMatrixWorld(true); };
-  // top arabasi kameraya gore sabit yerde: ekran genisliginin %30'u, hedefin altinda kalir (onune gecmez)
-  const dc = DC(); let capTop = -0.35;
-  if (TC.gun) {
-    const k = (0.3 * 2 * dc * thx) / TC.w0; TC.holder.scale.setScalar(k); TC.k = k;
-    place(100); capTop = nd([0, deck + TC.h * k * 0.92, 100 - dc]).y;
+  // 1) altin platformun on kenari ekranin altinin disinda kalsin (yalpa payi ile). Ufku yuksek fonlarda kamera asagi baktigi icin
+  // once top arabasi kameraya yaklastirilir (dc), olmazsa goz biraz yukselir (en cok 3.6).
+  find: for (dc = 4.1; dc >= 2.2; dc -= 0.1) {
+    DCV = dc; sc = KM.bizim_gemi ? bizSc(dc * thx) : 0; rd = KM.bizim_gemi ? (KAL.bizim_gemi.plat.r + 0.035) * sc : 1.2;
+    for (let e = 2.2; e <= 3.6; e += 0.05) { camY = GUV + e; place(100); if (nd([0, GUV, 100 - dc - rd]).y < -1.07) break find; }
   }
-  // hedef: yapinin tepesi ust cubugun altinda, govde ekrana sigar, en alt kup top arabasinin ustunde gorunur
-  let d = 24;   // en az bu kadar uzakta: kucuk hedef (sal) burnumuzun dibine gelmesin, deniz ve ufuk arada gorunsun
-  for (; d < 200; d += 0.25) { place(d); const top = Math.max(...tops.map((p) => nd(p).y)), side = Math.max(...tops.concat(hull).map((p) => Math.abs(nd(p).x))), lo = nd(alt).y;
-    if (top < 0.62 && side < 0.96 && lo > capTop + 0.05) break; }
+  // 2) top arabasi: genisligi ekranin %36'si; ust kismi (namlu) ekranda yeterince gorunsun diye gerekirse buyur
+  let capTop = -0.4;
+  if (TC.gun) {
+    let k = (0.36 * 2 * dc * thx) / TC.w0;
+    for (let i = 0; i < 30; i++) { TC.holder.scale.setScalar(k); capTop = nd([0, GUV + TC.h * k * 0.92, 100 - dc]).y; if (capTop > -0.42 || k * TC.w0 > 0.62 * 2 * dc * thx) break; k *= 1.04; }
+    TC.k = k;
+  }
+  // 3) hedef uzakligi: yapinin tepesi ust cubugun altinda, platformlar (kayma payi dahil) ekrana sigar, on platform topun ustunde gorunur
+  const tops = [[t.x0, t.top + 0.3, -t.hz], [t.x1, t.top + 0.3, -t.hz], [t.x0, t.top + 0.3, t.zf], [t.x1, t.top + 0.3, t.zf]];
+  const side = [[t.x0, GY, t.zf], [t.x1, GY, t.zf]], on = [(t.x0 + t.x1) / 2, -0.3, t.zf];
+  let d = 24;
+  for (; d < 220; d += 0.25) { place(d); const top = Math.max(...tops.map((p) => nd(p).y)), sd = Math.max(...tops.concat(side).map((p) => Math.abs(nd(p).x))), lo = nd(on).y;
+    if (top < 0.62 && sd < 0.94 && lo > capTop + 0.04) break; }
   place(d); cam.userData.base = cam.position.clone(); cam.userData.base0 = cam.position.clone(); cam.userData.q0 = cam.quaternion.clone();
   DZ.pitch = pitch; DZ.th = th; DZ.camH = camY - GY; DZ.ok = true;
   if (TC.gun) {
-    TC.holder.position.set(0, deck, d - dc); TC.holder.rotation.y = Math.PI; TC.by = deck;
+    TC.holder.position.set(0, GUV, d - dc); TC.holder.rotation.y = Math.PI; TC.by = GUV;
     // Adem'in gemisinde top arabasi modeldeki altin platforma oturur (kodla cizilen kaide gizli)
     for (const o of TC.holder.children) o.visible = !KM.bizim_gemi || o === TC.gun;
-    TC.pad.scale.y = 0.32; TC.pad.position.y = -0.16; TC.rim2.position.y = -0.2; TC.pad.material.color.set('#e7b43c'); TC.pad.material.metalness = 0.55; TC.pad.material.roughness = 0.3;
-    bizimGemi(deck - (KM.bizim_gemi ? 0 : 0.32 * TC.k), d - dc, dc * thx, TC.k, d);
+    bizimGemi(GUV, d - dc, sc);
   }
 }
-const GOZ = 2.5;
-const DC = () => (KM.bizim_gemi ? 4.1 : 5.2);
+let DCV = 4.1; const DC = () => DCV;
 // Adem'in gemisinin olcegi: altin platform top arabasinin tekerleklerini tasiyacak, kic kasarasi kameranin arkasinda kalacak kadar
 function bizSc(hw) { const K = KAL.bizim_gemi; return Math.max(hw * 1.15 / K.en, (DC() + 1.1) / (K.plat.z - K.kic)); }
-function bizimGemi(dy, zc, hw, k, camZ) {
-  if (BIZ.grp) { BIZ.pv.remove(BIZ.grp); }
+function bizimGemi(dy, zc, sc) {
+  if (BIZ.grp) BIZ.pv.remove(BIZ.grp);
   // bizim gemi kameranin cevresinde donen bir eksene (pv) bagli: kamera ile birlikte yalpalar ve bas vurur, ekranda sabit kalir
   if (!BIZ.pv) { BIZ.pv = new THREE.Group(); A.scene.add(BIZ.pv); }
   BIZ.pv.position.copy(A.cam.position); BIZ.pv.quaternion.identity();
   const grp = new THREE.Group(); BIZ.grp = grp; BIZ.pv.add(grp); grp.position.copy(A.cam.position).negate();
-  const W = hw * 1.02, tip = zc - Math.max(4.5, hw * 1.25), back = camZ + 6;
-  BIZ.w = W; BIZ.tip = tip;
-  if (KM.bizim_gemi) {   // burun -z'ye (hedefe) doner; altin platformun merkezi top arabasinin altinda
-    const K = KAL.bizim_gemi, sc = bizSc(hw); grp.add(yerlestir('bizim_gemi', sc, Math.PI, [0, K.plat.y, K.plat.z], [0, dy, zc]));
-    BIZ.w = K.en * sc; BIZ.tip = zc - (K.bas - K.plat.z) * sc; return; }
-  const half = []; for (let i = 0; i <= 10; i++) { const a = i / 10, z = zc + 0.6 - (zc + 0.6 - tip) * a; half.push([W * Math.sqrt(Math.max(0, 1 - a ** 2.2)), z]); }
-  const side = [[W, back]].concat(half);
-  const pts = side.concat(side.slice(0, -1).reverse().map(([x, z]) => [-x, z]));
-  grp.add(deckMesh(pts, dy, 0.35, mat('tahta')));
-  grp.add(hullMesh(pts, [[dy + 0.95 * k, 1], [dy, 1.03], [A.GY - 1, 0.86]], 0, zc, mat('bizim')));
-  railing(grp, side, dy, 0.95 * k, k, false, true); railing(grp, side.map(([x, z]) => [-x, z]), dy, 0.95 * k, k, false, true);
-  // burunda altin kaplama ve ip kangali (resimdeki gibi)
-  const nose = new THREE.Mesh(new THREE.SphereGeometry(0.32 * k, 14, 10), mat('altin')); nose.position.set(0, dy + 1.1 * k, tip + 0.15); grp.add(nose);
-  for (const sg of [-1, 1]) { const ip = new THREE.Mesh(new THREE.TorusGeometry(0.42 * k, 0.13 * k, 8, 20), mat('ip')); ip.rotation.x = Math.PI / 2; ip.position.set(sg * W * 0.62, dy + 0.13 * k, zc + 0.8); ip.castShadow = true; grp.add(ip); }
+  if (!KM.bizim_gemi) return;
+  // burun -z'ye (hedefe) doner; altin platformun merkezi top arabasinin altinda
+  const K = KAL.bizim_gemi; grp.add(yerlestir('bizim_gemi', sc, Math.PI, [0, K.plat.y, K.plat.z], [0, dy, zc]));
+  BIZ.w = K.en * sc; BIZ.tip = zc - (K.bas - K.plat.z) * sc;
 }
 
 // ---------------- arayuz: altin, kazanma karti, sandik, harita ----------------
@@ -645,7 +544,7 @@ function harita(from, to, salt) {
   const b0 = Math.floor((from - 1) / BOLGE) * BOLGE, ix = (L) => Math.min(BOLGE - 1, Math.max(0, L - 1 - b0));
   let d = 'M' + DURAK[0][0] + ' ' + DURAK[0][1]; for (let i = 1; i < DURAK.length; i++) { const [x0, y0] = DURAK[i - 1], [x1, y1] = DURAK[i]; d += ' Q' + ((x0 + x1) / 2 + (i % 2 ? 24 : -24)) + ' ' + ((y0 + y1) / 2) + ' ' + x1 + ' ' + y1; }
   const yil = (A.SV.yil || {});
-  let nodes = ''; DURAK.forEach(([x, y], i) => { const L = b0 + i + 1, done = !!yil[L] && L !== to, cur = L === (salt ? from : to), boss = i === BOLGE - 1, pilot = i >= BOLUMLER.length;
+  let nodes = ''; DURAK.forEach(([x, y], i) => { const L = b0 + i + 1, done = !!yil[L] && L !== to, cur = L === (salt ? from : to), boss = i === BOLGE - 1, pilot = L > BOLUMLER.length;
     nodes += '<g class="nd' + (done ? ' ok' : '') + (cur ? ' cur' : '') + (boss ? ' boss' : '') + (pilot && !done ? ' kilit' : '') + '"><circle cx="' + x + '" cy="' + y + '" r="' + (boss ? 17 : 13) + '"/>' +
       '<text x="' + x + '" y="' + (y + 5) + '">' + (boss ? '☠' : L) + '</text>' + (yil[L] ? '<text class="ys" x="' + x + '" y="' + (y + 27) + '">' + '★'.repeat(yil[L]) + '</text>' : '') + '</g>'; });
   const html = '<div class="rib">Deniz Haritası</div><p class="bl">Bölge ' + (b0 / BOLGE + 1) + ' · Turkuaz Sular</p>' +

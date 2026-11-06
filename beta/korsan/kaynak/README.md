@@ -10,3 +10,9 @@
 - 5 bolum: 1 Sallanan Sal (acik deniz), 2 Korsan Gemisi (acik deniz), 3 Gozcu Kulesi (ada), 4 Iki Katli Gemi (gun batimi), 5 Patron Gemisi (koy).
 - Tripo modelleri su adlarla beta/yapi/model/kaynak/ klasorune: bizim_gemi.glb, dusman_gemi.glb, kule_ada.glb (istege bagli: sal.glb).
   Model gelene kadar kodla cizilmis gecici govdeler gorunur; gelince korsan.js icindeki KAL tablosu (guverte/su/kabin oranlari) modele gore ayarlanir.
+
+## v6.21 (6 Kas) - platform duzeni
+- Kupler sadece Adem'in fiçili ahsap platformlarinda: model/plat_kare, plat_alti, plat_yuvarlak, plat_uzun (.glb). Platform ustleri top hizasinda (y=0).
+- 16 bolum, her 2 bolumde manzara degisir (8 fon). Hareketler: sabit, kay, salla, don, dalga; yan yana, onde/arkada duzenler.
+- Korsan gemisi, gozcu kulesi adasi, eski sal: denizde sus. Yeni fonlar: fon_gunes, fon_martili, fon_gundogumu, fon_buzul.
+- fon_*_bos.webp: cizili kuslar silinmis; fon_*_su.png: su maskesi (dalga sadece suya); penguen.png: buzul resminden kesilen penguen.

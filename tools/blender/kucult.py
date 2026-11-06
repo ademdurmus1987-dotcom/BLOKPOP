@@ -23,7 +23,7 @@ for path in sorted(glob.glob(os.path.join(SRC, '*.glb'))):
         bm.to_mesh(o.data); bm.free()
         tri0 += sum(len(p.vertices) - 2 for p in o.data.polygons)
     # korsan modunun buyuk modelleri (gemiler, kule adasi, sal) ekrani doldurdugu icin tam ayrintida kalir; sadece doku JPEG'e cevrilir
-    hedef = 20000 if name in ('bizim_gemi', 'dusman_gemi', 'kule_ada', 'sal') else TARGET
+    hedef = 20000 if name in ('bizim_gemi', 'dusman_gemi', 'kule_ada', 'sal') or name.startswith('plat_') else TARGET
     ratio = min(1.0, hedef / max(1, tri0))
     for o in meshes:
         if ratio < 1.0:
