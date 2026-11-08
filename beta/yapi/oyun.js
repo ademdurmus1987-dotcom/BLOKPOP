@@ -1488,7 +1488,8 @@ let MASTER = null, NOISE = null, lastThud = 0;
 function out() {
   if (MASTER) return MASTER;
   const cp = AC.createDynamicsCompressor(); cp.threshold.value = -14; cp.ratio.value = 6; cp.attack.value = 0.003; cp.release.value = 0.15;
-  const gv = AC.createGain(); gv.gain.value = K ? 0.8 : 0.6; const lp = AC.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = K ? 14000 : 2400;   // korsan: kayitlar tam frekansla (kesik ve boguk degil) lp.Q.value = 0.5; gv.connect(lp); lp.connect(cp); cp.connect(AC.destination);   // v6.5: (Adem) tiz, tirmalayan kisim kesildi
+  const gv = AC.createGain(); gv.gain.value = K ? 0.8 : 0.6; const lp = AC.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = K ? 14000 : 2400; lp.Q.value = 0.5; gv.connect(lp); lp.connect(cp); cp.connect(AC.destination);   // korsan: kayitlar tam frekansla (kesik ve boguk degil); v6.5: (Adem) Yapi'da tiz, tirmalayan kisim kesildi
+  // v6.25: (Adem 8 Kas: ses yine yok) v6.22'de bu satirin ortasina yazilan aciklama baglantilari yoruma cevirmisti: ana ses hoparlore hic baglanmiyordu.
   NOISE = AC.createBuffer(1, AC.sampleRate * 1, AC.sampleRate); const d = NOISE.getChannelData(0); for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
   return (MASTER = gv);
 }
