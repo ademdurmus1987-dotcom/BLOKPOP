@@ -24,6 +24,9 @@ const FON = {
   koy: { h: 0.537, gunes: 0xfff4dc, gi: 2.6, rim: 0xd8f0ff, pir: [0.25, 0.4, -1], pr: 0xfffbe8, pg: 1.1, dekor: [] },
   buzul: { h: 0.345, gunes: 0xf4f8ff, gi: 2.5, rim: 0xd8ecff, pir: [0.1, 0.5, -1], pr: 0xffffff, pg: 0.9, dekor: [], penguen: { u: 0.76, v: 0.4797, u0: 0.68, u1: 0.86 } },   // penguen hedeflerin sagindaki buzda
   acikdeniz: { h: 0.5, gunes: 0xfff0d0, gi: 2.6, rim: 0xcfe0ff, pir: [0.02, 0.3, -1], pr: 0xfffbe8, pg: 1.3, dekor: [{ n: 'gemi', u: [0.68, 0.72] }] },
+  // (Adem 8 Kas) video fon denemesi: Adem'in 10 sn'lik videosu, bastaki/sondaki 1 sn karistirilarak kesintisiz donguye cevrildi (9 sn).
+  // Simdilik sadece ?fon=kumsal ile acilir; bolumlerin fonu degismedi. Videoda su kendisi kipirdadigi icin dalga efekti ve 3D martilar kapali.
+  kumsal: { h: 0.48, gunes: 0xfff4dc, gi: 2.6, rim: 0xd8f0ff, pir: [0.02, 0.6, -1], pr: 0xffffff, pg: 0, dekor: [], vid: 'fon_kumsal', sis: 0xbfe6f5 },
   gunbatimi: { h: 0.5, gunes: 0xffc48a, gi: 2.3, rim: 0xff9ad0, pir: [0.0, 0.1, -1], pr: 0xffd890, pg: 1.6, dekor: [{ n: 'gemi', u: [0.78, 0.86] }] }
 };
 const IMG_AR = 1440 / 2560;
@@ -82,6 +85,7 @@ export function yukle() {
   const doku = (url, f) => new Promise((res) => new THREE.TextureLoader().load(url, (tx) => { tx.colorSpace = THREE.NoColorSpace; f(tx); res(); }, undefined, () => res()));
   const isler = [];
   for (const n of Object.keys(FON)) {
+    if (FON[n].vid) continue;   // video fonlar ilk kullanildiginda yuklenir
     isler.push(doku('../korsan/kaynak/fon_' + n + '_bos.webp?v=2', (tx) => { tx.anisotropy = 4; FON[n].tx = tx; FON[n].sis = ufukRengi(tx.image, FON[n].h); }));
     isler.push(doku('../korsan/kaynak/fon_' + n + '_su.png?v=1', (tx) => { FON[n].msk = tx; }));   // su maskesi: dalga sadece suya uygulanir (buz, kum, kaya kipirdamaz)
   }
@@ -214,18 +218,39 @@ function suHalkasi(w, d) {
 
 
 // ---------------- sahne: fon, isik, seyir ----------------
+// test anahtari: ?fon=kumsal her bolumu o fonla acar
+function fonAdi(Y) { const q = A.Q.get('fon'); return q && FON[q] ? q : Y.fon; }
+// video fon: <video> sessiz, satir ici, dongulu oynar; WebGL dokusu olarak denizin yerine cizilir (gemi yalpalayinca ufukla birlikte egilir)
+let VID = null, SIYAH = null;
+function videoFon(fo) {
+  if (VID && VID.fo !== fo) VID.el.pause();
+  if (!fo.vid) return;
+  if (!fo.tx) {
+    const v = document.createElement('video'); v.muted = true; v.defaultMuted = true; v.loop = true; v.playsInline = true; v.autoplay = true; v.preload = 'auto'; v.crossOrigin = 'anonymous';
+    v.setAttribute('muted', ''); v.setAttribute('playsinline', ''); v.setAttribute('webkit-playsinline', '');
+    for (const [e, t] of [['webm', 'video/webm; codecs=vp9'], ['mp4', 'video/mp4']]) { const so = document.createElement('source'); so.src = '../korsan/kaynak/' + fo.vid + '.' + e + '?v=1'; so.type = t; v.appendChild(so); }
+    v.style.cssText = 'position:fixed;left:-9px;top:0;width:2px;height:2px;opacity:0;pointer-events:none'; document.body.appendChild(v);
+    fo.tx = new THREE.VideoTexture(v); fo.tx.colorSpace = THREE.NoColorSpace; fo.tx.minFilter = fo.tx.magFilter = THREE.LinearFilter; fo.tx.generateMipmaps = false;
+    if (!SIYAH) { SIYAH = new THREE.DataTexture(new Uint8Array([0, 0, 0, 255]), 1, 1); SIYAH.needsUpdate = true; }
+    fo.msk = SIYAH; fo.el = v;
+    const oyna = () => { const r = v.play(); if (r && r.catch) r.catch(() => {}); };
+    oyna(); addEventListener('pointerup', oyna, { passive: true });   // dusuk guc modunda otomatik oynatma engellenirse ilk dokunusta baslar
+  }
+  VID = { fo, el: fo.el }; const r = fo.el.play(); if (r && r.catch) r.catch(() => {});
+}
 export function sahne() {
-  const Y = bolum(A.LV), fo = FON[Y.fon], bg = A.$('bg');
+  const Y = bolum(A.LV), fk = fonAdi(Y), fo = FON[fk], bg = A.$('bg');
+  videoFon(fo);
   bg.style.backgroundImage = 'none'; const cv = A.$('canli'); if (cv) cv.style.display = 'none';
   A.sun.color.set(fo.gunes); A.sun.intensity = fo.gi; A.rim.color.set(fo.rim);
   denizKur(fo);
   // derinlik: uzaktaki her sey ufuk rengine dogru hafifce soluklasir (bizim gemi yakinda, etkilenmez)
-  A.scene.fog = new THREE.Fog(fo.sis || new THREE.Color('#bfe0f0'), 38, 300);
+  A.scene.fog = new THREE.Fog(fo.sis != null && !fo.sis.isColor ? new THREE.Color(fo.sis) : fo.sis || new THREE.Color('#bfe0f0'), 38, 300);
   suYuzeyi().position.y = A.GY;
   const g = A.g; g.state = 'sefer'; g.sefer = 0; A.$('hint').style.opacity = 0;
   g.shots = g.max = g.max + 2 * Y.p.length;   // hedefler uzakta ve hareketli: platform basina 2 top fazla
   if (A.Q.has('demir') || (A.TEST && !A.Q.has('sefer'))) g.sefer = SEFER.sure;   // test: seyir atlanir
-  fit(); poz(); kuslar(Y.fon); dekorKur(fo); penguenKur(fo);
+  fit(); poz(); kuslar(fo.vid ? null : fk); dekorKur(fo); penguenKur(fo);
   A.hud(true); altinHud();
 }
 // kup durdugu platformun ustunden asagi inince dusmus sayilir (platformun dalgayla inip kalkmasi da hesaba katilir)
@@ -449,7 +474,7 @@ function kusYap(sc) {
   b.scale.setScalar(sc); b.userData.w = w; A.scene.add(b); return b;
 }
 function kuslar(fon) {
-  for (const k of KUS) A.scene.remove(k.m); KUS.length = 0;
+  for (const k of KUS) A.scene.remove(k.m); KUS.length = 0; if (!fon) return;
   const n = fon === 'gunbatimi' ? 4 : 6;
   for (let i = 0; i < n; i++) KUS.push(kusYeni(i, true));
 }
@@ -484,7 +509,7 @@ export function fit() {
   const { cam, ren, TC } = A, W = innerWidth, H = innerHeight; ren.setSize(W, H, false); cam.aspect = W / H;
   cam.fov = Math.max(42, Math.min(92, THREE.MathUtils.radToDeg(2 * Math.atan(Math.tan(52 * Math.PI / 360) / cam.aspect)))); cam.updateProjectionMatrix();
   const th = Math.tan(cam.fov * Math.PI / 360), thx = th * cam.aspect;
-  const Y = bolum(A.LV), fo = FON[Y.fon];
+  const Y = bolum(A.LV), fo = FON[fonAdi(Y)];
   const yh = 1 - 2 * resimdenEkran(fo, fo.h), pitch = Math.atan(yh * th); FR = cerceve(fo);
   const dir = new THREE.Vector3(0, -Math.sin(pitch), -Math.cos(pitch)), V = new THREE.Vector3();
   const t = T || { x0: -5, x1: 5, zf: 3, top: 6, hz: 3 }, GY = A.GY;

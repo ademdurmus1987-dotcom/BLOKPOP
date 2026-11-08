@@ -12,7 +12,7 @@ const $ = (id) => document.getElementById(id);
 const Q = new URLSearchParams(location.search), TEST = Q.has('test');
 // v6.19: (Adem) Korsan modu pilotu: beta/korsan/index.html ayni motoru window.KORSAN ile acar; korsan.js sahneyi, hedefleri ve kartlari kurar.
 // KORSAN yoksa (Yapi modu) K null'dur ve asagidaki 'if (K)' satirlarinin hicbiri calismaz.
-const K = window.KORSAN ? await import('../korsan/korsan.js?v=6') : null;
+const K = window.KORSAN ? await import('../korsan/korsan.js?v=7') : null;
 const SKEY = K ? 'blokpop_korsan_v1' : 'blokpop_yapi_v3';
 let SV = { L: 1, max: 1 };
 try { const d = JSON.parse(localStorage.getItem(SKEY) || 'null'); if (d) SV = Object.assign(SV, d); } catch (e) {}
@@ -1536,14 +1536,31 @@ function chime(notes, gap, vol, chord) {
     v.gain.setValueAtTime(0.0001, t); v.gain.linearRampToValueAtTime(vol * 0.35, t + 0.08); v.gain.exponentialRampToValueAtTime(0.0001, t + 2); o.connect(v); v.connect(o0); o.start(t); o.stop(t + 2.1); });
 }
 let SPLB = null;
+function splb() { if (SPLB) return; const n = Math.floor(AC.sampleRate * 0.7); SPLB = AC.createBuffer(1, n, AC.sampleRate); const d = SPLB.getChannelData(0); let l = 0; for (let i = 0; i < n; i++) { const r = Math.random() * 2 - 1; l = l * 0.6 + r * 0.4; d[i] = l * Math.pow(1 - i / n, 2.4) * (i < 300 ? i / 300 : 1); } }
 function splashSnd(v) {   // v6.17: su sicrama sesi (kayit yok; gurultu kopuk + alcak plop)
   const o = out(), now = AC.currentTime;
-  if (!SPLB) { const n = Math.floor(AC.sampleRate * 0.7); SPLB = AC.createBuffer(1, n, AC.sampleRate); const d = SPLB.getChannelData(0); let l = 0; for (let i = 0; i < n; i++) { const r = Math.random() * 2 - 1; l = l * 0.6 + r * 0.4; d[i] = l * Math.pow(1 - i / n, 2.4) * (i < 300 ? i / 300 : 1); } }
+  splb();
   const src = AC.createBufferSource(), f = AC.createBiquadFilter(), g0 = AC.createGain(); src.buffer = SPLB; src.playbackRate.value = 0.85 + Math.random() * 0.3;
   f.type = 'lowpass'; f.frequency.setValueAtTime(3200, now); f.frequency.exponentialRampToValueAtTime(500, now + 0.6); g0.gain.value = v;
   src.connect(f); f.connect(g0); g0.connect(o); src.start(now);
   const os = AC.createOscillator(), og = AC.createGain(); os.frequency.setValueAtTime(170, now); os.frequency.exponentialRampToValueAtTime(55, now + 0.16); og.gain.setValueAtTime(v * 0.7, now); og.gain.exponentialRampToValueAtTime(0.001, now + 0.2);
   os.connect(og); og.connect(o); os.start(now); os.stop(now + 0.22);
+}
+// v6.24: (Adem 8 Kas: patla ses efektleri yok) korsanda kup dusup sayilinca hic ses yoktu ('pop' kaydi korsanda yok).
+// Simdi tok, tatli bir patlama: kisa tahta catirtisi + yukari kayan 'plop' + parlak tik. Arka arkaya dusenlerde (kombo) perde yukselir.
+function popSnd(n) {
+  const o = out(), t = AC.currentTime, up = Math.pow(1.06, Math.min(n - 1, 12));
+  play('tahta', 0.28, 1.15 + Math.random() * 0.15);
+  const os = AC.createOscillator(), og = AC.createGain(); os.type = 'sine';
+  os.frequency.setValueAtTime(330 * up, t); os.frequency.exponentialRampToValueAtTime(880 * up, t + 0.05); os.frequency.exponentialRampToValueAtTime(620 * up, t + 0.14);
+  og.gain.setValueAtTime(0.0001, t); og.gain.exponentialRampToValueAtTime(0.42, t + 0.006); og.gain.exponentialRampToValueAtTime(0.0001, t + 0.16);
+  os.connect(og); og.connect(o); os.start(t); os.stop(t + 0.18);
+  splb();
+  const ns = AC.createBufferSource(), hp = AC.createBiquadFilter(), ng = AC.createGain(); ns.buffer = SPLB; hp.type = 'highpass'; hp.frequency.value = 2600;
+  ng.gain.setValueAtTime(0.35, t); ng.gain.exponentialRampToValueAtTime(0.0001, t + 0.035); ns.connect(hp); hp.connect(ng); ng.connect(o); ns.start(t, 0.02, 0.05);
+  const tk = AC.createOscillator(), tg = AC.createGain(); tk.type = 'triangle'; tk.frequency.value = 1760 * up;
+  tg.gain.setValueAtTime(0.0001, t + 0.03); tg.gain.exponentialRampToValueAtTime(0.12, t + 0.036); tg.gain.exponentialRampToValueAtTime(0.0001, t + 0.12);
+  tk.connect(tg); tg.connect(o); tk.start(t + 0.03); tk.stop(t + 0.13);
 }
 // korsan modunun ses eslemesi: her olaya dogru kayit, malzemeye gore kirilma, gercek su sicramasi ve kazanma/kaybetme muzigi
 function sfxK(k, n) {
@@ -1560,6 +1577,7 @@ function sfxK(k, n) {
   else if (k === 'win') play('kazan', 0.7, 1);
   else if (k === 'lose') play('kaybet', 0.6, 1);
   else if (k === 'tik') play('tik', 0.5, 1);
+  else if (k === 'pop') popSnd(n || 1);
   else if (k in SFILES) play(k, n || 0.6, 1);   // zincir, para, sandik
 }
 // surekli calan ortam sesleri (dalga, yelken): ses seviyesi dongu() ile ayarlanir
