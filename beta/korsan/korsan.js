@@ -16,7 +16,7 @@ export function hazir() { return !!(A && A.TC.gun); }
 // h: ufuk cizgisinin resimdeki yeri (ustten oran). pir: denizdeki gunes piriltisinin yonu/rengi/gucu. dekor: denizdeki sus modelleri.
 const FON = {
   gunes: { h: 0.414, gunes: 0xfff4dc, gi: 2.6, rim: 0xd8f0ff, pir: [0.02, 0.6, -1], pr: 0xffffff, pg: 1.3, dekor: ['gemi'] },
-  martili: { h: 0.414, gunes: 0xfff4dc, gi: 2.6, rim: 0xd8f0ff, pir: [0.0, 0.25, -1], pr: 0xfffbe8, pg: 1.3, dekor: ['gemi', 'sal'] },
+  martili: { h: 0.414, gunes: 0xfff4dc, gi: 2.6, rim: 0xd8f0ff, pir: [0.0, 0.25, -1], pr: 0xfffbe8, pg: 1.3, dekor: ['gemi'] },
   ada: { h: 0.522, gunes: 0xfff4dc, gi: 2.6, rim: 0xd8f0ff, pir: [0.0, 0.32, -1], pr: 0xfffbe8, pg: 1.2, dekor: ['gemi'] },
   gundogumu: { h: 0.3775, gunes: 0xffd9a0, gi: 2.4, rim: 0xffc8e0, pir: [0.0, 0.12, -1], pr: 0xffe0a0, pg: 1.6, dekor: ['gemi'] },
   koy: { h: 0.537, gunes: 0xfff4dc, gi: 2.6, rim: 0xd8f0ff, pir: [0.25, 0.4, -1], pr: 0xfffbe8, pg: 1.1, dekor: ['kule'] },
@@ -41,7 +41,7 @@ export const BOLGE = 10;   // haritada her bolge 10 durak, 10. durak patron
 const BOLUMLER = [
   { ad: 'İlk Hedef', fon: 'gunes', p: [{ m: 'kare', har: 'sabit', kup: yapi(4, 2, 3, AH) }] },
   { ad: 'Kayan Sal', fon: 'gunes', p: [{ m: 'uzun', har: 'kay', a: 3.2, w: 0.55, kup: yapi(6, 1, 3, KR) }] },
-  { ad: 'İkiz Sallar', fon: 'martili', p: [{ m: 'yuvarlak', x: -5.3, har: 'sabit', kup: yapi(3, 2, 3, AH) }, { m: 'yuvarlak', x: 5.3, har: 'sabit', kup: yapi(3, 2, 3, KR) }] },
+  { ad: 'İkiz Sallar', fon: 'martili', p: [{ m: 'sal', x: -5.3, har: 'salla', kup: yapi(3, 2, 3, AH) }, { m: 'yuvarlak', x: 5.3, har: 'sabit', kup: yapi(3, 2, 3, KR) }] },
   { ad: 'Sallanan Öncü', fon: 'martili', p: [{ m: 'alti', x: -3.5, z: 5, har: 'salla', kup: yapi(3, 2, 2, KR) }, { m: 'kare', z: -8, har: 'sabit', buyuk: 1.25, kup: yapi(5, 2, 5, AH, { fici: true }) }] },
   { ad: 'Dönen Altıgen', fon: 'ada', p: [{ m: 'alti', har: 'don', w: 0.45, kup: yapi(3, 2, 4, TS) }] },
   { ad: 'Karşı Akıntı', fon: 'ada', p: [{ m: 'uzun', z: 4, har: 'kay', a: 3, w: 0.6, kup: yapi(5, 1, 2, KR) }, { m: 'uzun', z: -6, har: 'kay', a: 3, w: 0.6, ph: Math.PI, kup: yapi(5, 1, 4, AH) }] },
@@ -49,9 +49,9 @@ const BOLUMLER = [
   { ad: 'Dalga Sırtı', fon: 'gundogumu', p: [{ m: 'kare', har: 'dalga', a: 0.55, kup: yapi(4, 2, 5, KR, { fici: true }) }] },
   { ad: 'Kaçak Sal', fon: 'koy', p: [{ m: 'uzun', z: 4, har: 'kay', a: 4, w: 0.75, kup: yapi(5, 1, 2, KR) }, { m: 'yuvarlak', z: -6, har: 'sabit', kup: yapi(3, 2, 5, TS) }] },
   { ad: 'Kaptanın Kalesi', fon: 'koy', patron: true, p: [{ m: 'kare', z: -8, har: 'sabit', buyuk: 1.3, kup: yapi(5, 2, 6, KZ, { fici: true }) }, { m: 'alti', x: -6.5, z: 3, har: 'don', w: 0.5, kup: yapi(3, 2, 2, AH) }, { m: 'alti', x: 6.5, z: 3, har: 'don', w: -0.5, kup: yapi(3, 2, 2, AH) }] },
-  { ad: 'Buz Salı', fon: 'buzul', p: [{ m: 'yuvarlak', har: 'dalga', a: 0.4, kup: yapi(3, 2, 4, BZ) }] },
+  { ad: 'Buz Salı', fon: 'buzul', p: [{ m: 'sal', har: 'dalga', a: 0.4, kup: yapi(3, 2, 4, BZ) }] },
   { ad: 'Buz Kardeşler', fon: 'buzul', p: [{ m: 'alti', x: -5.3, har: 'salla', kup: yapi(3, 2, 3, BZ) }, { m: 'alti', x: 5.3, har: 'salla', ph: 2.1, kup: yapi(3, 2, 3, BZ) }] },
-  { ad: 'Kayan Kule', fon: 'acikdeniz', p: [{ m: 'kare', har: 'kay', a: 2.6, w: 0.5, kup: yapi(3, 2, 7, TS) }] },
+  { ad: 'Kayan Kule', fon: 'acikdeniz', p: [{ m: 'sal', har: 'kay', a: 2.6, w: 0.5, kup: yapi(3, 2, 7, TS) }] },
   { ad: 'Kademeli', fon: 'acikdeniz', p: [{ m: 'uzun', z: 4.5, har: 'sabit', kup: yapi(5, 1, 2, KR) }, { m: 'kare', z: -6, har: 'kay', a: 2.6, w: 0.5, kup: yapi(4, 2, 4, AH, { fici: true }) }] },
   { ad: 'İkiz Fırıldak', fon: 'gunbatimi', p: [{ m: 'yuvarlak', x: -5.3, har: 'don', w: 0.55, kup: yapi(3, 2, 3, KZ) }, { m: 'yuvarlak', x: 5.3, har: 'don', w: -0.55, kup: yapi(3, 2, 3, KZ) }] },
   { ad: 'Son Liman', fon: 'gunbatimi', p: [{ m: 'uzun', z: 5, har: 'kay', a: 3.5, w: 0.6, kup: yapi(5, 1, 2, KZ) }, { m: 'kare', z: -7, har: 'salla', buyuk: 1.25, kup: yapi(5, 2, 5, KR, { fici: true }) }] }
@@ -67,7 +67,8 @@ const PLAT = {
   kare: { ust: 0.365, yar: 0.43, sekil: 'kare' },
   alti: { ust: 0.325, yar: 0.37, sekil: 'yuvarlak' },
   yuvarlak: { ust: 0.359, yar: 0.42, sekil: 'yuvarlak' },
-  uzun: { ust: 0.227, yx: 0.455, yz: 0.165, sekil: 'uzun' }
+  uzun: { ust: 0.227, yx: 0.455, yz: 0.165, sekil: 'uzun' },
+  sal: { ust: 0.48, yx: 0.28, yz: 0.29, cx: 0.12, sekil: 'uzun', model: 'sal', don: 0 }   // ilk fiçili sal (model/sal.glb): artik denizde bos yuzmuyor, ustunde kupler var
 };
 // sus modelleri ve bizim gemi: su = su cizgisi (tahmin), plat = bizim gemideki altin platform
 const KAL = {
@@ -138,7 +139,7 @@ export function kur(Y, list) {
     else { hx = hz = M.yar * sc; body.addShape(new CANNON.Cylinder(hx, hx, h, 24), new CANNON.Vec3(0, -h / 2, 0)); }
     const grp = new THREE.Group(); A.scene.add(grp);
     // model: tablanin ust ortasi platformun merkezine (uzun platformun boyu x eksenine doner)
-    if (KM['p_' + d.m]) grp.add(yerlestir('p_' + d.m, sc, M.sekil === 'uzun' ? Math.PI / 2 : 0, [0, M.ust, 0], [0, 0, 0]));
+    const mn = M.model || 'p_' + d.m; if (KM[mn]) grp.add(yerlestir(mn, sc, M.don != null ? M.don : M.sekil === 'uzun' ? Math.PI / 2 : 0, [M.cx || 0, M.ust, 0], [0, 0, 0]));
     const x = d.x || 0, z = d.z || 0;
     const kopuk = suHalkasi(hx * 2.5, hz * 2.5); A.scene.add(kopuk);
     return { d, body, grp, kopuk, x, z, hx, hz, top: f.top, mx, mz, ci: (f.i0 + f.i1) / 2, ck: (f.k0 + f.k1) / 2, kuyu: M.sekil !== 'kare' && M.sekil !== 'uzun',
@@ -216,6 +217,16 @@ export function sahne() {
   A.hud(true); altinHud();
 }
 // kup durdugu platformun ustunden asagi inince dusmus sayilir (platformun dalgayla inip kalkmasi da hesaba katilir)
+// (Adem 6 Kas: bolum bitmiyordu) kup kendi platformunun ustunden ayrilinca hemen dusmus sayilir: platformun yerel cercevesinde
+// tablanin altina indiyse ya da merkezi tablanin disina ciktiysa. Baska platforma ya da fiçilara takilsa bile sayilir.
+let VL, QL;
+export function dustu(c) {
+  const P = T && T.P[c.pi || 0]; if (!P) return c.body.position.y < -0.45;
+  VL = VL || new THREE.Vector3(); QL = QL || new THREE.Quaternion();
+  const b = c.body.position; VL.set(b.x - P.p.x, b.y - P.p.y, b.z - P.p.z).applyQuaternion(QL.copy(P.q).invert());
+  if (VL.y < -0.5) return true;
+  const m = 0.12; return P.kuyu ? VL.x * VL.x + VL.z * VL.z > (P.hx + m) ** 2 : Math.abs(VL.x) > P.hx + m || Math.abs(VL.z) > P.hz + m;
+}
 export function goneY(c) { const P = T && T.P[c.pi || 0]; return P ? P.p.y - 0.7 : -0.45; }
 export function zone() { return 'su'; }
 export function floorAt(x, z) {
@@ -226,7 +237,7 @@ export function floorAt(x, z) {
 let QA, EU, VA;
 function poz() {
   const g = A.g; if (!T || !g) return;
-  const s = g.state === 'sefer' ? Math.min(1, g.sefer / SEFER.sure) : 1, e = 1 - (1 - s) ** 3, uz = SEFER.yol * (1 - e);
+  // (Adem 6 Kas) hedefler bize dogru gelmez, yerinde durur; seyirde ilerleyen bizim gemi (kamera, kare() icinde)
   for (const P of T.P) {
     const d = P.d, t = TT, ph = P.ph;
     let x = P.x, y = 0.05 * Math.sin(t * 1.3 + ph), rx = 0.008 * Math.sin(t * 1.1 + ph), rz = 0.008 * Math.sin(t * 0.9 + ph + 1), ry = 0;
@@ -235,7 +246,7 @@ function poz() {
     if (d.har === 'dalga') { y = (d.a || 0.45) * Math.sin(t * 1.25 + ph); rx = 0.02 * Math.sin(t * 1.25 + ph + 1.2); }
     if (d.har === 'don') ry = t * d.w;
     if (T.bat != null) { const b = T.bat; y -= Math.min(b / 3, 1) ** 1.6 * 6; rx += Math.min(b / 2.5, 1) * 0.3; rz -= Math.min(b / 3, 1) * 0.2; }
-    VA.set(x, y, P.z - uz); EU.set(rx, ry, rz, 'YXZ'); QA.setFromEuler(EU);
+    VA.set(x, y, P.z); EU.set(rx, ry, rz, 'YXZ'); QA.setFromEuler(EU);
     tasi(P, VA, QA);
     P.kopuk.position.set(P.p.x, A.GY + 0.02, P.p.z); P.kopuk.material.opacity = T.bat != null ? Math.max(0, 1 - T.bat) : 1;
   }
@@ -270,7 +281,9 @@ export function kare(dt) {
     const sef = g && g.state === 'sefer' ? 1 - Math.min(1, g.sefer / SEFER.sure) : 0;
     const dy = 0.07 * Math.sin(TT * 1.25) + sef * 0.12 * Math.sin(TT * 3.1);
     const roll = 0.011 * Math.sin(TT * 0.83) + sef * 0.022 * Math.sin(TT * 2.2), pit = 0.006 * Math.sin(TT * 1.25 + 1.1) + sef * 0.014 * Math.sin(TT * 3.1 + 0.9);
-    cam.userData.base.copy(cam.userData.base0).setY(cam.userData.base0.y + dy);
+    // seyir: gemi hedefe dogru ilerler (yavaslayarak durur); kamera, gemi ve top arabasi birlikte
+    const s = g && g.state === 'sefer' ? Math.min(1, g.sefer / SEFER.sure) : 1, uz = SEFER.yol * (1 - s) ** 3; BIZ.uz = uz;
+    cam.userData.base.copy(cam.userData.base0).setY(cam.userData.base0.y + dy); cam.userData.base.z += uz; A.TC.holder.position.z = A.TC.hz0 + uz;
     QS.setFromEuler(EU2.set(pit, 0, roll)); BIZ.pv.position.copy(cam.userData.base); BIZ.pv.quaternion.copy(QS);
     cam.quaternion.copy(QS).multiply(cam.userData.q0);
     A.TC.holder.position.y = A.TC.by + dy;
@@ -284,17 +297,20 @@ export function kare(dt) {
     penguenKare(dt, u);
   }
   kusKare(dt); dekorKare(dt);
+  // ortam sesleri: dalgalar hep calar, seyirde ruzgarda yelken/bayrak; ses ilk dokunusta acilir, bu yuzden duzenli yoklanir
+  if (A.AC && (ORT -= dt) <= 0) { ORT = 0.25; const sef = g && g.state === 'sefer' ? 1 - Math.min(1, g.sefer / SEFER.sure) : 0; A.dongu('dalga', 0.3, 0.8); A.dongu('yelken', 0.25 * sef, 0.3); }
 }
+let ORT = 0;
 function demirAt() {
   const g = A.g; g.state = 'play'; g.sefer = SEFER.sure;
   A.$('hint').style.opacity = 1;
   const at = [innerWidth / 2, innerHeight * 0.62]; A.floatText('⚓ Demir atıldı!', at[0], at[1], 'gold');
-  if (A.AC) { A.sfx('metal'); setTimeout(() => A.sfx('metal'), 140); setTimeout(() => A.splashSnd(0.35), 380); }
+  if (A.AC) { A.sfx('zincir', 0.7); A.dongu('yelken', 0, 1.2); }   // demir zinciri bosalir, demir suya duser; yelken sesi kesilir
   A.shake = Math.max(A.shake, 0.08);
 }
 function batmaBasla() {
   for (const P of T.P) A.splash(P.p.x, P.p.z + P.hz, 1.4, true);
-  if (A.AC) { A.splashSnd(0.6); setTimeout(() => A.sfx('thud', 3), 300); }
+  if (A.AC) { A.sfx('su', 1); setTimeout(() => A.sfx('su', 1), 350); setTimeout(() => A.play('kabarcik', 0.35, 0.8), 700); }
 }
 // seyirde bizim geminin iki yaninda akan kopuk
 let DS = 0;
@@ -302,7 +318,7 @@ function dumenSuyu(dt, k) {
   DS += dt * 26 * k; if (!BIZ.w) return;
   while (DS > 1) { DS--;
     const sg = Math.random() < 0.5 ? -1 : 1, m = A.spr('#ffffff', false, 0.85), z0 = BIZ.tip + Math.random() * 2;
-    m.position.set(sg * (BIZ.w * (0.35 + Math.random() * 0.4)), A.GY + 0.1, z0); const s0 = 0.5 + Math.random() * 0.8, vx = sg * (1.5 + Math.random() * 2);
+    m.position.set(sg * (BIZ.w * (0.35 + Math.random() * 0.4)), A.GY + 0.1, z0 + (BIZ.uz || 0)); const s0 = 0.5 + Math.random() * 0.8, vx = sg * (1.5 + Math.random() * 2);
     A.fx(m, 1.1, (o, kk, dd) => { o.position.z += 26 * dd; o.position.x += vx * dd; o.scale.set(s0 * (1 + kk * 2), s0 * 0.55 * (1 + kk), 1); o.material.opacity = 0.85 * (1 - kk); });
   }
 }
@@ -482,7 +498,7 @@ export function fit() {
   place(d); cam.userData.base = cam.position.clone(); cam.userData.base0 = cam.position.clone(); cam.userData.q0 = cam.quaternion.clone();
   DZ.pitch = pitch; DZ.th = th; DZ.camH = camY - GY; DZ.ok = true;
   if (TC.gun) {
-    TC.holder.position.set(0, GUV, d - dc); TC.holder.rotation.y = Math.PI; TC.by = GUV;
+    TC.holder.position.set(0, GUV, d - dc); TC.holder.rotation.y = Math.PI; TC.by = GUV; TC.hz0 = d - dc;
     // Adem'in gemisinde top arabasi modeldeki altin platforma oturur (kodla cizilen kaide gizli)
     for (const o of TC.holder.children) o.visible = !KM.bizim_gemi || o === TC.gun;
     bizimGemi(GUV, d - dc, sc);
@@ -518,11 +534,12 @@ export function kart() {
     (sandik ? '<div class="sdk" id="sdk">' + sandikSvg() + '<small>Hazine sandığı! Aç</small></div>' : '') +
     '<button class="btn" id="nx">Devam Et</button>');
   for (let i = 0; i < st; i++) setTimeout(() => A.sfx('bonus'), 120 + i * 250);
-  // altin sayaci: yildizlardan sonra tek tek sayarak eklenir
+  // altin sayaci: yildizlardan sonra tek tek sayarak eklenir (altin sesiyle)
+  setTimeout(() => A.AC && A.sfx('para', 0.55), 900);
   let n = 0; const step = Math.max(1, Math.round(kaz / 24));
-  setTimeout(function say() { n = Math.min(kaz, n + step); const a = A.$('kz'), b = A.$('ks'); if (!a) return; a.textContent = '+' + n; b.textContent = once + n; if (A.AC) A.sfx('tik');
+  setTimeout(function say() { n = Math.min(kaz, n + step); const a = A.$('kz'), b = A.$('ks'); if (!a) return; a.textContent = '+' + n; b.textContent = once + n;
     if (n < kaz) setTimeout(say, 45); else { a.parentNode.classList.add('pop'); altinHud(); } }, 900);
-  const sd = A.$('sdk'); if (sd) sd.onclick = () => { if (sd.classList.contains('acik')) return; sd.classList.add('acik'); const ek = 100; SV.altin += ek; A.save(); A.sfx('win');
+  const sd = A.$('sdk'); if (sd) sd.onclick = () => { if (sd.classList.contains('acik')) return; sd.classList.add('acik'); const ek = 100; SV.altin += ek; A.save(); A.sfx('sandik', 0.8);
     sd.querySelector('small').textContent = '+' + ek + ' altın!'; paraYagmuru(sd); const b = A.$('ks'); if (b) b.textContent = SV.altin; altinHud(); };
   A.$('nx').onclick = () => { A.sfx('tik'); harita(L, L + 1); };
 }
@@ -564,3 +581,4 @@ function harita(from, to, salt) {
   A.$('ya').onclick = () => { A.sfx('tik'); A.$('card').classList.remove('harita'); if (salt) { A.closeModal(); return; } A.start(to); };
 }
 export function haritaAc() { if (!A || !A.g) return; harita(A.LV, A.LV, true); }
+export function _T() { return T; }   // testler icin

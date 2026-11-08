@@ -12,7 +12,7 @@ const $ = (id) => document.getElementById(id);
 const Q = new URLSearchParams(location.search), TEST = Q.has('test');
 // v6.19: (Adem) Korsan modu pilotu: beta/korsan/index.html ayni motoru window.KORSAN ile acar; korsan.js sahneyi, hedefleri ve kartlari kurar.
 // KORSAN yoksa (Yapi modu) K null'dur ve asagidaki 'if (K)' satirlarinin hicbiri calismaz.
-const K = window.KORSAN ? await import('../korsan/korsan.js?v=4') : null;
+const K = window.KORSAN ? await import('../korsan/korsan.js?v=5') : null;
 const SKEY = K ? 'blokpop_korsan_v1' : 'blokpop_yapi_v3';
 let SV = { L: 1, max: 1 };
 try { const d = JSON.parse(localStorage.getItem(SKEY) || 'null'); if (d) SV = Object.assign(SV, d); } catch (e) {}
@@ -1236,7 +1236,7 @@ function flatQuat(q, tall) {
 function softLand(c, zn) {
   const b = c.body, p = new THREE.Vector3().copy(b.position), v = new THREE.Vector3().copy(b.velocity), h = c.h || S;
   world.removeBody(b); c.landed = true; c.lt = 0; c.zn = zn; c.v = v; c.w = new THREE.Vector3().copy(b.angularVelocity).multiplyScalar(0.6);
-  c.mesh.position.copy(p); c.mesh.quaternion.copy(b.quaternion); c.y0 = p.y; c.flt = zn === 'su' && FLOAT.has(c.kind); c.bub = 0;
+  c.mesh.position.copy(p); c.mesh.quaternion.copy(b.quaternion); c.y0 = p.y; c.flt = zn === 'su' && FLOAT.has(c.kind) && !K;   // v6.22: korsanda her sey hemen batar c.bub = 0;
   const sp = Math.min(1.7, 0.55 + Math.abs(v.y) / 14), sz = Math.max(0.65, h / S);
   if (zn === 'su') { splash(p.x, p.z, sp * sz, true); c.y0 = seaY(p.x, p.z); }
   else { softBurst(zn, p.x, p.z, sp * sz, v); c.cr = crater(zn, p.x, p.z, S * 0.75 * sz); }
@@ -1254,7 +1254,7 @@ function landTick(c, dt) {
       c.ph = (c.ph || Math.random() * 6) + dt; m.rotateZ(Math.sin(c.ph * 2.1) * dt * 0.06);
       if (c.lt > 0.6 && Math.random() < dt * 2) ripple(m.position.x, m.position.z, 0.7);
     } else {   // batar: suyun icinde yavaslar, takla atarak dibe iner, kabarcik birakir
-      c.v.x *= 1 - dt * 2.6; c.v.z *= 1 - dt * 2.6; c.v.y += (-(c.flt ? 0.7 : 2.0) - c.v.y) * dt * 3.5;
+      c.v.x *= 1 - dt * 2.6; c.v.z *= 1 - dt * 2.6; c.v.y += (-(c.flt ? 0.7 : K ? 3.6 : 2.0) - c.v.y) * dt * (K ? 6 : 3.5);
       m.rotateX(c.w.x * dt * 0.25); m.rotateZ(c.w.z * dt * 0.25); c.w.multiplyScalar(1 - dt * 0.8);
       c.bub += dt; if (c.bub > 0.09 && m.position.y > GY - 6) { c.bub = 0; bubble(m.position.x + (Math.random() - 0.5) * h * 0.6, m.position.y + h * 0.3, m.position.z + (Math.random() - 0.5) * h * 0.6); }
     }
@@ -1451,7 +1451,7 @@ function updateCubes(dt) {
   for (const c of cubes) {
     if (c.out) continue;
     const p = c.body.position;
-    if (!c.gone && p.y < (K ? K.goneY(c) : GONE_Y)) knock(c, false);   // v6.20: korsanda kup, durdugu kursunun altina inince dusmus sayilir
+    if (!c.gone && (K ? K.dustu(c) : p.y < GONE_Y)) knock(c, false);   // v6.22: korsanda kup kendi platformunun disina cikinca (ya da altina inince) dusmus sayilir   // v6.20: korsanda kup, durdugu kursunun altina inince dusmus sayilir
     if (c.landed === true) { landTick(c, dt); continue; }
     if (c.gone && !c.landed && c.kind !== 'recel' && (c.yer || p.y < GY + (c.h || S) * 0.55)) { land(c); continue; }
     if (c.gone && !c.landed && c.kind === 'recel' && p.y < GY + (c.h || S) * 0.62) { c.landed = 2; dust(p.x, GY, p.z, 1); }
@@ -1481,7 +1481,7 @@ let MASTER = null, NOISE = null, lastThud = 0;
 function out() {
   if (MASTER) return MASTER;
   const cp = AC.createDynamicsCompressor(); cp.threshold.value = -14; cp.ratio.value = 6; cp.attack.value = 0.003; cp.release.value = 0.15;
-  const gv = AC.createGain(); gv.gain.value = 0.6; const lp = AC.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 2400; lp.Q.value = 0.5; gv.connect(lp); lp.connect(cp); cp.connect(AC.destination);   // v6.5: (Adem) tiz, tirmalayan kisim kesildi
+  const gv = AC.createGain(); gv.gain.value = K ? 0.8 : 0.6; const lp = AC.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = K ? 14000 : 2400;   // korsan: kayitlar tam frekansla (kesik ve boguk degil) lp.Q.value = 0.5; gv.connect(lp); lp.connect(cp); cp.connect(AC.destination);   // v6.5: (Adem) tiz, tirmalayan kisim kesildi
   NOISE = AC.createBuffer(1, AC.sampleRate * 1, AC.sampleRate); const d = NOISE.getChannelData(0); for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
   return (MASTER = gv);
 }
@@ -1500,7 +1500,10 @@ function noise(ft, fq, q, t0, dur, vol, sweep) {
 // Malzemeye gore kirilma: tahta, tas, metal, cam. Ayni ses cok sik calmaz, ayni anda en fazla 6 ses.
 const SFILES = { atis: 3, vurus: 3, tahta: 3, tas: 3, metal: 3, cam: 3, dusme: 3, patlama: 2, pop: 0, bonus: 0, kazan: 0, kaybet: 0, tik: 0 };
 const RAW = {}, BUF = {};
-for (const k in SFILES) { const n = SFILES[k] || 1; for (let i = 0; i < n; i++) { const f = SFILES[k] ? k + i : k; RAW[f] = fetch('ses/' + f + '.mp3?v=1').then((r) => r.arrayBuffer()).catch(() => null); } }
+// v6.22: (Adem 6 Kas) korsan modunda sesler korsan/ses/ klasorunden: gercek top, su, tahta, zincir, altin kayitlari (kaynaklar: korsan/ses/KAYNAKLAR.md)
+if (K) Object.assign(SFILES, { su: 4, kabarcik: 0, zincir: 0, para: 0, sandik: 0, dalga: 0, yelken: 0, pop: undefined });
+const SDIR = K ? '../korsan/ses/' : 'ses/', SV2 = K ? 2 : 1;
+for (const k in SFILES) { if (SFILES[k] === undefined) continue; const n = SFILES[k] || 1; for (let i = 0; i < n; i++) { const f = SFILES[k] ? k + i : k; RAW[f] = fetch(SDIR + f + '.mp3?v=' + SV2).then((r) => r.arrayBuffer()).catch(() => null); } }
 function decodeAll() { for (const f in RAW) RAW[f].then((ab) => { if (ab && !BUF[f]) AC.decodeAudioData(ab.slice(0), (b) => { BUF[f] = b; }, () => {}); }); }
 const MATSND = { ahsap: 'tahta', sandik: 'tahta', ahsapmetal: 'tahta', kirmizi: 'tahta', hediye: 'tahta', kabak: 'tahta', recel: 'cam', tas: 'tas', tugla: 'tas', piramitTas: 'tas', metal: 'metal', celik: 'metal', altin: 'metal', fici: 'metal', yildiz: 'metal', cam: 'cam', buz: 'cam', jole: 'cam', buz2: 'cam', buzDikey: 'cam', ahsap2: 'tahta', alevUzun: 'tas', morDikey: 'tahta' };
 function matSnd(kind) { if (!kind) return 'tahta'; if (kind.startsWith('g_')) return 'cam'; return MATSND[kind] || 'tahta'; }
@@ -1535,8 +1538,35 @@ function splashSnd(v) {   // v6.17: su sicrama sesi (kayit yok; gurultu kopuk + 
   const os = AC.createOscillator(), og = AC.createGain(); os.frequency.setValueAtTime(170, now); os.frequency.exponentialRampToValueAtTime(55, now + 0.16); og.gain.setValueAtTime(v * 0.7, now); og.gain.exponentialRampToValueAtTime(0.001, now + 0.2);
   os.connect(og); og.connect(o); os.start(now); os.stop(now + 0.22);
 }
+// korsan modunun ses eslemesi: her olaya dogru kayit, malzemeye gore kirilma, gercek su sicramasi ve kazanma/kaybetme muzigi
+function sfxK(k, n) {
+  const key = k === 'kir' ? matSnd(n) : k === 'shatter' ? 'tahta' : k;
+  if (k === 'shoot') play('atis', 0.95, 0.96 + Math.random() * 0.08);
+  else if (k === 'hit') play('vurus', 0.55);
+  else if (k === 'kir' || k === 'shatter') play(key, 0.5, 0.92 + Math.random() * 0.12);
+  else if (k === 'cam') play('cam', 0.4);
+  else if (k === 'metal') play('metal', 0.4);
+  else if (k === 'boom') play('patlama', 0.95, 0.95);
+  else if (k === 'thud' || k === 'slap') play('dusme', 0.45, 0.9 + Math.random() * 0.15);
+  else if (k === 'su') { play('su', n ? 0.6 : 0.35, 0.9 + Math.random() * 0.2); if (n) setTimeout(() => AC && play('kabarcik', 0.18, 0.9 + Math.random() * 0.2), 260); }
+  else if (k === 'bonus') play('bonus', 0.55, 1);
+  else if (k === 'win') play('kazan', 0.7, 1);
+  else if (k === 'lose') play('kaybet', 0.6, 1);
+  else if (k === 'tik') play('tik', 0.5, 1);
+  else if (k in SFILES) play(k, n || 0.6, 1);   // zincir, para, sandik
+}
+// surekli calan ortam sesleri (dalga, yelken): ses seviyesi dongu() ile ayarlanir
+const LOOPS = {};
+function dongu(k, vol, t) {
+  if (!AC || !BUF[k]) return; out();
+  let L = LOOPS[k];
+  if (!L) { const src = AC.createBufferSource(), g0 = AC.createGain(); src.buffer = BUF[k]; src.loop = true; g0.gain.value = 0; src.connect(g0); g0.connect(out()); src.start(); L = LOOPS[k] = { src, g0 }; }
+  L.g0.gain.setTargetAtTime(vol, AC.currentTime, t || 0.5);
+}
 function sfx(k, n) {
   if (!AC) return; out(); const now = AC.currentTime;
+  if (K) { const key = k === 'kir' ? matSnd(n) : k; if (GAP[key] && LAST[key] && now - LAST[key] < GAP[key]) return; LAST[key] = now;
+    voices = voices.filter((v) => v > now); if (voices.length >= 6 && k !== 'shoot' && k !== 'win' && k !== 'lose') return; voices.push(now + 0.15); sfxK(k, n); return; }
   const key = k === 'kir' ? matSnd(n) : k === 'shatter' ? 'tahta' : k;
   if (GAP[key] && LAST[key] && now - LAST[key] < GAP[key]) return; LAST[key] = now;
   voices = voices.filter((v) => v > now); if (voices.length >= 4 && k !== 'shoot' && k !== 'win' && k !== 'lose') return; voices.push(now + 0.15);
@@ -1661,7 +1691,7 @@ function start(L) {
 window.YP = { K, ren, TC, cam, scene, cubes, balls, get g() { return g; }, get R() { return R; }, start, shoot: (x, y, z) => shoot(new THREE.Vector3(x, y, z)), aimAt, run(sec) { let t = last || 0; for (let i = 0; i < Math.round(sec * 60); i++) { t += 1000 / 60; frame(t); } }, snap() { return glc.toDataURL('image/png'); } };
 if (K) K.bagla({ THREE, CANNON, GLTFLoader, scene, world, cam, ren, sun, rim, MOD, PM, platBody, GB, cubes, balls, S, TC, KEEP, NENV, SV, save, $, Q, TEST,
   get g() { return g; }, get LV() { return LV; }, get GY() { return GY; }, set GY(v) { GY = v; GB.position.y = v; }, get shake() { return shake; }, set shake(v) { shake = v; },
-  set TOPY(v) { TOPY = v; }, set R(v) { R = v; }, set RZ(v) { RZ = v; }, LEG, DIRT, KIND, splashSnd: (v) => AC && splashSnd(v),
+  set TOPY(v) { TOPY = v; }, set R(v) { R = v; }, set RZ(v) { RZ = v; }, LEG, DIRT, KIND, splashSnd: (v) => AC && (K ? play('su', v + 0.2) : splashSnd(v)), dongu, play: (k, v, r) => AC && play(k, v, r),
   clearLevel, addCubes, hud, setPlat, sfx, play, chime, splash, ripple, bubble, foam, seaY, burst, confetti, modal, closeModal, start, buzz, spr, fx, trunkTip, wakeAll, FOAMT, SOFT, canvasTex, floatText, screenAt,
   get AC() { return AC; } });
 Promise.all([faceReady, pofiReady, texReady, modelReady, K ? K.yukle() : 0]).then(() => {
