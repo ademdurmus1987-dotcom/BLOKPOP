@@ -24,9 +24,7 @@ const FON = {
   koy: { h: 0.537, gunes: 0xfff4dc, gi: 2.6, rim: 0xd8f0ff, pir: [0.25, 0.4, -1], pr: 0xfffbe8, pg: 1.1, dekor: [] },
   buzul: { h: 0.345, gunes: 0xf4f8ff, gi: 2.5, rim: 0xd8ecff, pir: [0.1, 0.5, -1], pr: 0xffffff, pg: 0.9, dekor: [], penguen: { u: 0.76, v: 0.4797, u0: 0.68, u1: 0.86 } },   // penguen hedeflerin sagindaki buzda
   acikdeniz: { h: 0.5, gunes: 0xfff0d0, gi: 2.6, rim: 0xcfe0ff, pir: [0.02, 0.3, -1], pr: 0xfffbe8, pg: 1.3, dekor: [{ n: 'gemi', u: [0.68, 0.72] }] },
-  // (Adem 8 Kas) video fon denemesi: Adem'in 10 sn'lik videosu, bastaki/sondaki 1 sn karistirilarak kesintisiz donguye cevrildi (9 sn).
-  // Simdilik sadece ?fon=kumsal ile acilir; bolumlerin fonu degismedi. Videoda su kendisi kipirdadigi icin dalga efekti ve 3D martilar kapali.
-  kumsal: { h: 0.48, gunes: 0xfff4dc, gi: 2.6, rim: 0xd8f0ff, pir: [0.02, 0.6, -1], pr: 0xffffff, pg: 0, dekor: [], vid: 'fon_kumsal', sis: 0xbfe6f5 },
+  // video fon: bir fona vid: 'dosya' (kaynak/dosya.webm + .mp4) verilirse resim yerine video oynar (dalga efekti ve 3D martilar kapanir). ?fon=ad ile denenir.
   gunbatimi: { h: 0.5, gunes: 0xffc48a, gi: 2.3, rim: 0xff9ad0, pir: [0.0, 0.1, -1], pr: 0xffd890, pg: 1.6, dekor: [{ n: 'gemi', u: [0.78, 0.86] }] }
 };
 const IMG_AR = 1440 / 2560;

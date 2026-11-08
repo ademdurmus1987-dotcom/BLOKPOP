@@ -64,7 +64,7 @@ export function canliFon(fo) {
     for (const k of KOYUN) { img(k.n + '_govde'); img(k.n + '_kafa'); }
     for (let i = 0; i < 3; i++) birds.push(newBird('kucuk', true));
     nehirHazirla();
-  } else if (FON.startsWith('sahil')) { for (let i = 0; i < 6; i++) birds.push(newBird('marti', true)); }
+  } else if (FON.startsWith('sahil') && !fo.vid) { for (let i = 0; i < 6; i++) birds.push(newBird('marti', true)); }
   else if (FON.startsWith('kar')) { for (let i = 0; i < 2; i++) birds.push(newBird('kucuk', true)); karHazirla(); }
   resize(fo);
 }

@@ -11,6 +11,7 @@
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;user-select:none;-webkit-user-select:none}
 html,body{margin:0;height:100%;overflow:hidden;background:#7cc6ff;font-family:var(--font);color:#2b1d5c;touch-action:none}
 #bg{position:fixed;inset:0;background:#7cc6ff center/cover no-repeat;transition:background-image .4s;filter:saturate(1.25) brightness(1.06) contrast(1.04)}
+#bg video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:50% 50%;display:none}#bg.vid video{display:block}
 #bg:after{content:"";position:absolute;inset:0;background:radial-gradient(ellipse at 50% 40%,rgba(255,255,255,0) 40%,rgba(30,20,70,.1) 100%)}
 #canli{position:fixed;inset:0;width:100%;height:100%;display:block;pointer-events:none;filter:saturate(1.25) brightness(1.06) contrast(1.04)}
 #onfx{position:fixed;inset:0;width:100%;height:100%;display:block;pointer-events:none;z-index:2}
@@ -80,7 +81,7 @@ html,body{margin:0;height:100%;overflow:hidden;background:#7cc6ff;font-family:va
 </style>
 </head>
 <body>
-<div id="bg"></div>
+<div id="bg"><video id="bgv" muted playsinline webkit-playsinline loop preload="auto" disablepictureinpicture></video></div>
 <canvas id="canli"></canvas>
 <canvas id="gl"></canvas>
 <canvas id="onfx"></canvas>
@@ -94,6 +95,6 @@ html,body{margin:0;height:100%;overflow:hidden;background:#7cc6ff;font-family:va
 <div id="praise"></div>
 <div class="modal" id="modal"><div class="card" id="card"></div></div>
 <div id="load">Yükleniyor…</div>
-<script type="module" src="oyun.js?v=39"></script>
+<script type="module" src="oyun.js?v=42"></script>
 </body>
 </html>

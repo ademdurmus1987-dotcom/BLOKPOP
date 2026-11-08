@@ -4,7 +4,7 @@
 import * as THREE from '../three.module.min.js';
 import * as CANNON from '../cannon.min.js';
 import { GLTFLoader } from '../GLTFLoader.js';
-import { canliFon, canliKare } from './canli.js?v=2';   // v6.17: fondaki canli koyun ve kuslar
+import { canliFon, canliKare } from './canli.js?v=3';   // v6.17: fondaki canli koyun ve kuslar
 import { clone as skClone } from '../SkeletonUtils.js';
 import { mergeGeometries } from '../BufferGeometryUtils.js';
 
@@ -12,7 +12,7 @@ const $ = (id) => document.getElementById(id);
 const Q = new URLSearchParams(location.search), TEST = Q.has('test');
 // v6.19: (Adem) Korsan modu pilotu: beta/korsan/index.html ayni motoru window.KORSAN ile acar; korsan.js sahneyi, hedefleri ve kartlari kurar.
 // KORSAN yoksa (Yapi modu) K null'dur ve asagidaki 'if (K)' satirlarinin hicbiri calismaz.
-const K = window.KORSAN ? await import('../korsan/korsan.js?v=7') : null;
+const K = window.KORSAN ? await import('../korsan/korsan.js?v=8') : null;
 const SKEY = K ? 'blokpop_korsan_v1' : 'blokpop_yapi_v3';
 let SV = { L: 1, max: 1 };
 try { const d = JSON.parse(localStorage.getItem(SKEY) || 'null'); if (d) SV = Object.assign(SV, d); } catch (e) {}
@@ -600,7 +600,7 @@ const TEMALAR = [['cayir1', 'ahsap'], ['cayir2', 'ahsap'], ['sahil1', 'mercan'],
 // Yapi bolumunun tek fonu ve platformu (Adem 4 Kas 2026): col harabesi resmi + kare tas platform. Eski temalar yukarida duruyor.
 const TEMA_YAPI = ['cayir4', 'sirk'];
 // v6.1: fon her 3 bolumde bir degisir: cayir, karli koy, sahil. Zemin lekesi ve toz rengi fona uyar.
-const FONLAR = [{ f: 'cayir4', dirt: ['176,128,82', '160,112,70', '120,92,50'], toz: '#d9c3a0' }, { f: 'kar3', bs: 'auto 135%', bp: '50% 100%', dirt: ['236,242,252', '222,232,248', '200,214,236'], toz: '#ffffff' }, { f: 'sahil3', dirt: ['240,214,160', '228,198,140', '210,180,120'], toz: '#f3dfb4' }];
+const FONLAR = [{ f: 'cayir4', dirt: ['176,128,82', '160,112,70', '120,92,50'], toz: '#d9c3a0' }, { f: 'kar3', bs: 'auto 135%', bp: '50% 100%', dirt: ['236,242,252', '222,232,248', '200,214,236'], toz: '#ffffff' }, { f: 'sahil3', vid: 'sahil3', dirt: ['240,214,160', '228,198,140', '210,180,120'], toz: '#f3dfb4' }];
 const BOSFON = new Set(['cayir4', 'sahil3']);   // v6.17: cizili koyun/martilari silinmis fon; canlilari canli.js cizer
 function fonOf(L) { return FONLAR[Math.floor((L - 1) / 3) % FONLAR.length]; }   // v5.4: Adem'in cayir resmi + cizgili Tripo platformu (harabe kodu duruyor)
 // v6.1: bolum tasarimindaki renkler artik boya degil; renk ailesine gore Adem'in kup modeline (orijinal rengiyle) ya da cam sekle donusur.
@@ -756,9 +756,18 @@ function addCubes(Y, list, ctr) {
   syncMeshes();
   g = { don: Y.don || 0, L: LV, ad: Y.ad, total: cubes.length, left: cubes.length, shots: shotsFor(cubes.length, Y), max: shotsFor(cubes.length, Y), state: 'play', t: 0, busy: 0, quiet: 0, combo: null, armed: false, bonus: 0, gold: 0 };
   FUSE.length = 0;
-  if (K) K.sahne(); else { const tm = TEMA_YAPI, fo = fonOf(LV); $('bg').style.backgroundImage = 'url(fon/' + fo.f + (BOSFON.has(fo.f) ? '_bos.webp?v=1' : '.webp?v=2') + ')'; $('bg').style.backgroundSize = fo.bs || ''; $('bg').style.backgroundPosition = fo.bp || ''; setPlat(tm[1]); setDirt(fo); setSea(fo); canliFon(fo); }   // v6.11: (Adem) karli koyde platform koyun icinde duruyordu: fon buyuyup koy yukari, platformun arkasina alindi
+  if (K) K.sahne(); else { const tm = TEMA_YAPI, fo = fonOf(LV); $('bg').style.backgroundImage = 'url(fon/' + fo.f + (BOSFON.has(fo.f) ? '_bos.webp?v=1' : '.webp?v=2') + ')'; $('bg').style.backgroundSize = fo.bs || ''; $('bg').style.backgroundPosition = fo.bp || ''; setPlat(tm[1]); setDirt(fo); setSea(fo); canliFon(fo); videoFon(fo); }   // v6.11: (Adem) karli koyde platform koyun icinde duruyordu: fon buyuyup koy yukari, platformun arkasina alindi
   const nm = $('nm'); nm.innerHTML = '<div class="rb1"><small>BÖLÜM ' + LV + '</small><b>' + Y.ad + '</b></div>'; nm.classList.remove('on'); void nm.offsetWidth; nm.classList.add('on'); $('hint').style.opacity = 1;
   hud(true);
+}
+// v6.26: (Adem 8 Kas) sahil fonu canli: Adem'in sahil resminden yaptigi 10 sn'lik video (bas/son 1 sn karistirilip kesintisiz 9 sn donguye cevrildi).
+// Resim altta kalir (video yuklenene kadar o gorunur); videoda dalga, bulut, kus kendisi hareket ettigi icin cizili martilar kapali.
+function videoFon(fo) {
+  const bg = $('bg'), v = $('bgv'); if (!v) return;
+  if (!fo.vid) { bg.classList.remove('vid'); v.pause(); return; }
+  if (v.dataset.f !== fo.vid) { v.dataset.f = fo.vid; v.innerHTML = '<source src="fon/' + fo.vid + '.webm?v=1" type="video/webm; codecs=vp9"><source src="fon/' + fo.vid + '.mp4?v=1" type="video/mp4">'; v.load(); }
+  v.muted = true; bg.classList.add('vid'); const r = v.play(); if (r && r.catch) r.catch(() => {});
+  if (!v._d) { v._d = 1; addEventListener('pointerup', () => { if (bg.classList.contains('vid') && v.paused) v.play().catch(() => {}); }, { passive: true }); }   // otomatik oynatma engellenirse ilk dokunusta
 }
 // v6.1: top sayisi blok sayisina gore (her sey kirildigi icin yaklasik 5 bloga 1 top, en az 6, en cok 16)
 function shotsFor(n, Y) { return Math.max(7, Math.min(18, Math.round(n / 4.5) + 2)); }
@@ -1214,7 +1223,7 @@ function setSea(fo) {
   if (!SEA.mesh) { SEA.mesh = new THREE.Mesh(new THREE.PlaneGeometry(220, 84, 110, 42), SEAMAT); SEA.mesh.rotation.x = -Math.PI / 2; SEA.mesh.renderOrder = 1; scene.add(SEA.mesh); }
   SEA.mesh.visible = SEA.on; SEA.z0 = -(RZ + 0.9); SEAMAT.uniforms.z0.value = SEA.z0;
   SEA.mesh.position.set(0, GY + 0.04, SEA.z0 - 40);
-  setSand(SEA.on);
+  setSand(SEA.on && !fo.vid);   // v6.26: video fonda on plandaki kum ve kiyiya vuran dalgalar videonun kendisi (3B kum ortmesin)
 }
 function updSea(dt) { SEA.t += dt; SEAMAT.uniforms.t.value = SEA.t; }
 function seaY(x, z) { return GY + 0.04 + 0.07 * Math.sin(x * 0.8 + SEA.t * 1.7) + 0.05 * Math.sin(z * 1.1 - SEA.t * 1.3); }
