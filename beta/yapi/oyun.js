@@ -12,7 +12,7 @@ const $ = (id) => document.getElementById(id);
 const Q = new URLSearchParams(location.search), TEST = Q.has('test');
 // v6.19: (Adem) Korsan modu pilotu: beta/korsan/index.html ayni motoru window.KORSAN ile acar; korsan.js sahneyi, hedefleri ve kartlari kurar.
 // KORSAN yoksa (Yapi modu) K null'dur ve asagidaki 'if (K)' satirlarinin hicbiri calismaz.
-const K = window.KORSAN ? await import('../korsan/korsan.js?v=5') : null;
+const K = window.KORSAN ? await import('../korsan/korsan.js?v=6') : null;
 const SKEY = K ? 'blokpop_korsan_v1' : 'blokpop_yapi_v3';
 let SV = { L: 1, max: 1 };
 try { const d = JSON.parse(localStorage.getItem(SKEY) || 'null'); if (d) SV = Object.assign(SV, d); } catch (e) {}
@@ -1382,7 +1382,14 @@ function confetti() {
   }
 }
 let lastBuzz = 0;
-function buzz(ms, gap) { const t = performance.now(); if (gap && t - lastBuzz < gap) return; lastBuzz = t; try { if (navigator.vibrate) navigator.vibrate(ms); } catch (e) {} }
+// v6.23: (Adem 8 Kas) titresim: 18-25 ms cogu telefonun motorunda hissedilmiyordu, en az 35 ms. Ses kapaliyken titresim de yok.
+function buzz(ms, gap) { if (SV.sessiz) return; const t = performance.now(); if (gap && t - lastBuzz < gap) return; lastBuzz = t; try { if (navigator.vibrate) navigator.vibrate(Array.isArray(ms) ? ms.map((v, i) => i % 2 ? v : Math.max(35, v)) : Math.max(35, ms)); } catch (e) {} }
+// iPhone'da Safari titresim (navigator.vibrate) vermez; iOS 18+ sadece dokunus aninda 'switch' kutusuna tiklaninca kisa bir dokunsal tik verir.
+// Bu yuzden iPhone'da her atis dokunusunda tik hissedilir (carpma/dusme titresimi iOS'ta web'den mumkun degil).
+const IOSHAP = !navigator.vibrate && /iP(hone|ad|od)|Macintosh/.test(navigator.userAgent) && 'ontouchend' in document ? (() => {
+  const l = document.createElement('label'), i = document.createElement('input'); i.type = 'checkbox'; i.setAttribute('switch', ''); l.appendChild(i);
+  l.style.cssText = 'position:fixed;left:-99px;top:0;width:1px;height:1px;opacity:0;pointer-events:none'; document.body.appendChild(l); return l; })() : null;
+function dokunTitre() { if (IOSHAP && !SV.sessiz) try { IOSHAP.click(); } catch (e) {} }
 
 // ---------------- parcaciklar ----------------
 const PGEO = new THREE.BoxGeometry(0.22, 0.22, 0.22), parts = [];
@@ -1629,8 +1636,22 @@ function aimAt(cx, cy) {
   if (hits.length) return hits[0].point.clone().addScaledVector(ray.ray.direction, 0.3);
   const p = new THREE.Vector3(); return ray.ray.intersectPlane(AIMPL, p) ? p : null;
 }
+// v6.23: (Adem 8 Kas: ses ve titresim cikmiyor) telefonlarda tarayici sesi ancak parmak kalkinca (pointerup/touchend/click) acar;
+// eskiden ses sadece pointerdown'da aciliyordu, iPhone'da hic acilmiyordu. Simdi her dokunusta (kart dugmeleri dahil) acilir,
+// iPhone'da sessiz anahtar acikken de calar (audioSession 'playback'); sesi kapatmak icin ust kosedeki hoparlor dugmesi.
+function sesAc() {
+  if (SV.sessiz) return;
+  try { if (navigator.audioSession && navigator.audioSession.type !== 'playback') navigator.audioSession.type = 'playback'; } catch (x) {}
+  if (!AC) { try { AC = new (window.AudioContext || window.webkitAudioContext)(); decodeAll(); } catch (x) { return; } }
+  if (AC.state !== 'running') { const r = AC.resume(); if (r && r.catch) r.catch(() => {}); }
+  if (!AC._kilit) { AC._kilit = 1; try { const b = AC.createBuffer(1, 1, 22050), s = AC.createBufferSource(); s.buffer = b; s.connect(AC.destination); s.start(0); } catch (x) {} }   // eski iOS: sessiz bir ornek calinca kilit acilir
+}
+for (const ev of ['pointerdown', 'pointerup', 'touchend', 'click', 'keydown']) addEventListener(ev, sesAc, { capture: true, passive: true });
+document.addEventListener('visibilitychange', () => { if (!AC) return; if (document.hidden) AC.suspend(); else if (!SV.sessiz) AC.resume().catch(() => {}); });
+function sesDugme() { const b = $('ses'); if (b) b.textContent = SV.sessiz ? '🔇' : '🔊'; }
+if ($('ses')) { sesDugme(); $('ses').onclick = () => { SV.sessiz = !SV.sessiz; save(); sesDugme(); if (SV.sessiz) { if (AC) AC.suspend(); } else { sesAc(); buzz(30); } }; }
 glc.addEventListener('pointerdown', (e) => {
-  if (!AC) { try { AC = new (window.AudioContext || window.webkitAudioContext)(); decodeAll(); } catch (x) {} } else if (AC.state === 'suspended') AC.resume();
+  sesAc(); dokunTitre();
   const p = aimAt(e.clientX, e.clientY); if (p) shoot(p);
 });
 

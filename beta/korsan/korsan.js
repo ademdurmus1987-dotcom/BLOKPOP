@@ -13,16 +13,18 @@ export function bagla(a) { A = a; THREE = a.THREE; CANNON = a.CANNON;
 export function hazir() { return !!(A && A.TC.gun); }
 
 // ---------------- fonlar (korsan/kaynak/fon_*_bos.webp: cizili kuslar silinmis hali) ----------------
-// h: ufuk cizgisinin resimdeki yeri (ustten oran). pir: denizdeki gunes piriltisinin yonu/rengi/gucu. dekor: denizdeki sus modelleri.
+// h: ufuk cizgisinin resimdeki yeri (ustten oran). pir: denizdeki gunes piriltisinin yonu/rengi/gucu.
+// dekor: denizdeki sus modelleri ve resimde durabilecekleri acik deniz yerleri (u: resmin soldan orani, sirayla denenir).
+// (Adem 8 Kas: gemi/kule maddelerin icinden geciyordu) ada, koy ve buzulda ufuk boyunca resimde kara/buz var: sus yok.
 const FON = {
-  gunes: { h: 0.414, gunes: 0xfff4dc, gi: 2.6, rim: 0xd8f0ff, pir: [0.02, 0.6, -1], pr: 0xffffff, pg: 1.3, dekor: ['gemi'] },
-  martili: { h: 0.414, gunes: 0xfff4dc, gi: 2.6, rim: 0xd8f0ff, pir: [0.0, 0.25, -1], pr: 0xfffbe8, pg: 1.3, dekor: ['gemi'] },
-  ada: { h: 0.522, gunes: 0xfff4dc, gi: 2.6, rim: 0xd8f0ff, pir: [0.0, 0.32, -1], pr: 0xfffbe8, pg: 1.2, dekor: ['gemi'] },
-  gundogumu: { h: 0.3775, gunes: 0xffd9a0, gi: 2.4, rim: 0xffc8e0, pir: [0.0, 0.12, -1], pr: 0xffe0a0, pg: 1.6, dekor: ['gemi'] },
-  koy: { h: 0.537, gunes: 0xfff4dc, gi: 2.6, rim: 0xd8f0ff, pir: [0.25, 0.4, -1], pr: 0xfffbe8, pg: 1.1, dekor: ['kule'] },
+  gunes: { h: 0.414, gunes: 0xfff4dc, gi: 2.6, rim: 0xd8f0ff, pir: [0.02, 0.6, -1], pr: 0xffffff, pg: 1.3, dekor: [{ n: 'gemi', u: [0.2, 0.8, 0.13, 0.87] }] },
+  martili: { h: 0.414, gunes: 0xfff4dc, gi: 2.6, rim: 0xd8f0ff, pir: [0.0, 0.25, -1], pr: 0xfffbe8, pg: 1.3, dekor: [{ n: 'kule', u: [0.2] }, { n: 'gemi', u: [0.8, 0.87, 0.2, 0.13] }] },
+  ada: { h: 0.522, gunes: 0xfff4dc, gi: 2.6, rim: 0xd8f0ff, pir: [0.0, 0.32, -1], pr: 0xfffbe8, pg: 1.2, dekor: [] },
+  gundogumu: { h: 0.3775, gunes: 0xffd9a0, gi: 2.4, rim: 0xffc8e0, pir: [0.0, 0.12, -1], pr: 0xffe0a0, pg: 1.6, dekor: [{ n: 'gemi', u: [0.8, 0.87, 0.2, 0.13] }, { n: 'kule', u: [0.2] }] },
+  koy: { h: 0.537, gunes: 0xfff4dc, gi: 2.6, rim: 0xd8f0ff, pir: [0.25, 0.4, -1], pr: 0xfffbe8, pg: 1.1, dekor: [] },
   buzul: { h: 0.345, gunes: 0xf4f8ff, gi: 2.5, rim: 0xd8ecff, pir: [0.1, 0.5, -1], pr: 0xffffff, pg: 0.9, dekor: [], penguen: { u: 0.76, v: 0.4797, u0: 0.68, u1: 0.86 } },   // penguen hedeflerin sagindaki buzda
-  acikdeniz: { h: 0.5, gunes: 0xfff0d0, gi: 2.6, rim: 0xcfe0ff, pir: [0.02, 0.3, -1], pr: 0xfffbe8, pg: 1.3, dekor: ['kule', 'gemi'] },
-  gunbatimi: { h: 0.5, gunes: 0xffc48a, gi: 2.3, rim: 0xff9ad0, pir: [0.0, 0.1, -1], pr: 0xffd890, pg: 1.6, dekor: ['gemi'] }
+  acikdeniz: { h: 0.5, gunes: 0xfff0d0, gi: 2.6, rim: 0xcfe0ff, pir: [0.02, 0.3, -1], pr: 0xfffbe8, pg: 1.3, dekor: [{ n: 'gemi', u: [0.68, 0.72] }] },
+  gunbatimi: { h: 0.5, gunes: 0xffc48a, gi: 2.3, rim: 0xff9ad0, pir: [0.0, 0.1, -1], pr: 0xffd890, pg: 1.6, dekor: [{ n: 'gemi', u: [0.78, 0.86] }] }
 };
 const IMG_AR = 1440 / 2560;
 // ---------------- bolumler ----------------
@@ -155,31 +157,41 @@ export function kur(Y, list) {
 }
 // ---------------- denizdeki suslar: korsan gemisi, gozcu kulesi adasi, eski sal ----------------
 const DEKOR = [];
+// (Adem 8 Kas) eskiden gemi ufukta bastan basa gidip geliyor; hedeflerin arkasindan, resimdeki adalarin, kayaliklarin, deniz fenerinin
+// icinden geciyor, 13. bolumde kule adasinin icine giriyordu. Simdi her sus resmin acik deniz kisminda, hedeflerin ekrandaki yerinin
+// disinda bir noktaya demirli durur (yerinde hafif suruklenir, iner kalkar, yalpalar); bos yer yoksa o bolumde hic konmaz.
+const DK = { gemi: { z: -140, sc: 22, yar: 10.8, sur: 1.2 }, kule: { z: -190, sc: 30, yar: 20, sur: 0 } };
 function dekorKur(fo) {
   for (const o of DEKOR) A.scene.remove(o.g); DEKOR.length = 0;
-  const GY = A.GY;
-  for (const n of fo.dekor) {
-    if (n === 'gemi' && KM.dusman_gemi) {   // uzakta yavasca seyreden korsan gemisi (burun yon degistirince doner)
-      const sg = Math.random() < 0.5 ? -1 : 1, g = new THREE.Group(); g.add(yerlestir('dusman_gemi', 22, 0, [0, KAL.dusman_gemi.su, 0], [0, 0, 0]));
-      A.scene.add(g); DEKOR.push({ g, tip: 'gemi', x: sg * (32 + Math.random() * 14), z: -95 - Math.random() * 25, v: -sg * 1.1, y: GY, ph: Math.random() * 6 });
-    }
-    if (n === 'kule' && KM.kule_ada) {
-      const g = yerlestir('kule_ada', 30, -0.5, [0, KAL.kule_ada.su, 0], [0, 0, 0]); const w = new THREE.Group(); w.add(g); A.scene.add(w);
-      DEKOR.push({ g: w, tip: 'kule', x: -48, z: -140, v: 0, y: GY, ph: 0 });
-    }
-    if (n === 'sal' && KM.sal) {
-      const g = yerlestir('sal', 9, 0.6, [0.12, KAL.sal.su, 0], [0, 0, 0]); const w = new THREE.Group(); w.add(g); A.scene.add(w);
-      DEKOR.push({ g: w, tip: 'sal', x: 30, z: -55, v: 0, y: GY, ph: 1 });
-    }
+  const GY = A.GY, cam = A.cam, cz = (cam.userData.base0 || cam.position).z, thx = Math.tan(cam.fov * Math.PI / 360) * cam.aspect;
+  const sar = innerWidth / innerHeight, ux = (u) => 2 * (0.5 + (u - 0.5) * FR.Z * (sar < IMG_AR ? IMG_AR / sar : 1)) - 1;   // resim orani -> ekran (-1..1)
+  // hedeflerin ekranda kapladigi yatay aralik (kayan platformun gidip geldigi yer dahil)
+  const dolu = [];
+  if (T) { let a = 1e9, b = -1e9; for (const P of T.P) { const k = P.d.har === 'kay' ? P.d.a : 0;
+    for (const z of [P.z - P.hz, P.z + P.hz]) { const dz = Math.max(1, cz - z) * thx; a = Math.min(a, (P.x - P.hx - k) / dz); b = Math.max(b, (P.x + P.hx + k) / dz); } }
+    dolu.push([a - 0.06, b + 0.06]); }
+  for (const s of fo.dekor) {
+    const D = DK[s.n], mdl = s.n === 'gemi' ? 'dusman_gemi' : 'kule_ada'; if (!KM[mdl]) continue;
+    const dz = (cz - D.z) * thx, hw = (D.yar + D.sur) / dz;
+    const u = s.u.find((u) => { const c = ux(u); return Math.abs(c) < 1 && dolu.every(([a, b]) => c + hw < a || c - hw > b); });
+    if (u == null) continue;
+    const c = ux(u), x = c * dz; dolu.push([c - hw - 0.03, c + hw + 0.03]);
+    const w = new THREE.Group();
+    if (s.n === 'gemi') w.add(yerlestir('dusman_gemi', D.sc, 0, [0, KAL.dusman_gemi.su, 0], [0, 0, 0]));
+    else w.add(yerlestir('kule_ada', D.sc, -0.5, [0, KAL.kule_ada.su, 0], [0, 0, 0]));
+    A.scene.add(w);
+    // gemi: burnu ekranin disina dogru (hedeflere degil), hafif capraz
+    DEKOR.push({ g: w, tip: s.n, x0: x, x, z: D.z, y: GY, sur: D.sur, yon: (c < 0 ? -1 : 1) * (Math.PI / 2 - 0.35), ph: Math.random() * 6 });
   }
   dekorKare(0);
 }
 function dekorKare(dt) {
   for (const o of DEKOR) {
-    o.ph += dt; o.x += o.v * dt;
-    if (o.tip === 'gemi') { if (Math.abs(o.x) > 62) o.v = -o.v; o.g.rotation.y = o.v > 0 ? Math.PI / 2 : -Math.PI / 2; }   // model burnu +z: gidis yonune doner
-    o.g.position.set(o.x, o.y + Math.sin(o.ph * 0.9) * (o.tip === 'kule' ? 0 : 0.18), o.z);
-    if (o.tip !== 'kule') { o.g.rotation.z = Math.sin(o.ph * 0.7) * 0.025; o.g.rotation.x = Math.sin(o.ph * 0.55 + 1) * 0.015; }
+    o.ph += dt;
+    if (o.tip === 'kule') { o.g.position.set(o.x0, o.y, o.z); continue; }
+    o.x = o.x0 + o.sur * Math.sin(o.ph * 0.13);   // demirde: zincir boyunca yavasca suruklenir
+    o.g.position.set(o.x, o.y + Math.sin(o.ph * 0.9) * 0.18, o.z);
+    o.g.rotation.set(Math.sin(o.ph * 0.55 + 1) * 0.015, o.yon + Math.sin(o.ph * 0.11) * 0.06, Math.sin(o.ph * 0.7) * 0.025);
   }
 }
 // ---------------- su: gorunmez yuzey (su altini fon resmi gosterir) ----------------
@@ -291,7 +303,7 @@ export function kare(dt) {
   }
   if (DZ.mesh && cam.userData.q0) {
     const u = DZ.mesh.material.uniforms; u.time.value = TT; u.sar.value = innerWidth / innerHeight; u.th.value = DZ.th; u.pitch.value = DZ.pitch; u.camH.value = DZ.camH + (cam.userData.base.y - cam.userData.base0.y);
-    if (g && g.state === 'sefer') { const k = Math.min(1, g.sefer / SEFER.sure); DZ.travel += SEFER.yol * 3 * (1 - k) ** 2 / SEFER.sure * dt; u.zoom.value = FR.Z * (1 + 0.06 * (1 - k) ** 2); } else u.zoom.value = FR.Z;
+    if (g && g.state === 'sefer') { const k = Math.min(1, g.sefer / SEFER.sure); DZ.travel += SEFER.yol * 3 * (1 - k) ** 2 / SEFER.sure * dt; u.zoom.value = zoomSefer(k); } else u.zoom.value = FR.Z;
     u.kay.value = FR.kay;
     u.travel.value = DZ.travel; QI.copy(cam.userData.q0).invert().multiply(cam.quaternion); u.rot.value.setFromMatrix4(M4.makeRotationFromQuaternion(QI));
     penguenKare(dt, u);
@@ -301,6 +313,9 @@ export function kare(dt) {
   if (A.AC && (ORT -= dt) <= 0) { ORT = 0.25; const sef = g && g.state === 'sefer' ? 1 - Math.min(1, g.sefer / SEFER.sure) : 0; A.dongu('dalga', 0.3, 0.8); A.dongu('yelken', 0.25 * sef, 0.3); }
 }
 let ORT = 0;
+// (Adem 8 Kas: acilista yakinlasma mantiksizdi) eskiden seyirde fon resmi %6 buyukten baslayip kuculuyordu: gemi ileri giderken
+// manzara geri cekiliyordu. Simdi gemiyle ayni egriyle (yavaslayarak) hafifce buyur; ufuktaki adalar, kayaliklar da yaklasir.
+function zoomSefer(k) { const z0 = Math.max(1.02, FR.Z * 0.965); return z0 + (FR.Z - z0) * (1 - (1 - k) ** 3); }
 function demirAt() {
   const g = A.g; g.state = 'play'; g.sefer = SEFER.sure;
   A.$('hint').style.opacity = 1;
@@ -582,3 +597,7 @@ function harita(from, to, salt) {
 }
 export function haritaAc() { if (!A || !A.g) return; harita(A.LV, A.LV, true); }
 export function _T() { return T; }   // testler icin
+export function _olc() {   // testler icin: suslarin ve platformlarin dunyadaki kutulari
+  const bx = (o) => { const b = new THREE.Box3().setFromObject(o); return [b.min.x, b.max.x, b.min.y, b.max.y, b.min.z, b.max.z].map((v) => +v.toFixed(1)); };
+  return { dekor: DEKOR.map((o) => ({ tip: o.tip, kutu: bx(o.g) })), plat: T ? T.P.map((P) => bx(P.grp)) : [], cam: A.cam.position.toArray().map((v) => +v.toFixed(1)), GY: A.GY, ses: A.AC ? A.AC.state : 'yok', zoom: DZ.mesh ? +DZ.mesh.material.uniforms.zoom.value.toFixed(4) : 0 };
+}
